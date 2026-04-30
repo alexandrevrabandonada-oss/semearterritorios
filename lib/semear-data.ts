@@ -1,8 +1,10 @@
 import {
   ClipboardList,
   FileText,
+  HelpCircle,
   Home,
   Layers3,
+  Lightbulb,
   Map,
   MapPinned,
   MessageSquareText,
@@ -37,7 +39,9 @@ export const navigationItems: NavigationItem[] = [
   { label: "Escutas", href: "/escutas", icon: MessageSquareText },
   { label: "Territórios", href: "/territorios", icon: MapPinned },
   { label: "Mapa", href: "/mapa", icon: Map },
-  { label: "Relatórios", href: "/relatorios", icon: FileText }
+  { label: "Relatórios", href: "/relatorios", icon: FileText },
+  { label: "Pós-banca", href: "/pos-banca", icon: Lightbulb },
+  { label: "Ajuda", href: "/ajuda", icon: HelpCircle }
 ];
 
 export const statCards: StatCard[] = [

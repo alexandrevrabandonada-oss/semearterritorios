@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, MessageSquareText, Plus, Search, SlidersHorizontal } from "lucide-react";
+import { CalendarDays, MapPinned, MessageSquareText, Plus, Search, SlidersHorizontal } from "lucide-react";
 import type { Action, ListeningRecord, Neighborhood, ReviewStatus, Theme } from "@/lib/database.types";
 import { getReviewStatusLabel, getSourceTypeLabel, reviewStatusOptions } from "@/lib/listening-records";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { hasNoWordsUsed, hasPossibleSensitiveData, isVeryShortSpeech } from "@/lib/action-pilot";
 
 type RecordWithRelations = ListeningRecord & {
   actions: Pick<Action, "id" | "title"> | null;
@@ -19,9 +20,10 @@ type Filters = {
   actionId: string;
   themeId: string;
   status: string;
+  quality: string;
 };
 
-const initialFilters: Filters = { month: "", neighborhoodId: "", actionId: "", themeId: "", status: "" };
+const initialFilters: Filters = { month: "", neighborhoodId: "", actionId: "", themeId: "", status: "", quality: "" };
 
 export function ListeningRecordsList() {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
@@ -65,6 +67,12 @@ export function ListeningRecordsList() {
       setActions(actionsResult.data ?? []);
       setNeighborhoods(neighborhoodsResult.data ?? []);
       setThemes(themesResult.data ?? []);
+      const params = new URLSearchParams(window.location.search);
+      setFilters((current) => ({
+        ...current,
+        actionId: params.get("actionId") ?? current.actionId,
+        status: params.get("status") ?? current.status
+      }));
       setLoading(false);
     }
 
@@ -80,6 +88,13 @@ export function ListeningRecordsList() {
     if (filters.actionId && record.action_id !== filters.actionId) return false;
     if (filters.status && record.review_status !== filters.status) return false;
     if (filters.themeId && !record.listening_record_themes.some((item) => item.themes?.id === filters.themeId)) return false;
+    if (filters.quality === "no_theme" && record.listening_record_themes.length > 0) return false;
+    if (filters.quality === "no_summary" && record.team_summary?.trim()) return false;
+    if (filters.quality === "no_priority" && record.priority_mentioned?.trim()) return false;
+    if (filters.quality === "very_short" && !isVeryShortSpeech(record)) return false;
+    if (filters.quality === "possible_sensitive" && !hasPossibleSensitiveData(record)) return false;
+    if (filters.quality === "no_words_used" && !hasNoWordsUsed(record)) return false;
+    
     return true;
   });
 
@@ -95,10 +110,39 @@ export function ListeningRecordsList() {
           <h2 className="mt-3 text-3xl font-semibold tracking-tight text-semear-green">Fichas de escuta em papel</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">Digite a fala original e registre a codificação da equipe em campos separados.</p>
         </div>
-        <Link className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-semear-green px-5 text-sm font-semibold text-white" href="/escutas/nova">
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          Nova escuta
-        </Link>
+        <div className="flex gap-2">
+          <Link className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-semear-green/15 bg-white px-5 text-sm font-semibold text-semear-green hover:bg-semear-green/5" href="/escutas/nova">
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Nova individual
+          </Link>
+          <Link className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-semear-green px-5 text-sm font-semibold text-white" href="/escutas/lote">
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Modo Lote (Banca)
+          </Link>
+          <Link className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-semear-green/15 bg-white px-5 text-sm font-semibold text-semear-green hover:bg-semear-green/5" href="/escutas/revisao-territorial">
+            <MapPinned className="h-4 w-4" aria-hidden="true" />
+            Revisão territorial
+          </Link>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-3xl border border-white/80 bg-white p-5 shadow-soft">
+          <p className="text-sm font-medium text-stone-600">Total filtradas</p>
+          <strong className="mt-2 block text-3xl font-semibold text-semear-green">{filteredRecords.length}</strong>
+        </div>
+        <div className="rounded-3xl border border-white/80 bg-white p-5 shadow-soft">
+          <p className="text-sm font-medium text-stone-600">Rascunhos</p>
+          <strong className="mt-2 block text-3xl font-semibold text-semear-earth">{filteredRecords.filter(r => r.review_status === 'draft').length}</strong>
+        </div>
+        <div className="rounded-3xl border border-white/80 bg-white p-5 shadow-soft">
+          <p className="text-sm font-medium text-stone-600">Revisadas</p>
+          <strong className="mt-2 block text-3xl font-semibold text-semear-green">{filteredRecords.filter(r => r.review_status === 'reviewed').length}</strong>
+        </div>
+        <div className="rounded-3xl border border-red-100 bg-red-50 p-5 shadow-soft">
+          <p className="text-sm font-medium text-red-800">Sem tema marcado</p>
+          <strong className="mt-2 block text-3xl font-semibold text-red-800">{filteredRecords.filter(r => r.listening_record_themes.length === 0).length}</strong>
+        </div>
       </div>
 
       <div className="mt-5 rounded-[1.5rem] border border-white/80 bg-white/72 p-4 shadow-soft">
@@ -109,6 +153,15 @@ export function ListeningRecordsList() {
           <FilterSelect label="Ação" value={filters.actionId} onChange={(value) => updateFilter("actionId", value)}><option value="">Todas</option>{actions.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</FilterSelect>
           <FilterSelect label="Tema" value={filters.themeId} onChange={(value) => updateFilter("themeId", value)}><option value="">Todos</option>{themes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</FilterSelect>
           <FilterSelect label="Status" value={filters.status} onChange={(value) => updateFilter("status", value)}><option value="">Todos</option>{reviewStatusOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</FilterSelect>
+          <FilterSelect label="Qualidade" value={filters.quality} onChange={(value) => updateFilter("quality", value)}>
+            <option value="">Todas</option>
+            <option value="no_theme">Sem tema marcado</option>
+            <option value="no_summary">Sem resumo da equipe</option>
+            <option value="no_priority">Sem prioridade apontada</option>
+            <option value="very_short">Fala muito curta</option>
+            <option value="possible_sensitive">Possível dado sensível</option>
+            <option value="no_words_used">Sem palavras usadas</option>
+          </FilterSelect>
         </div>
       </div>
 
@@ -135,10 +188,25 @@ export function ListeningRecordsList() {
               <span className="inline-flex items-center gap-2"><MessageSquareText className="h-4 w-4" aria-hidden="true" />{record.actions?.title ?? "Sem ação"}</span>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">{record.listening_record_themes.slice(0, 4).map((item) => item.themes ? <span className="rounded-full bg-semear-offwhite px-3 py-1 text-xs font-semibold text-stone-600" key={item.themes.id}>{item.themes.name}</span> : null)}</div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {isVeryShortSpeech(record) ? <QualityBadge label="Fala muito curta" /> : null}
+              {hasNoWordsUsed(record) ? <QualityBadge label="Sem palavras usadas" /> : null}
+              {hasPossibleSensitiveData(record) ? <QualityBadge label="Possível dado sensível" danger /> : null}
+              {record.listening_record_themes.length === 0 ? <QualityBadge label="Sem tema" /> : null}
+              {record.review_status === "reviewed" && !record.team_summary?.trim() ? <QualityBadge label="Revisada sem resumo" danger /> : null}
+            </div>
           </Link>
         ))}
       </div>
     </section>
+  );
+}
+
+function QualityBadge({ label, danger = false }: { label: string; danger?: boolean }) {
+  return (
+    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${danger ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-800"}`}>
+      {label}
+    </span>
   );
 }
 

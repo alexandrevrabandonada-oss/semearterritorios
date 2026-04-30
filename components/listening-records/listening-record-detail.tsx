@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle2, Edit3 } from "lucide-react";
 import { ListeningRecordForm } from "@/components/listening-records/listening-record-form";
-import type { Action, ListeningRecord, Neighborhood, Theme } from "@/lib/database.types";
+import { ListeningQualityChecklist } from "@/components/listening-records/listening-quality-checklist";
+import { TerritorialReviewPanel } from "@/components/listening-records/territorial-review-panel";
+import type { Action, ListeningRecord, Neighborhood, PlaceMentioned, NormalizedPlace, Theme } from "@/lib/database.types";
 import { getReviewStatusLabel, getSourceTypeLabel } from "@/lib/listening-records";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
@@ -12,11 +14,15 @@ type RecordWithRelations = ListeningRecord & {
   actions: Pick<Action, "id" | "title"> | null;
   neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
   listening_record_themes: Array<{ themes: Pick<Theme, "id" | "name"> | null }>;
+  places_mentioned: Array<Pick<PlaceMentioned, "id" | "place_name" | "place_type" | "notes" | "neighborhood_id" | "normalized_place_id"> & {
+    normalized_places?: Pick<NormalizedPlace, "id" | "normalized_name" | "visibility" | "place_type"> | null;
+  }>;
 };
 
 export function ListeningRecordDetail({ recordId }: { recordId: string }) {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const [record, setRecord] = useState<RecordWithRelations | null>(null);
+  const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -29,19 +35,23 @@ export function ListeningRecordDetail({ recordId }: { recordId: string }) {
       return;
     }
 
-    const result = await supabase
-      .from("listening_records")
-      .select("*, actions:action_id(id, title), neighborhoods:neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name))")
-      .eq("id", recordId)
-      .single();
+    const [result, neighborhoodsResult] = await Promise.all([
+      supabase
+        .from("listening_records")
+        .select("*, actions:action_id(id, title), neighborhoods:neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name)), places_mentioned(id, place_name, place_type, notes, neighborhood_id, normalized_place_id, normalized_places:normalized_place_id(id, normalized_name, visibility, place_type))")
+        .eq("id", recordId)
+        .single(),
+      supabase.from("neighborhoods").select("*").order("name", { ascending: true })
+    ]);
 
-    if (result.error) {
-      setError(result.error.message);
+    if (result.error || neighborhoodsResult.error) {
+      setError(result.error?.message ?? neighborhoodsResult.error?.message ?? "Erro ao carregar escuta.");
       setLoading(false);
       return;
     }
 
     setRecord(result.data as RecordWithRelations);
+    setNeighborhoods(neighborhoodsResult.data ?? []);
     setLoading(false);
   }
 
@@ -107,6 +117,19 @@ export function ListeningRecordDetail({ recordId }: { recordId: string }) {
             {record.listening_record_themes.length > 0 ? record.listening_record_themes.map((item) => item.themes ? <span className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-semear-green" key={item.themes.id}>{item.themes.name}</span> : null) : <p className="text-sm text-stone-600">Nenhum tema marcado.</p>}
           </div>
         </section>
+
+        <div className="mt-6">
+          <ListeningQualityChecklist 
+            record={{
+              ...record,
+              theme_count: record.listening_record_themes.length
+            }} 
+          />
+        </div>
+
+        <div className="mt-6">
+          <TerritorialReviewPanel record={record} neighborhoods={neighborhoods} onSaved={() => void load()} />
+        </div>
       </article>
     </section>
   );

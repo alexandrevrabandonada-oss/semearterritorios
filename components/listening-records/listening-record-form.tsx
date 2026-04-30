@@ -166,9 +166,24 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
       return;
     }
 
-    if (!values.interviewer_name.trim() || !values.free_speech_text.trim() || !values.date) {
-      setError("Informe data, entrevistador e fala original/síntese livre.");
+    if (!values.date || !values.action_id || !values.neighborhood_id || !values.interviewer_name.trim() || !values.free_speech_text.trim()) {
+      setError("Data, ação, bairro, entrevistador e fala original são campos obrigatórios.");
       return;
+    }
+
+    if (values.review_status === "reviewed") {
+      if (values.theme_ids.length === 0 && !values.unexpected_notes.trim()) {
+        setError("Para revisar, marque pelo menos um tema ou preencha observações inesperadas.");
+        return;
+      }
+      if (!values.team_summary.trim()) {
+        setError("Para revisar, o resumo da equipe deve estar preenchido.");
+        return;
+      }
+      if (!values.priority_mentioned.trim()) {
+        setError("Para revisar, aponte a prioridade (ou escreva explicitamente 'não apareceu prioridade').");
+        return;
+      }
     }
 
     const {
@@ -268,13 +283,13 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
 
         <div className="mt-8 grid gap-5 lg:grid-cols-2">
           <Select label="Ação vinculada" value={values.action_id} onChange={(value) => updateField("action_id", value)}>
-            <option value="">Sem ação vinculada</option>
+            <option value="">Selecione uma ação...</option>
             {actions.map((action) => (
               <option key={action.id} value={action.id}>{action.title}</option>
             ))}
           </Select>
           <Select label="Bairro/Território" value={values.neighborhood_id} onChange={(value) => updateField("neighborhood_id", value)}>
-            <option value="">Sem bairro definido</option>
+            <option value="">Selecione um bairro...</option>
             {neighborhoods.map((neighborhood) => (
               <option key={neighborhood.id} value={neighborhood.id}>{neighborhood.name}</option>
             ))}

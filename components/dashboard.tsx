@@ -7,13 +7,15 @@ import {
   BarChart3,
   CalendarDays,
   ClipboardList,
+  FolderCheck,
+  Keyboard,
   Layers3,
   MapPinned,
   MessageSquareText,
   Search,
   Tag
 } from "lucide-react";
-import type { Action, ActionType, ListeningRecord, Neighborhood, Theme } from "@/lib/database.types";
+import type { Action, ActionClosure, ActionDebrief, ActionType, ListeningRecord, Neighborhood, Theme } from "@/lib/database.types";
 import { actionTypeOptions, getActionTypeLabel } from "@/lib/actions";
 import { getReviewStatusLabel } from "@/lib/listening-records";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -48,6 +50,8 @@ export function Dashboard() {
   const [records, setRecords] = useState<RecordWithRelations[]>([]);
   const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
   const [themes, setThemes] = useState<Theme[]>([]);
+  const [closures, setClosures] = useState<ActionClosure[]>([]);
+  const [debriefs, setDebriefs] = useState<ActionDebrief[]>([]);
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +66,7 @@ export function Dashboard() {
         return;
       }
 
-      const [actionsResult, recordsResult, neighborhoodsResult, themesResult] = await Promise.all([
+      const [actionsResult, recordsResult, neighborhoodsResult, themesResult, closuresResult, debriefsResult] = await Promise.all([
         supabase
           .from("actions")
           .select("*, neighborhoods:neighborhood_id(id, name)")
@@ -72,17 +76,21 @@ export function Dashboard() {
           .select("*, actions:action_id(id, title, action_type), neighborhoods:neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name))")
           .order("date", { ascending: false }),
         supabase.from("neighborhoods").select("*").order("name", { ascending: true }),
-        supabase.from("themes").select("*").eq("is_active", true).order("name", { ascending: true })
+        supabase.from("themes").select("*").eq("is_active", true).order("name", { ascending: true }),
+        supabase.from("action_closures").select("*"),
+        supabase.from("action_debriefs").select("*")
       ]);
 
       if (ignore) return;
 
-      if (actionsResult.error || recordsResult.error || neighborhoodsResult.error || themesResult.error) {
+      if (actionsResult.error || recordsResult.error || neighborhoodsResult.error || themesResult.error || closuresResult.error || debriefsResult.error) {
         setError(
           actionsResult.error?.message ??
             recordsResult.error?.message ??
             neighborhoodsResult.error?.message ??
             themesResult.error?.message ??
+            closuresResult.error?.message ??
+            debriefsResult.error?.message ??
             "Erro ao carregar dados do dashboard."
         );
         setLoading(false);
@@ -93,6 +101,8 @@ export function Dashboard() {
       setRecords((recordsResult.data ?? []) as RecordWithRelations[]);
       setNeighborhoods(neighborhoodsResult.data ?? []);
       setThemes(themesResult.data ?? []);
+      setClosures((closuresResult.data ?? []) as ActionClosure[]);
+      setDebriefs((debriefsResult.data ?? []) as ActionDebrief[]);
       setLoading(false);
     }
 
@@ -128,6 +138,13 @@ export function Dashboard() {
   const wordCounts = countWords(filteredRecords);
   const pendingRecords = filteredRecords.filter((record) => record.review_status === "draft");
   const latestRecords = filteredRecords.slice(0, 6);
+  const actionsWithOpenDossier = filteredActions.filter((action) => closures.find((closure) => closure.action_id === action.id)?.status !== "closed");
+  const actionsWithPendingDebrief = filteredActions.filter((action) => debriefs.find((debrief) => debrief.action_id === action.id)?.status !== "approved");
+  const actionsWithDraftRecords = filteredActions.filter((action) => filteredRecords.some((record) => record.action_id === action.id && record.review_status === "draft"));
+  const latestAction = filteredActions[0] ?? null;
+  const latestActionRecords = latestAction ? filteredRecords.filter((record) => record.action_id === latestAction.id) : [];
+  const latestActionDebrief = latestAction ? debriefs.find((debrief) => debrief.action_id === latestAction.id) : null;
+  const latestActionClosure = latestAction ? closures.find((closure) => closure.action_id === latestAction.id) : null;
 
   const maxThemeCount = Math.max(...themeCounts.map((item) => item.count), 1);
 
@@ -184,6 +201,64 @@ export function Dashboard() {
             <MetricCard icon={<MapPinned className="h-5 w-5" />} label="Bairros visitados" value={visitedNeighborhoodIds.size} />
             <MetricCard icon={<Layers3 className="h-5 w-5" />} label="Pendências de revisão" value={pendingRecords.length} />
           </div>
+
+          <section className="mt-5 rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Próxima operação</p>
+                <h3 className="mt-2 text-2xl font-semibold text-semear-green">Atalhos para homologação e primeira banca</h3>
+                <p className="mt-2 text-sm leading-6 text-stone-600">
+                  {actionsWithOpenDossier.length} ação(ões) com dossiê aberto, {actionsWithPendingDebrief.length} com devolutiva pendente e {actionsWithDraftRecords.length} com escutas em rascunho.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <QuickAction href="/escutas/lote" icon={<Keyboard className="h-4 w-4" />} label="Digitar fichas" />
+                <QuickAction href="/escutas?status=draft" icon={<MessageSquareText className="h-4 w-4" />} label="Revisar escutas" />
+                <QuickAction href={actionsWithOpenDossier[0] ? `/acoes/${actionsWithOpenDossier[0].id}/dossie` : "/acoes"} icon={<FolderCheck className="h-4 w-4" />} label="Fechar dossiê" />
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <OperationList title="Ações recentes" items={filteredActions.slice(0, 3).map((action) => action.title)} />
+              <OperationList title="Dossiê aberto" items={actionsWithOpenDossier.slice(0, 3).map((action) => action.title)} />
+              <OperationList title="Devolutiva pendente" items={actionsWithPendingDebrief.slice(0, 3).map((action) => action.title)} />
+            </div>
+          </section>
+
+          <section className="mt-5 rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Última operação</p>
+                <h3 className="mt-2 text-2xl font-semibold text-semear-green">
+                  {latestAction?.title ?? "Nenhuma ação realizada"}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-stone-600">
+                  {latestAction ? `${new Date(`${latestAction.action_date}T00:00:00`).toLocaleDateString("pt-BR")} · ${latestAction.neighborhoods?.name ?? "sem bairro"}` : "Cadastre a primeira ação para acompanhar o fechamento pós-banca."}
+                </p>
+              </div>
+              {latestAction ? (
+                <div className="flex flex-wrap gap-2">
+                  <Link className="inline-flex min-h-11 items-center justify-center rounded-full bg-semear-green px-5 text-sm font-semibold text-white" href={`/acoes/${latestAction.id}`}>
+                    Abrir ação
+                  </Link>
+                  <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-semear-green/15 bg-white px-5 text-sm font-semibold text-semear-green" href={`/acoes/${latestAction.id}/piloto`}>
+                    Ver piloto
+                  </Link>
+                  <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-semear-green/15 bg-white px-5 text-sm font-semibold text-semear-green" href={`/acoes/${latestAction.id}/dossie`}>
+                    Ver dossiê
+                  </Link>
+                </div>
+              ) : null}
+            </div>
+            {latestAction ? (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <SmallMetric label="Escutas" value={latestActionRecords.length.toString()} />
+                <SmallMetric label="Revisadas" value={latestActionRecords.filter((record) => record.review_status === "reviewed").length.toString()} />
+                <SmallMetric label="Rascunhos" value={latestActionRecords.filter((record) => record.review_status === "draft").length.toString()} />
+                <SmallMetric label="Devolutiva" value={latestActionDebrief?.status === "approved" ? "aprovada" : latestActionDebrief?.status ?? "não criada"} />
+                <SmallMetric label="Dossiê" value={latestActionClosure?.status ?? "aberto"} />
+              </div>
+            ) : null}
+          </section>
 
           {filteredActions.length === 0 && filteredRecords.length === 0 ? (
             <EmptyDashboard />
@@ -262,6 +337,39 @@ export function Dashboard() {
         </>
       ) : null}
     </section>
+  );
+}
+
+function SmallMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{label}</p>
+      <p className="mt-2 text-lg font-semibold text-semear-green">{value}</p>
+    </div>
+  );
+}
+
+function QuickAction({ href, icon, label }: { href: string; icon: ReactNode; label: string }) {
+  return (
+    <Link className="inline-flex min-h-11 items-center gap-2 rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href={href}>
+      {icon}
+      {label}
+    </Link>
+  );
+}
+
+function OperationList({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4">
+      <p className="font-semibold text-semear-green">{title}</p>
+      {items.length > 0 ? (
+        <ul className="mt-2 space-y-1 text-sm leading-6 text-stone-700">
+          {items.map((item) => <li key={item}>{item}</li>)}
+        </ul>
+      ) : (
+        <p className="mt-2 text-sm text-stone-500">Nenhum item.</p>
+      )}
+    </div>
   );
 }
 

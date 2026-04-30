@@ -32,3 +32,43 @@ a {
 ::selection {
   background: rgba(228, 184, 78, 0.45);
 }
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  :root,
+  body {
+    background: #ffffff !important;
+    color: #1d2b25 !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-sheet {
+    border: 0 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+  }
+
+  textarea,
+  input {
+    border: 0 !important;
+    background: transparent !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    resize: none !important;
+  }
+
+  a {
+    text-decoration: none !important;
+  }
+}

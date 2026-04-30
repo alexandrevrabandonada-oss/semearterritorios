@@ -12,10 +12,13 @@ import {
   Layers3,
   MapPinned,
   MessageSquareText,
-  Tag
+  Save,
+  Tag,
+  Sparkles,
+  Bot
 } from "lucide-react";
 import type { ReactNode } from "react";
-import type { Action, ListeningRecord, Neighborhood, Theme } from "@/lib/database.types";
+import type { Action, ActionClosure, ActionDebrief, ListeningRecord, Neighborhood, Theme } from "@/lib/database.types";
 import { getActionTypeLabel } from "@/lib/actions";
 import { getReviewStatusLabel, getSourceTypeLabel } from "@/lib/listening-records";
 import {
@@ -28,6 +31,8 @@ import {
   type MonthlyReportData
 } from "@/lib/monthly-reports";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { getActionPilotMetrics, hasPossibleSensitiveData, type ListeningRecordForPilot } from "@/lib/action-pilot";
+import { getClosureStatusLabel } from "@/lib/action-closures";
 
 type ActionWithNeighborhood = Action & {
   neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
@@ -47,9 +52,14 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const [actions, setActions] = useState<ActionWithNeighborhood[]>([]);
   const [records, setRecords] = useState<RecordWithRelations[]>([]);
+  const [closures, setClosures] = useState<ActionClosure[]>([]);
+  const [debriefs, setDebriefs] = useState<ActionDebrief[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
+  const [generatingAi, setGeneratingAi] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -67,21 +77,25 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
         return;
       }
 
-      const [actionsResult, recordsResult] = await Promise.all([
+      const [actionsResult, recordsResult, closuresResult, debriefsResult] = await Promise.all([
         supabase.from("actions").select("*, neighborhoods:neighborhood_id(id, name)").gte("action_date", `${month}-01`).lt("action_date", nextMonth(month)).order("action_date", { ascending: true }),
-        supabase.from("listening_records").select("*, actions:action_id(id, title, action_type), neighborhoods:neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name))").gte("date", `${month}-01`).lt("date", nextMonth(month)).order("date", { ascending: true })
+        supabase.from("listening_records").select("*, actions:action_id(id, title, action_type), neighborhoods:neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name))").gte("date", `${month}-01`).lt("date", nextMonth(month)).order("date", { ascending: true }),
+        supabase.from("action_closures").select("*"),
+        supabase.from("action_debriefs").select("*")
       ]);
 
       if (ignore) return;
 
-      if (actionsResult.error || recordsResult.error) {
-        setError(actionsResult.error?.message ?? recordsResult.error?.message ?? "Erro ao gerar o relatório mensal.");
+      if (actionsResult.error || recordsResult.error || closuresResult.error || debriefsResult.error) {
+        setError(actionsResult.error?.message ?? recordsResult.error?.message ?? closuresResult.error?.message ?? debriefsResult.error?.message ?? "Erro ao gerar o relatório mensal.");
         setLoading(false);
         return;
       }
 
       setActions((actionsResult.data ?? []) as ActionWithNeighborhood[]);
       setRecords((recordsResult.data ?? []) as RecordWithRelations[]);
+      setClosures((closuresResult.data ?? []) as ActionClosure[]);
+      setDebriefs((debriefsResult.data ?? []) as ActionDebrief[]);
       setLoading(false);
     }
 
@@ -95,6 +109,80 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
   const report = useMemo<MonthlyReportData>(() => buildMonthlyReportData(month, actions, records), [actions, month, records]);
   const plainText = useMemo(() => buildMonthlyReportPlainText(report), [report]);
   const markdown = useMemo(() => buildMonthlyReportMarkdown(report), [report]);
+  const actionsWithoutClosedDossier = actions.filter((action) => closures.find((closure) => closure.action_id === action.id)?.status !== "closed");
+
+  async function handleGenerateAi() {
+    setGeneratingAi(true);
+    setAiError(null);
+    try {
+      const recordsData = report.records.map(r => ({
+        bairro: r.neighborhoods?.name ?? "Sem bairro",
+        acao: r.actions?.title ?? "Sem ação",
+        origem: getSourceTypeLabel(r.source_type),
+        temas: r.listening_record_themes.map(t => t.themes?.name).filter(Boolean),
+        prioridade: r.priority_mentioned ?? "",
+        inesperado: r.unexpected_notes ?? "",
+        fala_limpa: r.free_speech_text
+      }));
+      const actionsSummary = report.actions.map(a => ({
+        titulo: a.title,
+        tipo: getActionTypeLabel(a.action_type),
+        bairro: a.neighborhoods?.name ?? "Sem bairro"
+      }));
+
+      const res = await fetch("/api/gerar-sintese", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          month: formatMonthLabel(month),
+          actionsSummary,
+          recordsData,
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error("Falha ao gerar síntese");
+      }
+
+      const data = await res.json();
+      setAiSuggestion(data.text);
+    } catch (err: any) {
+      setAiError(err.message || "Erro desconhecido");
+    } finally {
+      setGeneratingAi(false);
+    }
+  }
+
+  async function handleSaveReport() {
+    setError(null);
+    if (!supabase) return;
+
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado.");
+
+      const payload = {
+        reference_month: `${month}-01`,
+        title: report.title,
+        free_speech_highlights: null,
+        team_analysis: aiSuggestion || "Gerado sem IA",
+        recurring_themes: null,
+        territorial_notes: null,
+        review_status: "reviewed" as const,
+        created_by: user.id
+      };
+
+      const { error } = await supabase.from("monthly_reports").upsert(payload, { onConflict: "reference_month" });
+
+      if (error) throw error;
+      setFeedback("Relatório salvo no banco de dados.");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function copyContent(content: string, label: string) {
     try {
@@ -142,7 +230,8 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Relatório mensal</p>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight text-semear-green sm:text-5xl">{report.title}</h2>
             <p className="mt-4 max-w-3xl text-sm leading-6 text-stone-600">
-              Texto-base gerado automaticamente a partir de ações, escutas, temas e campos de análise preenchidos pela equipe. Nenhum trecho abaixo foi produzido por IA generativa.
+              Texto-base determinístico a partir de ações, escutas, temas e campos preenchidos pela equipe. Os botões de copiar/exportar usam este relatório oficial, sem IA generativa.
+              Dossiê fechado é a condição ideal para tratar a ação como consolidada no mês.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -154,13 +243,22 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
               <FileText className="h-4 w-4" aria-hidden="true" />
               Copiar markdown
             </button>
-            <button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-semear-green px-4 text-sm font-semibold text-white" onClick={exportCsv} type="button">
+            <button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-semear-green px-4 text-sm font-semibold text-white" onClick={handleSaveReport} type="button">
+              <Save className="h-4 w-4" aria-hidden="true" />
+              Salvar no banco
+            </button>
+            <button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-stone-800 px-4 text-sm font-semibold text-white" onClick={exportCsv} type="button">
               <Download className="h-4 w-4" aria-hidden="true" />
               Exportar CSV
             </button>
           </div>
         </div>
         {feedback ? <p className="mt-4 text-sm font-medium text-semear-green">{feedback}</p> : null}
+        {actionsWithoutClosedDossier.length > 0 ? (
+          <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
+            Há ações do mês sem dossiê fechado.
+          </p>
+        ) : null}
       </div>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -179,6 +277,52 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
 
           <Panel title="Síntese pedagógica" icon={<FileText className="h-5 w-5" />}>
             <p className="text-sm leading-7 text-stone-700">{report.pedagogicalSummary}</p>
+          </Panel>
+
+          <Panel title="Assistente de Síntese (IA)" icon={<Bot className="h-5 w-5" />}>
+            <div className="space-y-4">
+              <p className="text-sm leading-6 text-stone-600">
+                Gere uma sugestão de texto contendo resumo do mês, temas recorrentes, frases fortes e padrões por bairro cruzando as falas e ações do mês. Nomes e identificadores não são enviados.
+                Esta sugestão não é relatório oficial; use apenas como apoio exploratório e revise antes de qualquer uso.
+              </p>
+              {!aiSuggestion && !generatingAi ? (
+                <button
+                  onClick={() => void handleGenerateAi()}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-semear-earth px-5 text-sm font-semibold text-white transition hover:bg-semear-earth/90"
+                  type="button"
+                >
+                  <Sparkles className="h-4 w-4" aria-hidden="true" />
+                  Gerar sugestão de síntese
+                </button>
+              ) : null}
+              {generatingAi ? (
+                <p className="text-sm font-medium text-semear-earth animate-pulse">Gerando análise exploratória...</p>
+              ) : null}
+              {aiError ? (
+                <p className="text-sm font-medium text-red-600">{aiError}</p>
+              ) : null}
+              {aiSuggestion ? (
+                <div className="space-y-3">
+                  <div className="rounded-2xl border border-semear-yellow/40 bg-semear-yellow/20 p-4 text-sm font-medium leading-6 text-semear-green">
+                    ⚠️ Síntese gerada automaticamente, revisar antes de usar. A IA pode apresentar informações imprecisas ou errôneas.
+                  </div>
+                  <textarea
+                    className="min-h-[400px] w-full rounded-2xl border border-semear-green/20 bg-white p-4 text-sm leading-7 text-stone-700 outline-none focus:border-semear-green"
+                    value={aiSuggestion}
+                    onChange={(e) => setAiSuggestion(e.target.value)}
+                  />
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={() => void copyContent(aiSuggestion, "Sugestão da IA")}
+                      className="text-sm font-semibold text-semear-green hover:underline"
+                      type="button"
+                    >
+                      Copiar texto
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </Panel>
 
           <Panel title="Markdown do relatório" icon={<FileText className="h-5 w-5" />}>
@@ -226,6 +370,12 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
                     <span>{action.neighborhoods?.name ?? "Sem bairro"}</span>
                   </div>
                   <p className="mt-2 text-sm font-semibold text-semear-green">{action.title}</p>
+                  <ActionMonthlyStatus
+                    action={action}
+                    closure={closures.find((item) => item.action_id === action.id) ?? null}
+                    debrief={debriefs.find((item) => item.action_id === action.id) ?? null}
+                    records={records.filter((record) => record.action_id === action.id)}
+                  />
                 </Link>
               ))}
             </div>
@@ -324,4 +474,19 @@ function nextMonth(month: string) {
   const [year, monthNumber] = month.split("-").map(Number);
   const next = new Date(year, monthNumber, 1);
   return next.toISOString().slice(0, 10);
+}
+
+function ActionMonthlyStatus({ action, closure, debrief, records }: { action: ActionWithNeighborhood; closure: ActionClosure | null; debrief: ActionDebrief | null; records: RecordWithRelations[] }) {
+  const pilotRecords = records as unknown as ListeningRecordForPilot[];
+  const metrics = getActionPilotMetrics(pilotRecords);
+  const critical = records.filter(hasPossibleSensitiveData).length;
+  return (
+    <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
+      <span className="rounded-full bg-semear-offwhite px-3 py-1 text-stone-700">Dossiê: {getClosureStatusLabel(closure?.status)}</span>
+      <span className="rounded-full bg-semear-offwhite px-3 py-1 text-stone-700">Devolutiva: {debrief?.status === "approved" ? "aprovada" : "não aprovada"}</span>
+      <span className="rounded-full bg-semear-offwhite px-3 py-1 text-stone-700">Revisadas: {metrics.reviewed}/{metrics.total}</span>
+      {critical > 0 || metrics.pending > 0 ? <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-900">Pendências críticas: {critical + metrics.pending}</span> : null}
+      <span className="sr-only">{action.title}</span>
+    </div>
+  );
 }

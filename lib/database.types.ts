@@ -11,6 +11,18 @@ export type SourceType =
   | "outro";
 
 export type ReviewStatus = "draft" | "reviewed";
+export type TerritorialReviewStatus = "pending" | "reviewed" | "needs_attention";
+export type NormalizedPlaceVisibility = "internal" | "public_safe" | "sensitive";
+export type DebriefStatus = "draft" | "reviewed" | "approved";
+export type ClosureStatus = "open" | "in_review" | "closed" | "reopened";
+export type InternalMapHomologationStatus = "draft" | "reviewed" | "approved" | "rejected";
+export type InternalMapHomologationDecision =
+  | "no_go_dados_insuficientes"
+  | "no_go_privacidade"
+  | "no_go_normalizacao"
+  | "go_desenho_tecnico"
+  | "go_prototipo_interno"
+  | "manter_mapa_lista";
 
 export type ActionType =
   | "banca_escuta"
@@ -78,6 +90,8 @@ export type ListeningRecord = TimestampedRow &
     priority_mentioned: string | null;
     unexpected_notes: string | null;
     review_status: ReviewStatus;
+    territorial_review_status: TerritorialReviewStatus;
+    territorial_review_notes: string | null;
   };
 
 export type Theme = TimestampedRow &
@@ -101,8 +115,19 @@ export type PlaceMentioned = TimestampedRow &
     id: string;
     listening_record_id: string;
     neighborhood_id: string | null;
+    normalized_place_id: string | null;
     place_name: string;
     place_type: string | null;
+    notes: string | null;
+  };
+
+export type NormalizedPlace = TimestampedRow &
+  CreatedByRow & {
+    id: string;
+    neighborhood_id: string | null;
+    normalized_name: string;
+    place_type: string;
+    visibility: NormalizedPlaceVisibility;
     notes: string | null;
   };
 
@@ -116,6 +141,67 @@ export type MonthlyReport = TimestampedRow &
     recurring_themes: string | null;
     territorial_notes: string | null;
     review_status: ReviewStatus;
+  };
+
+export type ActionDebrief = TimestampedRow &
+  CreatedByRow & {
+    id: string;
+    action_id: string;
+    title: string;
+    public_summary: string;
+    methodology_note: string;
+    key_findings: string;
+    next_steps: string;
+    generated_markdown: string;
+    team_review_text: string;
+    status: DebriefStatus;
+    totals_snapshot: Json;
+    approved_by: string | null;
+    approved_at: string | null;
+  };
+
+export type ActionClosure = TimestampedRow &
+  CreatedByRow & {
+    id: string;
+    action_id: string;
+    status: ClosureStatus;
+    coordination_sufficiency: boolean;
+    sufficiency_reason: string | null;
+    documentation_checklist: Json;
+    evidence_notes: string | null;
+    internal_notes: string | null;
+    closed_by: string | null;
+    closed_at: string | null;
+    reopened_by: string | null;
+    reopened_at: string | null;
+  };
+
+export type InternalMapHomologation = TimestampedRow &
+  CreatedByRow & {
+    id: string;
+    status: InternalMapHomologationStatus;
+    decision: InternalMapHomologationDecision;
+    decision_reason: string;
+    rls_validated: boolean;
+    admin_tested: boolean;
+    coordenacao_tested: boolean;
+    equipe_tested: boolean;
+    anon_blocked: boolean;
+    service_role_absent_frontend: boolean;
+    privacy_checked: boolean;
+    no_geocoding_confirmed: boolean;
+    reviewed_records_count: number;
+    territories_count: number;
+    ready_territories_count: number;
+    blocked_territories_count: number;
+    sensitive_pending_count: number;
+    duplicate_warnings_count: number;
+    safe_normalized_places_count: number;
+    snapshot: Json;
+    approved_by: string | null;
+    approved_at: string | null;
+    rejected_by: string | null;
+    rejected_at: string | null;
   };
 
 export type Database = {
@@ -154,11 +240,13 @@ export type Database = {
         Row: ListeningRecord;
         Insert: Omit<
           ListeningRecord,
-          "id" | "created_at" | "updated_at" | "source_type" | "review_status"
+          "id" | "created_at" | "updated_at" | "source_type" | "review_status" | "territorial_review_status" | "territorial_review_notes"
         > & {
           id?: string;
           source_type?: SourceType;
           review_status?: ReviewStatus;
+          territorial_review_status?: TerritorialReviewStatus;
+          territorial_review_notes?: string | null;
         };
         Update: Partial<Omit<ListeningRecord, "id" | "created_at" | "updated_at">>;
         Relationships: [
@@ -206,7 +294,10 @@ export type Database = {
       };
       places_mentioned: {
         Row: PlaceMentioned;
-        Insert: Omit<PlaceMentioned, "id" | "created_at" | "updated_at"> & { id?: string };
+        Insert: Omit<PlaceMentioned, "id" | "created_at" | "updated_at" | "normalized_place_id"> & {
+          id?: string;
+          normalized_place_id?: string | null;
+        };
         Update: Partial<Omit<PlaceMentioned, "id" | "created_at" | "updated_at">>;
         Relationships: [
           {
@@ -217,6 +308,28 @@ export type Database = {
           },
           {
             foreignKeyName: "places_mentioned_neighborhood_id_fkey";
+            columns: ["neighborhood_id"];
+            referencedRelation: "neighborhoods";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "places_mentioned_normalized_place_id_fkey";
+            columns: ["normalized_place_id"];
+            referencedRelation: "normalized_places";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      normalized_places: {
+        Row: NormalizedPlace;
+        Insert: Omit<NormalizedPlace, "id" | "created_at" | "updated_at" | "visibility"> & {
+          id?: string;
+          visibility?: NormalizedPlaceVisibility;
+        };
+        Update: Partial<Omit<NormalizedPlace, "id" | "created_at" | "updated_at">>;
+        Relationships: [
+          {
+            foreignKeyName: "normalized_places_neighborhood_id_fkey";
             columns: ["neighborhood_id"];
             referencedRelation: "neighborhoods";
             referencedColumns: ["id"];
@@ -231,6 +344,68 @@ export type Database = {
         };
         Update: Partial<Omit<MonthlyReport, "id" | "created_at" | "updated_at">>;
         Relationships: [];
+      };
+      action_debriefs: {
+        Row: ActionDebrief;
+        Insert: Omit<ActionDebrief, "id" | "created_at" | "updated_at" | "status" | "totals_snapshot"> & {
+          id?: string;
+          status?: DebriefStatus;
+          totals_snapshot?: Json;
+        };
+        Update: Partial<Omit<ActionDebrief, "id" | "created_at" | "updated_at">>;
+        Relationships: [
+          {
+            foreignKeyName: "action_debriefs_action_id_fkey";
+            columns: ["action_id"];
+            referencedRelation: "actions";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      action_closures: {
+        Row: ActionClosure;
+        Insert: Partial<Omit<ActionClosure, "id" | "created_at" | "updated_at">> & {
+          id?: string;
+          action_id: string;
+        };
+        Update: Partial<Omit<ActionClosure, "id" | "created_at" | "updated_at">>;
+        Relationships: [
+          {
+            foreignKeyName: "action_closures_action_id_fkey";
+            columns: ["action_id"];
+            referencedRelation: "actions";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      internal_map_homologations: {
+        Row: InternalMapHomologation;
+        Insert: Partial<Omit<
+          InternalMapHomologation,
+          "id" | "created_at" | "updated_at" | "status" | "decision" | "snapshot"
+        >> & {
+          id?: string;
+          decision_reason: string;
+          created_by: string | null;
+          status?: InternalMapHomologationStatus;
+          decision?: InternalMapHomologationDecision;
+          snapshot?: Json;
+        };
+        Update: Partial<Omit<InternalMapHomologation, "id" | "created_at" | "updated_at">>;
+        Relationships: [
+          {
+            foreignKeyName: "internal_map_homologations_approved_by_fkey";
+            columns: ["approved_by"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "internal_map_homologations_rejected_by_fkey";
+            columns: ["rejected_by"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
       };
     };
     Views: Record<string, never>;
