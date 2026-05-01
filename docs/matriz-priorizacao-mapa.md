@@ -69,7 +69,13 @@ Marque a decisão:
 
 ## Escopo mínimo para futuro Tijolo do Mapa
 
-- Fonte de bairros/territórios:
+- Fonte de bairros/territórios: lista oficial da APS/equipe territorial. Evitar nomes inventados.
+- Procedimento recomendado:
+	1. Preencher o template em supabase/seeds/neighborhoods.official.template.sql.
+	2. Copiar o conteudo para uma nova migration versionada em supabase/migrations/.
+	3. Aplicar no remoto com supabase db push.
+	4. Validar se /acoes/nova e /escutas/nova exibem a lista oficial completa.
+	5. Se necessario, desativar bairros operacionais em migration separada.
 - Campos permitidos:
 - Campos proibidos:
 - Agregação mínima:
