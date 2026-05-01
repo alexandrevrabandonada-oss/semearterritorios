@@ -75,7 +75,7 @@ Marque a decisão:
 	2. Copiar o conteudo para uma nova migration versionada em supabase/migrations/.
 	3. Aplicar no remoto com supabase db push.
 	4. Validar se /acoes/nova e /escutas/nova exibem a lista oficial completa.
-	5. Se necessario, desativar bairros operacionais em migration separada.
+	5. Se necessario, limpar bairros operacionais sem uso usando supabase/seeds/neighborhoods.operational.cleanup.template.sql em migration separada.
 - Campos permitidos:
 - Campos proibidos:
 - Agregação mínima:
