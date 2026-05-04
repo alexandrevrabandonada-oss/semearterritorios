@@ -38,11 +38,11 @@ export const neighborhoodStatusOptions = [
 
 export const neighborhoodSectorOptions = [
   { value: "SCN", label: "Setor Centro Norte" },
-  { value: "SO", label: "Setor Oeste" },
+  { value: "SCS", label: "Setor Centro Sul" },
   { value: "SN", label: "Setor Norte" },
   { value: "SL", label: "Setor Leste" },
+  { value: "SO", label: "Setor Oeste" },
   { value: "SS", label: "Setor Sul" },
-  { value: "SCS", label: "Setor Centro Sul" },
   { value: "SSO", label: "Setor Sudoeste" }
 ] as const;
 
