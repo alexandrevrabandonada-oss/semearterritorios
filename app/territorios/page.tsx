@@ -2,6 +2,7 @@ import { AppShell } from "@/components/app-shell";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ClipboardList, Link2, MapPinned, ShieldCheck } from "lucide-react";
+import { TerritoriesAdminOverview } from "@/components/territories/territories-admin-overview";
 
 export default function TerritoriosPage() {
   return (
@@ -21,6 +22,8 @@ export default function TerritoriosPage() {
           <TerritoryLink href="/territorios/qualidade" icon={<ShieldCheck className="h-5 w-5" />} title="Qualidade territorial" description="Ver relatório por bairro com recomendação para mapa interno autenticado ou revisão antes do mapa." />
           <TerritoryLink href="/territorios/normalizacao/qualidade" icon={<Link2 className="h-5 w-5" />} title="Qualidade da normalização" description="Detectar duplicidades, ambiguidade e sensíveis antes de autorizar desenho técnico do mapa." />
         </div>
+
+        <TerritoriesAdminOverview />
       </section>
     </AppShell>
   );

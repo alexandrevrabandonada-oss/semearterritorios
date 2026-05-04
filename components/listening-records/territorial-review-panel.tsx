@@ -13,6 +13,7 @@ import {
 } from "@/lib/territorial-review";
 import { hasPossibleSensitiveData } from "@/lib/action-pilot";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { formatNeighborhoodOption } from "@/lib/neighborhoods";
 
 type Props = {
   record: TerritorialReviewRecord;
@@ -244,7 +245,7 @@ export function TerritorialReviewPanel({ record, neighborhoods, onSaved }: Props
           </Select>
           <Select label="Bairro relacionado" value={placeNeighborhoodId} onChange={setPlaceNeighborhoodId}>
             <option value="">Usar bairro da escuta</option>
-            {neighborhoods.map((neighborhood) => <option key={neighborhood.id} value={neighborhood.id}>{neighborhood.name}</option>)}
+            {neighborhoods.map((neighborhood) => <option key={neighborhood.id} value={neighborhood.id}>{formatNeighborhoodOption(neighborhood)}</option>)}
           </Select>
           <Input label="Nota do lugar" value={placeNotes} onChange={setPlaceNotes} />
         </div>

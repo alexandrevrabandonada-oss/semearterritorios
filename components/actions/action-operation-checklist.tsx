@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { CheckCircle2, Circle } from "lucide-react";
 import type { ActionForPilot, ListeningRecordForPilot } from "@/lib/action-pilot";
 import { getActionPilotMetrics } from "@/lib/action-pilot";
@@ -48,6 +49,14 @@ export function ActionOperationChecklist({ action, records }: Props) {
           </div>
         ))}
       </div>
+      {metrics.total === 0 ? (
+        <div className="mt-5 rounded-2xl border border-semear-green/20 bg-semear-green-soft p-4 text-sm leading-6 text-semear-green">
+          Nenhuma ficha digitada ainda.{" "}
+          <Link className="font-semibold underline underline-offset-2" href="/escutas/lote">
+            Digitalizar fichas em modo lote →
+          </Link>
+        </div>
+      ) : null}
     </section>
   );
 }

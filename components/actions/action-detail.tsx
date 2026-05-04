@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ArrowLeft, CalendarDays, Edit3, FileText, FlaskConical, FolderCheck, MapPin, UsersRound } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CalendarDays, ClipboardList, Edit3, FileText, FlaskConical, FolderCheck, MapPin, UsersRound } from "lucide-react";
 import { ActionForm } from "@/components/actions/action-form";
 import { ActionOperationChecklist } from "@/components/actions/action-operation-checklist";
 import { ActionReadinessPanel } from "@/components/actions/action-readiness-panel";
@@ -135,6 +135,13 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
           <FlaskConical className="h-4 w-4" aria-hidden="true" />
           Piloto da banca
         </Link>
+        <Link
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white/70 px-4 text-sm font-semibold text-semear-green transition hover:bg-white"
+          href="/escutas/lote"
+        >
+          <ClipboardList className="h-4 w-4" aria-hidden="true" />
+          Digitalizar fichas
+        </Link>
       </div>
 
       <article className="rounded-[2rem] border border-white/80 bg-white/78 p-5 shadow-soft sm:p-8">
@@ -158,7 +165,9 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
             </div>
           </div>
           <div className="rounded-2xl bg-semear-green-soft px-4 py-3 text-sm font-semibold text-semear-green">
-            Pode receber escutas vinculadas depois
+            {action.status === "realizada"
+              ? "Banca realizada — digitalize as fichas em /escutas/lote"
+              : "Ação planejada — fichas podem ser digitadas após a banca"}
           </div>
         </div>
 

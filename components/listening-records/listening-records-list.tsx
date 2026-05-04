@@ -7,6 +7,7 @@ import type { Action, ListeningRecord, Neighborhood, ReviewStatus, Theme } from 
 import { getReviewStatusLabel, getSourceTypeLabel, reviewStatusOptions } from "@/lib/listening-records";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { hasNoWordsUsed, hasPossibleSensitiveData, isVeryShortSpeech } from "@/lib/action-pilot";
+import { formatNeighborhoodOption, getOfficialNeighborhoodsForSelect } from "@/lib/neighborhoods";
 
 type RecordWithRelations = ListeningRecord & {
   actions: Pick<Action, "id" | "title"> | null;
@@ -51,7 +52,7 @@ export function ListeningRecordsList() {
           .select("*, actions:action_id(id, title), neighborhoods:neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name))")
           .order("date", { ascending: false }),
         supabase.from("actions").select("*").order("action_date", { ascending: false }),
-        supabase.from("neighborhoods").select("*").order("name", { ascending: true }),
+        supabase.from("neighborhoods").select("*").eq("status", "oficial").order("sector", { ascending: true }).order("name", { ascending: true }),
         supabase.from("themes").select("*").eq("is_active", true).order("name", { ascending: true })
       ]);
 
@@ -65,7 +66,7 @@ export function ListeningRecordsList() {
 
       setRecords((recordsResult.data ?? []) as RecordWithRelations[]);
       setActions(actionsResult.data ?? []);
-      setNeighborhoods(neighborhoodsResult.data ?? []);
+      setNeighborhoods(getOfficialNeighborhoodsForSelect(neighborhoodsResult.data ?? []));
       setThemes(themesResult.data ?? []);
       const params = new URLSearchParams(window.location.search);
       setFilters((current) => ({
@@ -149,7 +150,7 @@ export function ListeningRecordsList() {
         <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-semear-green"><SlidersHorizontal className="h-4 w-4" aria-hidden="true" />Filtros</div>
         <div className="grid gap-3 md:grid-cols-5">
           <FilterInput label="Mês" type="month" value={filters.month} onChange={(value) => updateFilter("month", value)} />
-          <FilterSelect label="Bairro" value={filters.neighborhoodId} onChange={(value) => updateFilter("neighborhoodId", value)}><option value="">Todos</option>{neighborhoods.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</FilterSelect>
+          <FilterSelect label="Bairro" value={filters.neighborhoodId} onChange={(value) => updateFilter("neighborhoodId", value)}><option value="">Todos</option>{neighborhoods.map((item) => <option key={item.id} value={item.id}>{formatNeighborhoodOption(item)}</option>)}</FilterSelect>
           <FilterSelect label="Ação" value={filters.actionId} onChange={(value) => updateFilter("actionId", value)}><option value="">Todas</option>{actions.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</FilterSelect>
           <FilterSelect label="Tema" value={filters.themeId} onChange={(value) => updateFilter("themeId", value)}><option value="">Todos</option>{themes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</FilterSelect>
           <FilterSelect label="Status" value={filters.status} onChange={(value) => updateFilter("status", value)}><option value="">Todos</option>{reviewStatusOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</FilterSelect>

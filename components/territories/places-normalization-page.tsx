@@ -8,6 +8,7 @@ import type { Action, ListeningRecord, Neighborhood, NormalizedPlace, Normalized
 import { hasPossibleSensitiveData } from "@/lib/action-pilot";
 import { isSensitivePlace, placeTypeOptions } from "@/lib/territorial-review";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { formatNeighborhoodOption, sortNeighborhoodsBySectorAndName } from "@/lib/neighborhoods";
 
 type RecordLite = Pick<ListeningRecord, "id" | "action_id" | "neighborhood_id" | "free_speech_text" | "team_summary" | "places_mentioned_text" | "territorial_review_status">;
 
@@ -65,7 +66,7 @@ export function PlacesNormalizationPage() {
         .order("created_at", { ascending: false }),
       supabase.from("listening_records").select("id, action_id, neighborhood_id, free_speech_text, team_summary, places_mentioned_text, territorial_review_status"),
       supabase.from("actions").select("*").order("action_date", { ascending: false }),
-      supabase.from("neighborhoods").select("*").order("name", { ascending: true }),
+      supabase.from("neighborhoods").select("*").order("sector", { ascending: true }).order("name", { ascending: true }),
       supabase.from("normalized_places").select("*").order("normalized_name", { ascending: true })
     ]);
 
@@ -78,7 +79,7 @@ export function PlacesNormalizationPage() {
     setPlaces((placesResult.data ?? []) as PlaceRow[]);
     setRecords((recordsResult.data ?? []) as RecordLite[]);
     setActions(actionsResult.data ?? []);
-    setNeighborhoods(neighborhoodsResult.data ?? []);
+    setNeighborhoods(sortNeighborhoodsBySectorAndName(neighborhoodsResult.data ?? []));
     setNormalizedPlaces((normalizedResult.data ?? []) as NormalizedPlace[]);
     setLoading(false);
   }
@@ -215,7 +216,7 @@ export function PlacesNormalizationPage() {
           </Select>
           <Select label="Bairro" value={filters.neighborhoodId} onChange={(value) => updateFilter("neighborhoodId", value)}>
             <option value="">Todos</option>
-            {neighborhoods.map((neighborhood) => <option key={neighborhood.id} value={neighborhood.id}>{neighborhood.name}</option>)}
+            {neighborhoods.map((neighborhood) => <option key={neighborhood.id} value={neighborhood.id}>{formatNeighborhoodOption(neighborhood)}</option>)}
           </Select>
           <Select label="Tipo" value={filters.placeType} onChange={(value) => updateFilter("placeType", value)}>
             <option value="">Todos</option>

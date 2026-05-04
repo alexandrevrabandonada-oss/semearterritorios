@@ -90,6 +90,42 @@ const unlockInternalMapSteps = [
   "só pedir Tijolo de mapa se aparecer Autorizado para protótipo"
 ];
 
+const firstRealActionReady = [
+  "banco remoto estabilizado",
+  "usuários criados",
+  "papéis testados",
+  "lista de territórios validada ou provisória aprovada",
+  "primeira ação cadastrada",
+  "fichas impressas/preparadas",
+  "equipe orientada sobre privacidade",
+  "fluxo de digitação em lote revisado"
+];
+
+const officialNeighborhoodChecklist = [
+  "lista oficial aplicada no banco remoto/homologação",
+  "52 bairros oficiais validados",
+  "setores preservados em campo próprio",
+  "códigos oficiais de 1 a 52 preservados",
+  "bairros usados como agregação territorial",
+  "sem endereço pessoal",
+  "Jardim Suiça e Santa Inez seguem com grafia pendente registrada"
+];
+
+const firstRealActionChecklist = [
+  "ação cadastrada com tipo banca_escuta",
+  "bairro oficial selecionado",
+  "local coletivo informado (não residência)",
+  "fichas de papel numeradas",
+  "equipe orientada sobre privacidade",
+  "fichas digitadas em /escutas/lote como rascunho",
+  "escutas revisadas em /escutas/revisao-territorial",
+  "devolutiva gerada e aprovada",
+  "dossiê fechado",
+  "relatório mensal conferido em /relatorios",
+  "relatório pós-banca preenchido",
+  "decisão pós-banca registrada"
+];
+
 export default function AjudaPage() {
   return (
     <AppShell activeHref="/ajuda">
@@ -267,6 +303,89 @@ export default function AjudaPage() {
           </ol>
           <p className="mt-4 text-sm leading-6 text-stone-600">
             Kit documental: <strong>docs/checklist-homologacao-real-mapa.md</strong>, <strong>docs/teste-manual-rls-mapa.md</strong>, <strong>docs/evidencias-homologacao-mapa.md</strong> e <strong>scripts/smoke-homologacao-mapa.md</strong>.
+          </p>
+        </Panel>
+
+        <Panel className="mt-6" icon={<ClipboardList className="h-5 w-5" />} title="Pronto para primeira ação real?">
+          <div className="grid gap-3 md:grid-cols-4">
+            {firstRealActionReady.map((item) => (
+              <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-3 text-sm text-stone-700" key={item}>
+                {item}
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-sm leading-6 text-stone-600">
+            Use <strong>docs/preparacao-primeira-acao-real.md</strong> para o passo a passo da primeira banca. Não registrar CPF, telefone, endereço pessoal nem dado de saúde individual identificável.
+          </p>
+        </Panel>
+
+        <Panel className="mt-6" icon={<MapPinned className="h-5 w-5" />} title="Lista oficial de bairros">
+          <div className="grid gap-3 md:grid-cols-3">
+            {officialNeighborhoodChecklist.map((item) => (
+              <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-3 text-sm text-stone-700" key={item}>
+                {item}
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-sm leading-6 text-stone-600">
+            A lista oficial de Volta Redonda foi extraída dos PDFs, aplicada no banco remoto/homologação e mantém setor, região e código oficial em campos estruturados. Bairros/territórios servem para leitura agregada; não registre CPF, telefone, endereço pessoal nem dado de saúde individual identificável. Se houver dúvida de grafia, registre a decisão antes de alterar nomes oficiais.
+          </p>
+        </Panel>
+
+        <Panel className="mt-6" icon={<ShieldCheck className="h-5 w-5" />} title="Territórios oficiais e provisórios">
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4">
+              <p className="font-semibold text-semear-green">52 bairros oficiais</p>
+              <p className="mt-2 text-sm leading-6 text-stone-600">
+                O sistema possui 52 bairros oficiais aplicados, extraídos da lista oficial do município de Volta Redonda. Apenas esses bairros aparecem nos formulários operacionais de ações e escutas.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <p className="font-semibold text-amber-900">21 territórios provisórios ocultos</p>
+              <p className="mt-2 text-sm leading-6 text-amber-800">
+                Os 21 territórios provisórios restantes não aparecem nos formulários operacionais. Eles estão preservados no banco e visíveis apenas em <strong>/territorios</strong> para revisão administrativa futura.
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 space-y-2 text-sm leading-6 text-stone-700">
+            <p>
+              <strong>A primeira ação real deve usar território com status = oficial.</strong>{" "}
+              Se o território desejado não aparecer no select de ações ou escutas, acesse <strong>/territorios</strong> para verificar se está marcado como oficial.
+            </p>
+            <p>
+              Bairros são agregações territoriais, não localização individual de pessoa. Não registre endereço pessoal, CPF ou telefone em nenhum campo relacionado a território.
+            </p>
+            <p className="text-stone-500">
+              Documento de referência: <strong>docs/decisao-territorios-provisorios.md</strong>. Qualquer limpeza futura dos provisórios deve ser feita por migration própria com revisão humana.
+            </p>
+          </div>
+        </Panel>
+
+        <Panel className="mt-6" icon={<ClipboardList className="h-5 w-5" />} title="Primeira ação real">
+          <div className="grid gap-3 md:grid-cols-3">
+            {firstRealActionChecklist.map((item) => (
+              <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-3 text-sm text-stone-700" key={item}>
+                {item}
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 grid gap-2 md:grid-cols-2 text-sm leading-6 text-stone-600">
+            <p>
+              Cadastre a ação em <strong>/acoes/nova</strong> com tipo <strong>banca_escuta</strong> e bairro oficial.
+              Após a banca, use <strong>/escutas/lote</strong> para digitar as fichas como rascunho.
+            </p>
+            <p>
+              Revise as escutas em <strong>/escutas/revisao-territorial</strong>, gere a devolutiva e feche o dossiê
+              antes de conferir o relatório mensal.
+            </p>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link className="inline-flex min-h-11 items-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/acoes/nova">Nova ação</Link>
+            <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/escutas/lote">Digitar fichas</Link>
+            <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/escutas/revisao-territorial">Revisar escutas</Link>
+          </div>
+          <p className="mt-4 text-sm text-stone-500">
+            Roteiro completo: <strong>docs/operacao-primeira-acao-real.md</strong> e <strong>docs/cadastro-primeira-acao-real.md</strong>.
           </p>
         </Panel>
       </section>

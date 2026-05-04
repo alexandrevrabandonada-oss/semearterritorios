@@ -14,6 +14,7 @@ import type {
   Theme
 } from "@/lib/database.types";
 import { reviewStatusOptions, sourceTypeOptions } from "@/lib/listening-records";
+import { formatNeighborhoodOption, getOfficialNeighborhoodsForSelect } from "@/lib/neighborhoods";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type FormMode = "create" | "edit";
@@ -80,7 +81,7 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
 
       const [actionsResult, neighborhoodsResult, themesResult] = await Promise.all([
         supabase.from("actions").select("*").order("action_date", { ascending: false }),
-        supabase.from("neighborhoods").select("*").order("name", { ascending: true }),
+        supabase.from("neighborhoods").select("*").eq("status", "oficial").order("sector", { ascending: true }).order("name", { ascending: true }),
         supabase.from("themes").select("*").eq("is_active", true).order("name", { ascending: true })
       ]);
 
@@ -98,7 +99,7 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
       }
 
       setActions(actionsResult.data ?? []);
-      setNeighborhoods(neighborhoodsResult.data ?? []);
+      setNeighborhoods(getOfficialNeighborhoodsForSelect(neighborhoodsResult.data ?? []));
       setThemes(themesResult.data ?? []);
 
       if (mode === "edit" && recordId) {
@@ -291,9 +292,12 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
           <Select label="Bairro/Território" value={values.neighborhood_id} onChange={(value) => updateField("neighborhood_id", value)}>
             <option value="">Selecione um bairro...</option>
             {neighborhoods.map((neighborhood) => (
-              <option key={neighborhood.id} value={neighborhood.id}>{neighborhood.name}</option>
+              <option key={neighborhood.id} value={neighborhood.id}>{formatNeighborhoodOption(neighborhood)}</option>
             ))}
           </Select>
+          <p className="-mt-3 text-xs leading-5 text-stone-500">
+            São exibidos apenas bairros oficiais validados. Territórios provisórios ficam disponíveis apenas na área administrativa.
+          </p>
           <Input label="Data" type="date" value={values.date} onChange={(value) => updateField("date", value)} required />
           <Select label="Tipo de origem" value={values.source_type} onChange={(value) => updateField("source_type", value as SourceType)}>
             {sourceTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}

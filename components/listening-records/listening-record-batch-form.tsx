@@ -43,6 +43,14 @@ export function ListeningRecordBatchForm() {
   // Travas da sessão
   const [lockedActionId, setLockedActionId] = useState<string>("");
   const [lockedSourceType, setLockedSourceType] = useState<string>("feira");
+
+  function handleSelectAction(actionId: string) {
+    setLockedActionId(actionId);
+    const action = actions.find((a) => a.id === actionId);
+    if (action?.action_type === "banca_escuta") {
+      setLockedSourceType("feira");
+    }
+  }
   
   // Dados do form
   const [values, setValues] = useState<BatchFormValues>(initialFormValues);
@@ -188,11 +196,11 @@ export function ListeningRecordBatchForm() {
         <div>
           {/* TRAVA DE AÇÃO */}
           <div className="rounded-[2rem] border border-white/80 bg-white/78 p-6 shadow-soft mb-6">
-            <h2 className="text-xl font-semibold tracking-tight text-semear-green mb-4">Travar Ação (Lote)</h2>
+            <h2 className="text-xl font-semibold tracking-tight text-semear-green mb-4">Sessão de digitação — fixar ação</h2>
             <div className="grid gap-4 md:grid-cols-2">
               <label>
                 <span className="text-sm font-semibold text-semear-green">Ação</span>
-                <select className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" value={lockedActionId} onChange={e => setLockedActionId(e.target.value)}>
+                <select className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" value={lockedActionId} onChange={e => handleSelectAction(e.target.value)}>
                   <option value="">Selecione a ação...</option>
                   {actions.map(a => <option key={a.id} value={a.id}>{a.title} ({a.action_date})</option>)}
                 </select>
@@ -267,7 +275,7 @@ export function ListeningRecordBatchForm() {
                   <PlayCircle className="h-5 w-5" aria-hidden="true" />
                   {saving ? "Salvando..." : "Salvar e digitar próxima"}
                 </button>
-                <p className="text-center mt-3 text-xs text-stone-500 uppercase tracking-widest font-semibold">Toda ficha será salva como rascunho: ainda precisa de revisão antes de relatório, devolutiva ou dossiê.</p>
+                <p className="text-center mt-3 text-xs text-stone-500 uppercase tracking-widest font-semibold">Digite a ficha como rascunho. A revisão será feita depois, com calma.</p>
               </div>
             </div>
           </form>

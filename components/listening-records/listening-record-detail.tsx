@@ -9,6 +9,7 @@ import { TerritorialReviewPanel } from "@/components/listening-records/territori
 import type { Action, ListeningRecord, Neighborhood, PlaceMentioned, NormalizedPlace, Theme } from "@/lib/database.types";
 import { getReviewStatusLabel, getSourceTypeLabel } from "@/lib/listening-records";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { getOfficialNeighborhoodsForSelect } from "@/lib/neighborhoods";
 
 type RecordWithRelations = ListeningRecord & {
   actions: Pick<Action, "id" | "title"> | null;
@@ -41,7 +42,7 @@ export function ListeningRecordDetail({ recordId }: { recordId: string }) {
         .select("*, actions:action_id(id, title), neighborhoods:neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name)), places_mentioned(id, place_name, place_type, notes, neighborhood_id, normalized_place_id, normalized_places:normalized_place_id(id, normalized_name, visibility, place_type))")
         .eq("id", recordId)
         .single(),
-      supabase.from("neighborhoods").select("*").order("name", { ascending: true })
+      supabase.from("neighborhoods").select("*").eq("status", "oficial").order("name", { ascending: true })
     ]);
 
     if (result.error || neighborhoodsResult.error) {
@@ -51,7 +52,7 @@ export function ListeningRecordDetail({ recordId }: { recordId: string }) {
     }
 
     setRecord(result.data as RecordWithRelations);
-    setNeighborhoods(neighborhoodsResult.data ?? []);
+    setNeighborhoods(getOfficialNeighborhoodsForSelect(neighborhoodsResult.data ?? []));
     setLoading(false);
   }
 

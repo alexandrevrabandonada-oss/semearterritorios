@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
 import type { Action, ActionStatus, ActionType, Neighborhood } from "@/lib/database.types";
 import { actionStatusOptions, actionTypeOptions } from "@/lib/actions";
+import { formatNeighborhoodOption, getOfficialNeighborhoodsForSelect } from "@/lib/neighborhoods";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type ActionFormMode = "create" | "edit";
@@ -83,6 +84,8 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
       const neighborhoodsResult = await supabase
         .from("neighborhoods")
         .select("*")
+        .eq("status", "oficial")
+        .order("sector", { ascending: true })
         .order("name", { ascending: true });
 
       if (ignore) {
@@ -95,7 +98,7 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
         return;
       }
 
-      setNeighborhoods(neighborhoodsResult.data ?? []);
+      setNeighborhoods(getOfficialNeighborhoodsForSelect(neighborhoodsResult.data ?? []));
 
       if (mode !== "edit" || !actionId) {
         setLoading(false);
@@ -227,9 +230,11 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
             Dados da ação territorial
           </h2>
           <p className="mt-3 text-sm leading-6 text-stone-600">
-            Registre informações coletivas da atividade. Não inclua CPF, telefone, endereço pessoal
-            ou dados identificáveis de participantes.
+            Para a primeira Banca de Escuta, use o tipo banca de escuta e registre apenas informações coletivas da atividade. Não inclua CPF, telefone, endereço pessoal ou dados identificáveis de participantes.
           </p>
+          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+            Use apenas local coletivo: feira, praça, escola, CRAS, associação. Nunca residência ou endereço pessoal. Selecione apenas bairro oficial — territórios provisórios não aparecem neste formulário.
+          </div>
         </div>
 
         {error ? (
@@ -244,9 +249,15 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
             <input
               className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
               onChange={(event) => updateField("title", event.target.value)}
+              placeholder={mode === "create" ? "Ex.: Banca de Escuta — Feira Livre — [bairro]" : undefined}
               required
               value={values.title}
             />
+            {mode === "create" ? (
+              <p className="mt-1.5 text-xs leading-5 text-stone-500">
+                Sugestão de título: <em>Banca de Escuta — Feira Livre — [nome do bairro]</em>
+              </p>
+            ) : null}
           </label>
 
           <label>
@@ -270,10 +281,13 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
               <option value="">Sem bairro definido</option>
               {neighborhoods.map((neighborhood) => (
                 <option key={neighborhood.id} value={neighborhood.id}>
-                  {neighborhood.name}
+                  {formatNeighborhoodOption(neighborhood)}
                 </option>
               ))}
             </select>
+            <p className="mt-1.5 text-xs leading-5 text-stone-500">
+              São exibidos apenas bairros oficiais validados. Territórios provisórios ficam disponíveis apenas na área administrativa.
+            </p>
           </label>
 
           <label>
@@ -311,9 +325,12 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
             <input
               className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
               onChange={(event) => updateField("location_reference", event.target.value)}
-              placeholder="Ex.: praça, escola, CRAS, feira"
+              placeholder="Ex.: feira, praça, escola, CRAS ou equipamento coletivo"
               value={values.location_reference}
             />
+            <p className="mt-2 text-xs leading-5 text-stone-500">
+              Informe referência coletiva. Não registre residência, casa, número de porta ou endereço pessoal.
+            </p>
           </label>
 
           <label>

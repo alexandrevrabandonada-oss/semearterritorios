@@ -12,9 +12,10 @@ import {
   getMonthValue
 } from "@/lib/actions";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { formatNeighborhoodOption, getOfficialNeighborhoodsForSelect } from "@/lib/neighborhoods";
 
 type ActionWithNeighborhood = Action & {
-  neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
+  neighborhoods: Pick<Neighborhood, "id" | "name" | "sector"> | null;
 };
 
 type ActionFilters = {
@@ -54,10 +55,10 @@ export function ActionsList() {
         supabase
           .from("actions")
           .select(
-            "*, neighborhoods:neighborhood_id(id, name)"
+            "*, neighborhoods:neighborhood_id(id, name, sector)"
           )
           .order("action_date", { ascending: false }),
-        supabase.from("neighborhoods").select("*").order("name", { ascending: true })
+        supabase.from("neighborhoods").select("*").eq("status", "oficial").order("sector", { ascending: true }).order("name", { ascending: true })
       ]);
 
       if (ignore) {
@@ -77,7 +78,7 @@ export function ActionsList() {
       }
 
       setActions((actionsResult.data ?? []) as ActionWithNeighborhood[]);
-      setNeighborhoods(neighborhoodsResult.data ?? []);
+      setNeighborhoods(getOfficialNeighborhoodsForSelect(neighborhoodsResult.data ?? []));
       setLoading(false);
     }
 
@@ -168,7 +169,7 @@ export function ActionsList() {
               <option value="">Todos</option>
               {neighborhoods.map((neighborhood) => (
                 <option key={neighborhood.id} value={neighborhood.id}>
-                  {neighborhood.name}
+                  {formatNeighborhoodOption(neighborhood)}
                 </option>
               ))}
             </select>
@@ -260,7 +261,7 @@ export function ActionsList() {
                 </span>
                 <span className="inline-flex items-center gap-2">
                   <MapPin className="h-4 w-4" aria-hidden="true" />
-                  {action.neighborhoods?.name ?? "Sem bairro definido"}
+                  {action.neighborhoods ? formatNeighborhoodOption(action.neighborhoods) : "Sem bairro definido"}
                 </span>
               </div>
               {action.summary ? (

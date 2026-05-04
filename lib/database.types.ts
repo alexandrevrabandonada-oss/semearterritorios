@@ -24,6 +24,9 @@ export type InternalMapHomologationDecision =
   | "go_prototipo_interno"
   | "manter_mapa_lista";
 
+export type NeighborhoodStatus = "oficial" | "provisorio" | "revisar" | "nao_usar";
+export type NeighborhoodSector = "SCN" | "SO" | "SN" | "SL" | "SS" | "SCS" | "SSO";
+
 export type ActionType =
   | "banca_escuta"
   | "roda"
@@ -55,6 +58,11 @@ export type Neighborhood = TimestampedRow &
     id: string;
     name: string;
     city: string | null;
+    official_code: number | null;
+    sector: NeighborhoodSector | null;
+    region: string | null;
+    aliases: string | null;
+    status: NeighborhoodStatus | null;
     notes: string | null;
   };
 
@@ -215,7 +223,14 @@ export type Database = {
       };
       neighborhoods: {
         Row: Neighborhood;
-        Insert: Omit<Neighborhood, "id" | "created_at" | "updated_at"> & { id?: string };
+        Insert: Omit<Neighborhood, "id" | "created_at" | "updated_at" | "official_code" | "sector" | "region" | "aliases" | "status"> & {
+          id?: string;
+          official_code?: number | null;
+          sector?: NeighborhoodSector | null;
+          region?: string | null;
+          aliases?: string | null;
+          status?: NeighborhoodStatus | null;
+        };
         Update: Partial<Omit<Neighborhood, "id" | "created_at" | "updated_at">>;
         Relationships: [];
       };

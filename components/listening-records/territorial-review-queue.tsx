@@ -13,6 +13,7 @@ import {
   type TerritorialReviewRecord
 } from "@/lib/territorial-review";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { formatNeighborhoodOption, getOfficialNeighborhoodsForSelect } from "@/lib/neighborhoods";
 
 type RecordWithRelations = TerritorialReviewRecord & {
   actions: Pick<Action, "id" | "title"> | null;
@@ -56,7 +57,7 @@ export function TerritorialReviewQueue() {
         .select("*, actions:action_id(id, title), neighborhoods:neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name)), places_mentioned(id, place_name, place_type, notes, neighborhood_id, normalized_place_id, normalized_places:normalized_place_id(id, normalized_name, visibility, place_type))")
         .order("date", { ascending: false }),
       supabase.from("actions").select("*").order("action_date", { ascending: false }),
-      supabase.from("neighborhoods").select("*").order("name", { ascending: true })
+      supabase.from("neighborhoods").select("*").eq("status", "oficial").order("sector", { ascending: true }).order("name", { ascending: true })
     ]);
 
     if (recordsResult.error || actionsResult.error || neighborhoodsResult.error) {
@@ -67,7 +68,7 @@ export function TerritorialReviewQueue() {
 
     setRecords((recordsResult.data ?? []) as RecordWithRelations[]);
     setActions(actionsResult.data ?? []);
-    setNeighborhoods(neighborhoodsResult.data ?? []);
+    setNeighborhoods(getOfficialNeighborhoodsForSelect(neighborhoodsResult.data ?? []));
     setLoading(false);
   }
 
@@ -126,7 +127,7 @@ export function TerritorialReviewQueue() {
           </Select>
           <Select label="Bairro" value={filters.neighborhoodId} onChange={(value) => updateFilter("neighborhoodId", value)}>
             <option value="">Todos</option>
-            {neighborhoods.map((neighborhood) => <option key={neighborhood.id} value={neighborhood.id}>{neighborhood.name}</option>)}
+            {neighborhoods.map((neighborhood) => <option key={neighborhood.id} value={neighborhood.id}>{formatNeighborhoodOption(neighborhood)}</option>)}
           </Select>
         </div>
       </div>

@@ -16,6 +16,7 @@ import {
 import { buildTerritorialQualityByNeighborhood } from "@/lib/territorial-quality";
 import type { TerritorialReviewRecord } from "@/lib/territorial-review";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { formatNeighborhoodOption, sortNeighborhoodsBySectorAndName } from "@/lib/neighborhoods";
 
 type PlaceMentionForQuality = Pick<PlaceMentioned, "id" | "normalized_place_id" | "place_type">;
 
@@ -60,7 +61,7 @@ export function NormalizationQualityPage() {
         supabase
           .from("listening_records")
           .select("*, listening_record_themes(themes:theme_id(id, name)), places_mentioned(id, place_name, place_type, notes, neighborhood_id, normalized_place_id, normalized_places:normalized_place_id(id, normalized_name, visibility, place_type))"),
-        supabase.from("neighborhoods").select("*").order("name", { ascending: true })
+        supabase.from("neighborhoods").select("*").order("sector", { ascending: true }).order("name", { ascending: true })
       ]);
 
       if (ignore) return;
@@ -74,7 +75,7 @@ export function NormalizationQualityPage() {
       setNormalizedPlaces((normalizedResult.data ?? []) as NormalizedPlace[]);
       setPlacesMentioned((placesResult.data ?? []) as PlaceMentionForQuality[]);
       setRecords((recordsResult.data ?? []) as TerritorialReviewRecord[]);
-      setNeighborhoods(neighborhoodsResult.data ?? []);
+      setNeighborhoods(sortNeighborhoodsBySectorAndName(neighborhoodsResult.data ?? []));
       setLoading(false);
     }
 
@@ -151,7 +152,7 @@ export function NormalizationQualityPage() {
         <div className="grid gap-3 md:grid-cols-4">
           <Select label="Bairro" value={filters.neighborhoodId} onChange={(value) => updateFilter("neighborhoodId", value)}>
             <option value="">Todos</option>
-            {neighborhoods.map((neighborhood) => <option key={neighborhood.id} value={neighborhood.id}>{neighborhood.name}</option>)}
+            {neighborhoods.map((neighborhood) => <option key={neighborhood.id} value={neighborhood.id}>{formatNeighborhoodOption(neighborhood)}</option>)}
           </Select>
           <Select label="Visibilidade" value={filters.visibility} onChange={(value) => updateFilter("visibility", value)}>
             <option value="">Todas</option>
