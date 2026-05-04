@@ -141,6 +141,7 @@ export default function AjudaPage() {
         <div className="mt-6 grid gap-4 md:grid-cols-3">
           <QuickLink href="/escutas/lote" icon={<Keyboard className="h-5 w-5" />} title="Digitar fichas" text="Modo lote para cadastrar fichas da banca como rascunho." />
           <QuickLink href="/acoes" icon={<ClipboardList className="h-5 w-5" />} title="Ações" text="Cadastrar ação, abrir piloto, devolutiva e dossiê." />
+          <QuickLink href="/pos-banca" icon={<FileText className="h-5 w-5" />} title="Pós-banca" text="Consolidar resultados, ver decisão e copiar relatório pós-banca." />
           <QuickLink href="/relatorios" icon={<FileText className="h-5 w-5" />} title="Relatórios" text="Conferir leitura mensal e alertas de dossiê." />
           <QuickLink href="/territorios/lugares" icon={<MapPinned className="h-5 w-5" />} title="Normalizar lugares" text="Padronizar lugares citados e marcar visibilidade antes do mapa." />
           <QuickLink href="/territorios/qualidade" icon={<ShieldCheck className="h-5 w-5" />} title="Qualidade territorial" text="Conferir bairros prontos, em revisão ou bloqueados por sensível." />

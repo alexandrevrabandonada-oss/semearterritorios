@@ -60,6 +60,11 @@ export function ListeningRecordBatchForm() {
   const [lastSavedId, setLastSavedId] = useState<string | null>(null);
   const [sensitiveAlert, setSensitiveAlert] = useState<string | null>(null);
 
+  function showError(message: string) {
+    setError(message);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   useEffect(() => {
     let ignore = false;
     async function load() {
@@ -111,7 +116,7 @@ export function ListeningRecordBatchForm() {
     e.preventDefault();
     if (!supabase) return;
     if (!lockedActionId) {
-      setError("Selecione e trave uma ação primeiro.");
+      showError("Selecione e trave uma ação primeiro.");
       return;
     }
     
@@ -119,7 +124,7 @@ export function ListeningRecordBatchForm() {
     if (!action) return;
 
     if (!values.interviewer_name.trim() || !values.free_speech_text.trim()) {
-      setError("Entrevistador e fala original são obrigatórios.");
+      showError("Entrevistador e fala original são obrigatórios.");
       return;
     }
 
@@ -128,7 +133,7 @@ export function ListeningRecordBatchForm() {
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      setError("Usuário não autenticado");
+      showError("Usuário não autenticado");
       setSaving(false);
       return;
     }
@@ -153,7 +158,7 @@ export function ListeningRecordBatchForm() {
     const res = await supabase.from("listening_records").insert(payload).select("id").single();
     
     if (res.error) {
-      setError(res.error.message);
+      showError(res.error.message);
       setSaving(false);
       return;
     }

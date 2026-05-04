@@ -1,11 +1,11 @@
 # Relatório Pós-Banca — Primeira Ação Real
 
-**Ação:** ___________________________________________
-**Data:** _____ / _____ / _______
-**Local:** ___________________________________________
-**Território/Bairro:** ___________________________________________
-**Responsável pela digitação:** ___________________________________________
-**Responsável pela revisão:** ___________________________________________
+**Ação:** Banquinha Feira Aterrado
+**Data:** 18 / 04 / 2026
+**Local:** Feira Aterrado (referência coletiva)
+**Território/Bairro:** Aterrado — SCS (oficial)
+**Responsável pela digitação:** a preencher pela equipe
+**Responsável pela revisão:** a preencher pela equipe
 **Preenchido por:** ___________________________ em _____ / _____ / _______
 
 ---
@@ -14,9 +14,11 @@
 
 | Nome | Papel na banca |
 |---|---|
-| | |
-| | |
-| | |
+| Paulo Victor | equipe |
+| Penha | equipe |
+| Julia | equipe |
+| Paula | equipe |
+| Giliene | equipe |
 
 ---
 
@@ -24,13 +26,15 @@
 
 | Indicador | Quantidade |
 |---|---|
-| Fichas de papel em branco levadas | |
-| Fichas preenchidas na banca | |
-| Fichas digitadas no sistema | |
-| Fichas revisadas no sistema | |
-| Rascunhos pendentes de revisão | |
-| Fichas com possível dado sensível tratado | |
-| Fichas descartadas (ilegíveis, vazio, etc.) | |
+| Fichas de papel em branco levadas | a preencher |
+| Fichas preenchidas na banca | a preencher |
+| Fichas digitadas no sistema | **0 — pendente de digitação** |
+| Fichas revisadas no sistema | 0 |
+| Rascunhos pendentes de revisão | 0 |
+| Fichas com possível dado sensível tratado | 0 |
+| Fichas descartadas (ilegíveis, vazio, etc.) | a preencher |
+
+> **Pendência crítica:** as fichas da banca ainda não foram digitadas em `/escutas/lote`. Este relatório ficará incompleto até a digitação e revisão.
 
 ---
 
@@ -38,7 +42,7 @@
 
 ### Temas principais identificados
 
-*(Marcar os temas que mais apareceram.)*
+*(A ser preenchido após digitação e revisão das fichas em `/escutas`.)*
 
 - [ ] Saúde
 - [ ] Educação
@@ -53,31 +57,69 @@
 
 ### Palavras recorrentes
 
-*(Palavras usadas pelas pessoas, não interpretação da equipe.)*
+*(A ser preenchido após digitação das fichas.)*
 
 ---
 
 ### Lugares mencionados
 
-*(Referências coletivas. Sem endereço pessoal.)*
+*(A ser preenchido após revisão territorial das escutas.)*
 
 ---
 
 ### Prioridades apontadas
 
-*(O que as pessoas identificaram como mais urgente.)*
+*(A ser preenchido após revisão das fichas.)*
 
 ---
 
 ### Observações inesperadas
 
-*(Temas, situações ou falas que a equipe não esperava encontrar.)*
+Conforme resumo registrado na ação: a atividade foi realizada com dezenas de entrevistas e centenas de pessoas passando pela feira. A equipe considerou a experiência de grande aprendizagem.
 
 ---
 
 ## 4. Operação
 
 ### Problemas na operação da banca
+
+*(A ser preenchido pela equipe com base na experiência.)*
+
+---
+
+### Ajustes para a próxima banca
+
+*(A ser preenchido após reflexão da equipe.)*
+
+---
+
+## 5. Status no sistema
+
+| Item | Status |
+|---|---|
+| Ação cadastrada | **sim** — "Banquinha Feira Aterrado" (id: 48d40a2e) |
+| Fichas digitadas | **não** — pendente |
+| Escutas revisadas | **não** — pendente |
+| Devolutiva gerada | **não** — pendente |
+| Devolutiva aprovada | **não** — pendente |
+| Dossiê fechado | **não** — pendente |
+| Relatório mensal conferido | **não** — sem dados para 2026-04 ainda |
+| Lugares normalizados | **não** — pendente |
+
+---
+
+## 6. Decisão pós-banca
+
+**Decisão atual (sem escutas):** Bloquear avanço — nenhuma escuta digitada. Não é possível gerar devolutiva, fechar dossiê ou consultar `/pos-banca` sem fichas no sistema.
+
+**Próximo passo obrigatório:** Digitar as fichas de papel em `/escutas/lote`, selecionar a ação "Banquinha Feira Aterrado", revisar em `/escutas/revisao-territorial` e só então gerar devolutiva.
+
+---
+
+## 7. Aprovação
+
+**Coordenação:** ___________________________ em _____ / _____ / _______
+**Observações:** ___________________________________________
 
 *(Ex.: dificuldade de abordagem, local ruim, formulário confuso, tempo insuficiente.)*
 

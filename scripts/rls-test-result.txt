@@ -1,0 +1,6 @@
+﻿HTTP_STATUS=200
+BODY=[{"name":"Aero Clube","status":"oficial"}, 
+ {"name":"Barreira Cravo","status":"oficial"}, 
+ {"name":"Belo Horizonte","status":"oficial"}, 
+ {"name":"Niterói","status":"oficial"}, 
+ {"name":"Retiro","status":"oficial"}]
