@@ -138,22 +138,27 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
     setValues((current) => ({ ...current, [field]: value }));
   }
 
+  function showError(message: string) {
+    setError(message);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
 
     if (!supabase) {
-      setError("Configure as variáveis públicas do Supabase antes de salvar.");
+      showError("Configure as variáveis públicas do Supabase antes de salvar.");
       return;
     }
 
     if (!values.title.trim()) {
-      setError("Informe o título da ação.");
+      showError("Informe o título da ação.");
       return;
     }
 
     if (!values.action_date) {
-      setError("Informe a data da ação.");
+      showError("Informe a data da ação.");
       return;
     }
 
@@ -163,7 +168,7 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      setError("Entre no sistema antes de salvar ações.");
+      showError("Entre no sistema antes de salvar ações.");
       return;
     }
 
@@ -192,7 +197,7 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
     setSaving(false);
 
     if (result.error) {
-      setError(result.error.message);
+      showError(result.error.message);
       return;
     }
 
