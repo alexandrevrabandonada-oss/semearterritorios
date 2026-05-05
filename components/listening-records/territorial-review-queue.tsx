@@ -12,12 +12,14 @@ import {
   hasUnstructuredPlaces,
   type TerritorialReviewRecord
 } from "@/lib/territorial-review";
+import { getRespondentTerritoryRelationLabel } from "@/lib/listening-records";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { formatNeighborhoodOption, getOfficialNeighborhoodsForSelect } from "@/lib/neighborhoods";
 
 type RecordWithRelations = TerritorialReviewRecord & {
   actions: Pick<Action, "id" | "title"> | null;
   neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
+  respondent_neighborhoods?: Pick<Neighborhood, "id" | "name"> | null;
 };
 
 type Filters = {
@@ -25,13 +27,15 @@ type Filters = {
   quality: string;
   actionId: string;
   neighborhoodId: string;
+  respondentNeighborhoodId: string;
 };
 
 const initialFilters: Filters = {
   status: "pending",
   quality: "",
   actionId: "",
-  neighborhoodId: ""
+  neighborhoodId: "",
+  respondentNeighborhoodId: ""
 };
 
 export function TerritorialReviewQueue() {
@@ -54,7 +58,7 @@ export function TerritorialReviewQueue() {
     const [recordsResult, actionsResult, neighborhoodsResult] = await Promise.all([
       supabase
         .from("listening_records")
-        .select("*, actions:action_id(id, title), neighborhoods:neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name)), places_mentioned(id, place_name, place_type, notes, neighborhood_id, normalized_place_id, normalized_places:normalized_place_id(id, normalized_name, visibility, place_type))")
+        .select("*, actions:action_id(id, title), neighborhoods:neighborhood_id(id, name), respondent_neighborhoods:respondent_neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name)), places_mentioned(id, place_name, place_type, notes, neighborhood_id, normalized_place_id, normalized_places:normalized_place_id(id, normalized_name, visibility, place_type))")
         .order("date", { ascending: false }),
       supabase.from("actions").select("*").order("action_date", { ascending: false }),
       supabase.from("neighborhoods").select("*").eq("status", "oficial").order("sector", { ascending: true }).order("name", { ascending: true })
@@ -66,7 +70,7 @@ export function TerritorialReviewQueue() {
       return;
     }
 
-    setRecords((recordsResult.data ?? []) as RecordWithRelations[]);
+    setRecords((recordsResult.data ?? []) as unknown as RecordWithRelations[]);
     setActions(actionsResult.data ?? []);
     setNeighborhoods(getOfficialNeighborhoodsForSelect(neighborhoodsResult.data ?? []));
     setLoading(false);
@@ -81,10 +85,12 @@ export function TerritorialReviewQueue() {
     if (filters.status && record.territorial_review_status !== filters.status) return false;
     if (filters.actionId && record.action_id !== filters.actionId) return false;
     if (filters.neighborhoodId && record.neighborhood_id !== filters.neighborhoodId) return false;
+    if (filters.respondentNeighborhoodId && record.respondent_neighborhood_id !== filters.respondentNeighborhoodId) return false;
     if (filters.quality === "without_neighborhood" && record.neighborhood_id) return false;
     if (filters.quality === "free_text_places" && !record.places_mentioned_text?.trim()) return false;
     if (filters.quality === "unstructured_places" && !hasUnstructuredPlaces(record)) return false;
     if (filters.quality === "possible_sensitive" && !hasPossibleSensitiveData(record)) return false;
+    if (filters.quality === "without_respondent_territory" && record.respondent_neighborhood_id) return false;
     return true;
   });
 
@@ -116,16 +122,21 @@ export function TerritorialReviewQueue() {
           </Select>
           <Select label="Qualidade" value={filters.quality} onChange={(value) => updateFilter("quality", value)}>
             <option value="">Todas</option>
-            <option value="without_neighborhood">Sem bairro</option>
+            <option value="without_neighborhood">Sem bairro da ação</option>
             <option value="free_text_places">Com lugares em texto livre</option>
             <option value="unstructured_places">Texto livre sem estrutura</option>
             <option value="possible_sensitive">Possível dado sensível</option>
+            <option value="without_respondent_territory">Sem território de referência</option>
           </Select>
           <Select label="Ação" value={filters.actionId} onChange={(value) => updateFilter("actionId", value)}>
             <option value="">Todas</option>
             {actions.map((action) => <option key={action.id} value={action.id}>{action.title}</option>)}
           </Select>
-          <Select label="Bairro" value={filters.neighborhoodId} onChange={(value) => updateFilter("neighborhoodId", value)}>
+          <Select label="Bairro da ação" value={filters.neighborhoodId} onChange={(value) => updateFilter("neighborhoodId", value)}>
+            <option value="">Todos</option>
+            {neighborhoods.map((neighborhood) => <option key={neighborhood.id} value={neighborhood.id}>{formatNeighborhoodOption(neighborhood)}</option>)}
+          </Select>
+          <Select label="Bairro de referência" value={filters.respondentNeighborhoodId} onChange={(value) => updateFilter("respondentNeighborhoodId", value)}>
             <option value="">Todos</option>
             {neighborhoods.map((neighborhood) => <option key={neighborhood.id} value={neighborhood.id}>{formatNeighborhoodOption(neighborhood)}</option>)}
           </Select>
@@ -145,6 +156,11 @@ export function TerritorialReviewQueue() {
                   <div className="flex flex-wrap gap-2">
                     <Badge>{getTerritorialReviewStatusLabel(record.territorial_review_status)}</Badge>
                     <Badge>{record.neighborhoods?.name ?? "Sem bairro"}</Badge>
+                    {record.respondent_neighborhood_id ? (
+                      <Badge>Ref.: {record.respondent_neighborhoods?.name ?? record.respondent_neighborhood_id}{record.respondent_territory_relation ? ` · ${getRespondentTerritoryRelationLabel(record.respondent_territory_relation)}` : ""}</Badge>
+                    ) : (
+                      <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">Sem território de referência</span>
+                    )}
                     {hasPossibleSensitiveData(record) ? <DangerBadge /> : null}
                   </div>
                   <p className="mt-3 line-clamp-2 text-sm leading-6 text-stone-700">{record.team_summary || record.free_speech_text}</p>

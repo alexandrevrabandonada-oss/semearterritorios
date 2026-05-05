@@ -79,7 +79,7 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
 
       const [actionsResult, recordsResult, closuresResult, debriefsResult] = await Promise.all([
         supabase.from("actions").select("*, neighborhoods:neighborhood_id(id, name)").gte("action_date", `${month}-01`).lt("action_date", nextMonth(month)).order("action_date", { ascending: true }),
-        supabase.from("listening_records").select("*, actions:action_id(id, title, action_type), neighborhoods:neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name))").gte("date", `${month}-01`).lt("date", nextMonth(month)).order("date", { ascending: true }),
+        supabase.from("listening_records").select("*, actions:action_id(id, title, action_type), neighborhoods:neighborhood_id(id, name), respondent_neighborhoods:respondent_neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name))").gte("date", `${month}-01`).lt("date", nextMonth(month)).order("date", { ascending: true }),
         supabase.from("action_closures").select("*"),
         supabase.from("action_debriefs").select("*")
       ]);
@@ -93,7 +93,7 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
       }
 
       setActions((actionsResult.data ?? []) as ActionWithNeighborhood[]);
-      setRecords((recordsResult.data ?? []) as RecordWithRelations[]);
+      setRecords((recordsResult.data ?? []) as unknown as RecordWithRelations[]);
       setClosures((closuresResult.data ?? []) as ActionClosure[]);
       setDebriefs((debriefsResult.data ?? []) as ActionDebrief[]);
       setLoading(false);

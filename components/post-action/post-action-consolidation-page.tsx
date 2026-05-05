@@ -10,6 +10,7 @@ import { MapGoNoGoPanel } from "@/components/territories/map-go-no-go-panel";
 import { getActionPilotMetrics, type ActionForPilot } from "@/lib/action-pilot";
 import { getActionStatusLabel, getActionTypeLabel } from "@/lib/actions";
 import { getClosureStatusLabel } from "@/lib/action-closures";
+import { getRespondentTerritoryRelationLabel } from "@/lib/listening-records";
 import type { ActionClosure, ActionDebrief, Neighborhood } from "@/lib/database.types";
 import { buildTerritorialQualityByNeighborhood, buildTerritorialQualityReport } from "@/lib/territorial-quality";
 import { getTerritorialQualityMetrics, getTerritorialQualityRecommendation, type TerritorialReviewRecord } from "@/lib/territorial-review";
@@ -162,6 +163,55 @@ Recomendação da ação: ${territorialRecommendation}
             <ListPanel title="Prioridades apontadas" items={metrics.priorities.map((item) => `${item.label} (${item.count})`)} />
           </div>
 
+          {/* LEITURA POR TERRITÓRIO DE REFERÊNCIA DO ENTREVISTADO */}
+          {(() => {
+            const respondentGroups = buildRespondentTerritoryGroups(actionRecords as ActionRecordForRespondent[], neighborhoods);
+            if (respondentGroups.length === 0) return null;
+            return (
+              <section className="mt-6 rounded-[2rem] border border-white/80 bg-white p-6 shadow-soft">
+                <h3 className="font-semibold text-semear-green">Leitura por território de referência do entrevistado</h3>
+                <p className="mt-2 text-xs leading-5 text-stone-500">
+                  Separação entre território da ação (onde a banca ocorreu) e território de referência de cada entrevistado.<br />
+                  Dados agregados por bairro oficial. Sem endereço ou ponto individual.
+                </p>
+                <div className="mt-5 space-y-4">
+                  {respondentGroups.map((group) => (
+                    <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4" key={group.neighborhoodName}>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="rounded-full bg-semear-green-soft px-3 py-1 text-sm font-semibold text-semear-green">{group.neighborhoodName}</span>
+                        <span className="text-sm text-stone-600">{group.count} escuta{group.count !== 1 ? "s" : ""}</span>
+                        {group.relations.length > 0 && (
+                          <span className="text-xs text-stone-500">{group.relations.join(", ")}</span>
+                        )}
+                      </div>
+                      {group.topThemes.length > 0 && (
+                        <p className="mt-2 text-sm leading-6 text-stone-700">
+                          <strong className="font-semibold text-semear-green">Temas:</strong>{" "}
+                          {group.topThemes.slice(0, 5).join(", ")}
+                        </p>
+                      )}
+                      {group.topWords.length > 0 && (
+                        <p className="mt-1 text-sm leading-6 text-stone-700">
+                          <strong className="font-semibold text-semear-green">Palavras:</strong>{" "}
+                          {group.topWords.slice(0, 8).join(", ")}
+                        </p>
+                      )}
+                      {group.priorities.length > 0 && (
+                        <p className="mt-1 text-sm leading-6 text-stone-700">
+                          <strong className="font-semibold text-semear-green">Prioridades:</strong>{" "}
+                          {group.priorities.slice(0, 4).join(", ")}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-4 text-xs text-stone-400">
+                  {actionRecords.filter((r) => !r.respondent_neighborhood_id).length} escuta(s) sem território de referência preenchido.
+                </p>
+              </section>
+            );
+          })()}
+
           <section className="mt-6 rounded-[2rem] border border-white/80 bg-white p-6 shadow-soft">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
@@ -197,6 +247,75 @@ Recomendação da ação: ${territorialRecommendation}
       )}
     </section>
   );
+}
+
+type RespondentGroup = {
+  neighborhoodName: string;
+  neighborhoodId: string;
+  count: number;
+  relations: string[];
+  topThemes: string[];
+  topWords: string[];
+  priorities: string[];
+};
+
+type ActionRecordForRespondent = TerritorialReviewRecord & {
+  listening_record_themes?: Array<{ themes: { id: string; name: string } | null }>;
+};
+
+function buildRespondentTerritoryGroups(
+  records: ActionRecordForRespondent[],
+  neighborhoods: Neighborhood[]
+): RespondentGroup[] {
+  const neighborhoodMap = new Map(neighborhoods.map((n) => [n.id, n.name]));
+  const groups = new Map<string, { records: ActionRecordForRespondent[]; relations: Set<string> }>();
+
+  for (const record of records) {
+    if (!record.respondent_neighborhood_id) continue;
+    const existing = groups.get(record.respondent_neighborhood_id);
+    if (existing) {
+      existing.records.push(record);
+      if (record.respondent_territory_relation) existing.relations.add(record.respondent_territory_relation);
+    } else {
+      groups.set(record.respondent_neighborhood_id, {
+        records: [record],
+        relations: record.respondent_territory_relation ? new Set([record.respondent_territory_relation]) : new Set()
+      });
+    }
+  }
+
+  const result: RespondentGroup[] = [];
+  for (const [neighborhoodId, group] of Array.from(groups.entries())) {
+    const themeCount = new Map<string, number>();
+    const wordCount = new Map<string, number>();
+    const priorityFragments: string[] = [];
+
+    for (const r of group.records) {
+      for (const lt of (r.listening_record_themes ?? [])) {
+        if (lt.themes?.name) themeCount.set(lt.themes.name, (themeCount.get(lt.themes.name) ?? 0) + 1);
+      }
+      for (const word of (r.words_used ?? "").split(/[,;\s]+/).map((w) => w.trim().toLowerCase()).filter((w) => w.length > 3)) {
+        wordCount.set(word, (wordCount.get(word) ?? 0) + 1);
+      }
+      if (r.priority_mentioned?.trim()) priorityFragments.push(r.priority_mentioned.trim());
+    }
+
+    const topThemes = Array.from(themeCount.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([label, count]) => `${label} (${count})`);
+    const topWords = Array.from(wordCount.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([w]) => w);
+    const relations = Array.from(group.relations).map((r) => getRespondentTerritoryRelationLabel(r as import("@/lib/database.types").RespondentTerritoryRelation));
+
+    result.push({
+      neighborhoodId,
+      neighborhoodName: neighborhoodMap.get(neighborhoodId) ?? neighborhoodId,
+      count: group.records.length,
+      relations,
+      topThemes,
+      topWords,
+      priorities: priorityFragments.slice(0, 3)
+    });
+  }
+
+  return result.sort((a, b) => b.count - a.count);
 }
 
 function getDiagnostics(metrics: ReturnType<typeof getActionPilotMetrics>, debrief: ActionDebrief | null, closure: ActionClosure | null) {

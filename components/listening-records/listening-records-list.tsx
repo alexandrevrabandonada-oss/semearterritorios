@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CalendarDays, MapPinned, MessageSquareText, Plus, Search, SlidersHorizontal } from "lucide-react";
 import type { Action, ListeningRecord, Neighborhood, ReviewStatus, Theme } from "@/lib/database.types";
-import { getReviewStatusLabel, getSourceTypeLabel, reviewStatusOptions } from "@/lib/listening-records";
+import { getReviewStatusLabel, getRespondentTerritoryRelationLabel, getSourceTypeLabel, reviewStatusOptions } from "@/lib/listening-records";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { hasNoWordsUsed, hasPossibleSensitiveData, isVeryShortSpeech } from "@/lib/action-pilot";
 import { formatNeighborhoodOption, getOfficialNeighborhoodsForSelect } from "@/lib/neighborhoods";
@@ -12,6 +12,7 @@ import { formatNeighborhoodOption, getOfficialNeighborhoodsForSelect } from "@/l
 type RecordWithRelations = ListeningRecord & {
   actions: Pick<Action, "id" | "title"> | null;
   neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
+  respondent_neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
   listening_record_themes: Array<{ themes: Pick<Theme, "id" | "name"> | null }>;
 };
 
@@ -22,9 +23,12 @@ type Filters = {
   themeId: string;
   status: string;
   quality: string;
+  respondentNeighborhoodId: string;
+  respondentCity: string;
+  respondentRelation: string;
 };
 
-const initialFilters: Filters = { month: "", neighborhoodId: "", actionId: "", themeId: "", status: "", quality: "" };
+const initialFilters: Filters = { month: "", neighborhoodId: "", actionId: "", themeId: "", status: "", quality: "", respondentNeighborhoodId: "", respondentCity: "", respondentRelation: "" };
 
 export function ListeningRecordsList() {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
@@ -49,7 +53,7 @@ export function ListeningRecordsList() {
       const [recordsResult, actionsResult, neighborhoodsResult, themesResult] = await Promise.all([
         supabase
           .from("listening_records")
-          .select("*, actions:action_id(id, title), neighborhoods:neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name))")
+          .select("*, actions:action_id(id, title), neighborhoods:neighborhood_id(id, name), respondent_neighborhoods:respondent_neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name))")
           .order("date", { ascending: false }),
         supabase.from("actions").select("*").order("action_date", { ascending: false }),
         supabase.from("neighborhoods").select("*").eq("status", "oficial").order("sector", { ascending: true }).order("name", { ascending: true }),
@@ -64,7 +68,7 @@ export function ListeningRecordsList() {
         return;
       }
 
-      setRecords((recordsResult.data ?? []) as RecordWithRelations[]);
+      setRecords((recordsResult.data ?? []) as unknown as RecordWithRelations[]);
       setActions(actionsResult.data ?? []);
       setNeighborhoods(getOfficialNeighborhoodsForSelect(neighborhoodsResult.data ?? []));
       setThemes(themesResult.data ?? []);
@@ -89,12 +93,16 @@ export function ListeningRecordsList() {
     if (filters.actionId && record.action_id !== filters.actionId) return false;
     if (filters.status && record.review_status !== filters.status) return false;
     if (filters.themeId && !record.listening_record_themes.some((item) => item.themes?.id === filters.themeId)) return false;
+    if (filters.respondentNeighborhoodId && record.respondent_neighborhood_id !== filters.respondentNeighborhoodId) return false;
+    if (filters.respondentCity && record.respondent_city !== filters.respondentCity) return false;
+    if (filters.respondentRelation && record.respondent_territory_relation !== filters.respondentRelation) return false;
     if (filters.quality === "no_theme" && record.listening_record_themes.length > 0) return false;
     if (filters.quality === "no_summary" && record.team_summary?.trim()) return false;
     if (filters.quality === "no_priority" && record.priority_mentioned?.trim()) return false;
     if (filters.quality === "very_short" && !isVeryShortSpeech(record)) return false;
     if (filters.quality === "possible_sensitive" && !hasPossibleSensitiveData(record)) return false;
     if (filters.quality === "no_words_used" && !hasNoWordsUsed(record)) return false;
+    if (filters.quality === "no_respondent_territory" && record.respondent_neighborhood_id) return false;
     
     return true;
   });
@@ -150,7 +158,7 @@ export function ListeningRecordsList() {
         <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-semear-green"><SlidersHorizontal className="h-4 w-4" aria-hidden="true" />Filtros</div>
         <div className="grid gap-3 md:grid-cols-5">
           <FilterInput label="Mês" type="month" value={filters.month} onChange={(value) => updateFilter("month", value)} />
-          <FilterSelect label="Bairro" value={filters.neighborhoodId} onChange={(value) => updateFilter("neighborhoodId", value)}><option value="">Todos</option>{neighborhoods.map((item) => <option key={item.id} value={item.id}>{formatNeighborhoodOption(item)}</option>)}</FilterSelect>
+          <FilterSelect label="Bairro da ação" value={filters.neighborhoodId} onChange={(value) => updateFilter("neighborhoodId", value)}><option value="">Todos</option>{neighborhoods.map((item) => <option key={item.id} value={item.id}>{formatNeighborhoodOption(item)}</option>)}</FilterSelect>
           <FilterSelect label="Ação" value={filters.actionId} onChange={(value) => updateFilter("actionId", value)}><option value="">Todas</option>{actions.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</FilterSelect>
           <FilterSelect label="Tema" value={filters.themeId} onChange={(value) => updateFilter("themeId", value)}><option value="">Todos</option>{themes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</FilterSelect>
           <FilterSelect label="Status" value={filters.status} onChange={(value) => updateFilter("status", value)}><option value="">Todos</option>{reviewStatusOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</FilterSelect>
@@ -162,6 +170,20 @@ export function ListeningRecordsList() {
             <option value="very_short">Fala muito curta</option>
             <option value="possible_sensitive">Possível dado sensível</option>
             <option value="no_words_used">Sem palavras usadas</option>
+            <option value="no_respondent_territory">Sem território de referência</option>
+          </FilterSelect>
+          <FilterSelect label="Município de referência" value={filters.respondentCity} onChange={(value) => updateFilter("respondentCity", value)}>
+            <option value="">Todos</option>
+            <option value="Volta Redonda">Volta Redonda</option>
+          </FilterSelect>
+          <FilterSelect label="Bairro de referência" value={filters.respondentNeighborhoodId} onChange={(value) => updateFilter("respondentNeighborhoodId", value)}><option value="">Todos</option>{neighborhoods.map((item) => <option key={item.id} value={item.id}>{formatNeighborhoodOption(item)}</option>)}</FilterSelect>
+          <FilterSelect label="Vínculo" value={filters.respondentRelation} onChange={(value) => updateFilter("respondentRelation", value)}>
+            <option value="">Todos</option>
+            <option value="mora">Mora</option>
+            <option value="trabalha_estuda">Trabalha / estuda</option>
+            <option value="circula">Circula</option>
+            <option value="fala_sobre">Fala sobre</option>
+            <option value="nao_informado">Não informado</option>
           </FilterSelect>
         </div>
       </div>
@@ -195,6 +217,11 @@ export function ListeningRecordsList() {
               {hasPossibleSensitiveData(record) ? <QualityBadge label="Possível dado sensível" danger /> : null}
               {record.listening_record_themes.length === 0 ? <QualityBadge label="Sem tema" /> : null}
               {record.review_status === "reviewed" && !record.team_summary?.trim() ? <QualityBadge label="Revisada sem resumo" danger /> : null}
+              {record.respondent_neighborhood_id ? (
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800">
+                  Ref.: {record.respondent_neighborhoods?.name ?? "…"}{record.respondent_territory_relation ? ` · ${getRespondentTerritoryRelationLabel(record.respondent_territory_relation)}` : ""}
+                </span>
+              ) : null}
             </div>
           </Link>
         ))}

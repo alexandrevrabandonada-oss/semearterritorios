@@ -85,7 +85,7 @@ export function TerritorialListeningMap() {
         return;
       }
 
-      setRecords((recordsResult.data ?? []) as RecordWithRelations[]);
+      setRecords((recordsResult.data ?? []) as unknown as RecordWithRelations[]);
       setNeighborhoods(neighborhoodsResult.data ?? []);
       setThemes(themesResult.data ?? []);
       setHomologation(homologationResult.data as InternalMapHomologation | null);

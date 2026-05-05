@@ -98,7 +98,7 @@ export function Dashboard() {
       }
 
       setActions((actionsResult.data ?? []) as ActionWithNeighborhood[]);
-      setRecords((recordsResult.data ?? []) as RecordWithRelations[]);
+      setRecords((recordsResult.data ?? []) as unknown as RecordWithRelations[]);
       setNeighborhoods(neighborhoodsResult.data ?? []);
       setThemes(themesResult.data ?? []);
       setClosures((closuresResult.data ?? []) as ActionClosure[]);

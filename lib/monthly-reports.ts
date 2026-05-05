@@ -1,6 +1,6 @@
 import { getActionTypeLabel } from "@/lib/actions";
 import type { Action, ListeningRecord, Neighborhood, Theme } from "@/lib/database.types";
-import { getReviewStatusLabel, getSourceTypeLabel } from "@/lib/listening-records";
+import { getRespondentTerritoryRelationLabel, getReviewStatusLabel, getSourceTypeLabel } from "@/lib/listening-records";
 
 type ActionWithNeighborhood = Action & {
   neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
@@ -9,6 +9,7 @@ type ActionWithNeighborhood = Action & {
 type RecordWithRelations = ListeningRecord & {
   actions: Pick<Action, "id" | "title" | "action_type"> | null;
   neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
+  respondent_neighborhoods?: Pick<Neighborhood, "id" | "name"> | null;
   listening_record_themes: Array<{ themes: Pick<Theme, "id" | "name"> | null }>;
 };
 
@@ -145,7 +146,10 @@ export function buildMonthlyReportMarkdown(report: MonthlyReportData) {
     "## Pendencias de revisao",
     report.pendingReviews.length > 0
       ? report.pendingReviews.map((record) => `- ${formatDate(record.date)} | ${record.neighborhoods?.name ?? "Sem bairro"} | ${truncate(record.free_speech_text, 110)}`).join("\n")
-      : "- Nenhuma pendencia de revisao no mes."
+      : "- Nenhuma pendencia de revisao no mes.",
+    "",
+    "## Territorio de referencia do entrevistado",
+    buildRespondentTerritoryMarkdown(report.records)
   ].join("\n");
 }
 
@@ -161,7 +165,10 @@ export function buildMonthlyReportCsv(report: MonthlyReportData) {
     "prioridade",
     "inesperado",
     "fala_original",
-    "resumo_equipe"
+    "resumo_equipe",
+    "municipio_referencia_entrevistado",
+    "bairro_referencia_entrevistado",
+    "vinculo_territorio"
   ];
 
   const rows = report.records.map((record) => [
@@ -175,7 +182,10 @@ export function buildMonthlyReportCsv(report: MonthlyReportData) {
     record.priority_mentioned ?? "",
     record.unexpected_notes ?? "",
     sanitizeCsv(record.free_speech_text),
-    sanitizeCsv(record.team_summary ?? "")
+    sanitizeCsv(record.team_summary ?? ""),
+    record.respondent_city ?? "",
+    (record as RecordWithRelations).respondent_neighborhoods?.name ?? "",
+    record.respondent_territory_relation ? getRespondentTerritoryRelationLabel(record.respondent_territory_relation) : ""
   ]);
 
   return [headers.join(","), ...rows.map((row) => row.map(escapeCsv).join(","))].join("\n");
@@ -269,4 +279,32 @@ function truncate(value: string, maxLength: number) {
 
 function formatDate(value: string) {
   return new Date(`${value}T00:00:00`).toLocaleDateString("pt-BR");
+}
+
+function buildRespondentTerritoryMarkdown(records: RecordWithRelations[]): string {
+  const groups = new Map<string, { name: string; count: number; relations: Set<string> }>();
+  for (const r of records) {
+    if (!r.respondent_neighborhood_id) continue;
+    const name = r.respondent_neighborhoods?.name ?? r.respondent_neighborhood_id;
+    const existing = groups.get(r.respondent_neighborhood_id);
+    if (existing) {
+      existing.count += 1;
+      if (r.respondent_territory_relation) existing.relations.add(getRespondentTerritoryRelationLabel(r.respondent_territory_relation));
+    } else {
+      groups.set(r.respondent_neighborhood_id, {
+        name,
+        count: 1,
+        relations: r.respondent_territory_relation ? new Set([getRespondentTerritoryRelationLabel(r.respondent_territory_relation)]) : new Set()
+      });
+    }
+  }
+  if (groups.size === 0) return "- Nenhum territorio de referencia registrado neste mes.";
+  const lines: string[] = [];
+  for (const group of Array.from(groups.values()).sort((a, b) => b.count - a.count)) {
+    const relationText = group.relations.size > 0 ? ` (${Array.from(group.relations).join(", ")})` : "";
+    lines.push(`- ${group.name}: ${group.count} escuta${group.count !== 1 ? "s" : ""}${relationText}`);
+  }
+  const withoutRef = records.filter((r) => !r.respondent_neighborhood_id).length;
+  if (withoutRef > 0) lines.push(`- Sem territorio de referencia: ${withoutRef} escuta${withoutRef !== 1 ? "s" : ""}`);
+  return lines.join("\n");
 }

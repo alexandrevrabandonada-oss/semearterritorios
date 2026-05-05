@@ -51,7 +51,7 @@ export function ListeningRecordDetail({ recordId }: { recordId: string }) {
       return;
     }
 
-    setRecord(result.data as RecordWithRelations);
+    setRecord(result.data as unknown as RecordWithRelations);
     setNeighborhoods(getOfficialNeighborhoodsForSelect(neighborhoodsResult.data ?? []));
     setLoading(false);
   }

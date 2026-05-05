@@ -82,6 +82,14 @@ export type Action = TimestampedRow &
     notes: string | null;
   };
 
+/** Vínculo do entrevistado com o território de referência (Tijolo 039). */
+export type RespondentTerritoryRelation =
+  | "mora"
+  | "trabalha_estuda"
+  | "circula"
+  | "fala_sobre"
+  | "nao_informado";
+
 export type ListeningRecord = TimestampedRow &
   CreatedByRow & {
     id: string;
@@ -100,6 +108,12 @@ export type ListeningRecord = TimestampedRow &
     review_status: ReviewStatus;
     territorial_review_status: TerritorialReviewStatus;
     territorial_review_notes: string | null;
+    /** Município de referência do entrevistado (Tijolo 039). Não armazena endereço. */
+    respondent_city: string | null;
+    /** Bairro oficial de referência do entrevistado (Tijolo 039). FK → neighborhoods. */
+    respondent_neighborhood_id: string | null;
+    /** Vínculo do entrevistado com o território de referência (Tijolo 039). */
+    respondent_territory_relation: RespondentTerritoryRelation | null;
   };
 
 export type Theme = TimestampedRow &
@@ -274,6 +288,12 @@ export type Database = {
           {
             foreignKeyName: "listening_records_neighborhood_id_fkey";
             columns: ["neighborhood_id"];
+            referencedRelation: "neighborhoods";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "listening_records_respondent_neighborhood_id_fkey";
+            columns: ["respondent_neighborhood_id"];
             referencedRelation: "neighborhoods";
             referencedColumns: ["id"];
           }

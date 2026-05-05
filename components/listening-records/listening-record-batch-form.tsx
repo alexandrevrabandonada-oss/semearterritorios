@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { ArrowLeft, Save, AlertTriangle, PlayCircle } from "lucide-react";
-import type { Action, Neighborhood, Theme } from "@/lib/database.types";
+import type { Action, Neighborhood, RespondentTerritoryRelation, Theme } from "@/lib/database.types";
+import { respondentTerritoryRelationOptions } from "@/lib/listening-records";
+import { formatNeighborhoodOption, getOfficialNeighborhoodsForSelect } from "@/lib/neighborhoods";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type BatchFormValues = {
@@ -15,6 +17,9 @@ type BatchFormValues = {
   interviewer_name: string;
   approximate_age_range: string;
   theme_ids: string[];
+  respondent_city: string;
+  respondent_neighborhood_id: string;
+  respondent_territory_relation: string;
 };
 
 const initialFormValues: BatchFormValues = {
@@ -26,6 +31,9 @@ const initialFormValues: BatchFormValues = {
   interviewer_name: "",
   approximate_age_range: "",
   theme_ids: [],
+  respondent_city: "Volta Redonda",
+  respondent_neighborhood_id: "",
+  respondent_territory_relation: "",
 };
 
 type ActionWithRelations = Action & {
@@ -36,6 +44,7 @@ export function ListeningRecordBatchForm() {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const [actions, setActions] = useState<ActionWithRelations[]>([]);
   const [themes, setThemes] = useState<Theme[]>([]);
+  const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,13 +78,15 @@ export function ListeningRecordBatchForm() {
     let ignore = false;
     async function load() {
       if (!supabase) return;
-      const [actionsRes, themesRes] = await Promise.all([
+      const [actionsRes, themesRes, neighborhoodsRes] = await Promise.all([
         supabase.from("actions").select("*, neighborhoods:neighborhood_id(id, name)").order("action_date", { ascending: false }),
-        supabase.from("themes").select("*").eq("is_active", true).order("name", { ascending: true })
+        supabase.from("themes").select("*").eq("is_active", true).order("name", { ascending: true }),
+        supabase.from("neighborhoods").select("*").eq("status", "oficial").order("sector", { ascending: true }).order("name", { ascending: true })
       ]);
       if (ignore) return;
       setActions((actionsRes.data ?? []) as ActionWithRelations[]);
       setThemes(themesRes.data ?? []);
+      setNeighborhoods(getOfficialNeighborhoodsForSelect(neighborhoodsRes.data ?? []));
       setLoading(false);
     }
     void load();
@@ -152,7 +163,10 @@ export function ListeningRecordBatchForm() {
       priority_mentioned: values.priority_mentioned.trim() || null,
       unexpected_notes: values.unexpected_notes.trim() || null,
       review_status: "draft" as const,
-      created_by: user.id
+      created_by: user.id,
+      respondent_city: values.respondent_city.trim() || null,
+      respondent_neighborhood_id: (values.respondent_city.trim() === "Volta Redonda" && values.respondent_neighborhood_id) ? values.respondent_neighborhood_id : null,
+      respondent_territory_relation: (values.respondent_territory_relation as RespondentTerritoryRelation) || null
     };
 
     const res = await supabase.from("listening_records").insert(payload).select("id").single();
@@ -177,10 +191,13 @@ export function ListeningRecordBatchForm() {
     setSessionCount(c => c + 1);
     setLastSavedId(res.data.id);
     
-    // Keep interviewer_name, reset the rest
+    // Keep interviewer_name and respondent fields across records (common for same person)
     setValues({
       ...initialFormValues,
       interviewer_name: values.interviewer_name,
+      respondent_city: values.respondent_city,
+      respondent_neighborhood_id: values.respondent_neighborhood_id,
+      respondent_territory_relation: values.respondent_territory_relation,
     });
     setSensitiveAlert(null);
     setSaving(false);
@@ -257,6 +274,51 @@ export function ListeningRecordBatchForm() {
 
                 <label className="md:col-span-2"><span className="text-sm font-semibold text-semear-green">Prioridade apontada</span><input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" value={values.priority_mentioned} onChange={e => updateField("priority_mentioned", e.target.value)} /></label>
                 <label className="md:col-span-2"><span className="text-sm font-semibold text-semear-green">Observações inesperadas</span><input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" value={values.unexpected_notes} onChange={e => updateField("unexpected_notes", e.target.value)} /></label>
+              </div>
+
+              {/* TERRITÓRIO DE REFERÊNCIA DO ENTREVISTADO */}
+              <div className="mt-8 rounded-[1.5rem] border border-semear-green/20 bg-semear-green-soft/40 p-5">
+                <h3 className="font-semibold text-semear-green">Território de referência do entrevistado</h3>
+                <p className="mt-1 text-xs leading-5 text-stone-600">Registre apenas o território agregado de referência da pessoa. Não registre rua, número ou endereço.</p>
+                <div className="mt-4 grid gap-4 md:grid-cols-3">
+                  <label>
+                    <span className="text-sm font-semibold text-semear-green">Município de referência</span>
+                    <input
+                      className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
+                      placeholder="Volta Redonda"
+                      value={values.respondent_city}
+                      onChange={e => updateField("respondent_city", e.target.value)}
+                    />
+                  </label>
+                  {values.respondent_city === "Volta Redonda" && (
+                    <label>
+                      <span className="text-sm font-semibold text-semear-green">Bairro de referência</span>
+                      <select
+                        className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
+                        value={values.respondent_neighborhood_id}
+                        onChange={e => updateField("respondent_neighborhood_id", e.target.value)}
+                      >
+                        <option value="">Selecione o bairro...</option>
+                        {neighborhoods.map(n => (
+                          <option key={n.id} value={n.id}>{formatNeighborhoodOption(n)}</option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  <label>
+                    <span className="text-sm font-semibold text-semear-green">Vínculo com o território</span>
+                    <select
+                      className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
+                      value={values.respondent_territory_relation}
+                      onChange={e => updateField("respondent_territory_relation", e.target.value)}
+                    >
+                      <option value="">Selecione...</option>
+                      {respondentTerritoryRelationOptions.map(o => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
               </div>
 
               <div className="mt-8 rounded-[1.5rem] border border-dashed border-semear-green/25 bg-semear-offwhite p-5">

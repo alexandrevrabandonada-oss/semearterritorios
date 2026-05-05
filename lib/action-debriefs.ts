@@ -6,6 +6,7 @@ import {
   type ActionForPilot,
   type ListeningRecordForPilot
 } from "@/lib/action-pilot";
+import { getRespondentTerritoryRelationLabel } from "@/lib/listening-records";
 
 export const defaultMethodologyNote =
   "Esta devolutiva reúne percepções registradas durante a ação. Ela não substitui pesquisa estatística nem representa a totalidade da população. Seu objetivo é devolver ao território uma síntese inicial da escuta realizada.";
@@ -41,6 +42,39 @@ function sanitizePublicPlace(value: string) {
     .trim();
 }
 
+function buildRespondentTerritorySection(records: ListeningRecordForPilot[], neighborhoodNames: Map<string, string>): string {
+  const groups = new Map<string, ListeningRecordForPilot[]>();
+  for (const r of records) {
+    if (!r.respondent_neighborhood_id) continue;
+    const bucket = groups.get(r.respondent_neighborhood_id) ?? [];
+    bucket.push(r);
+    groups.set(r.respondent_neighborhood_id, bucket);
+  }
+  if (groups.size === 0) return "";
+  const lines: string[] = ["## Leitura por território de referência do entrevistado", ""];
+  lines.push("_Os dados abaixo agrupam falas pelo bairro de referência de quem falou, não pelo local da ação._", "");
+  for (const [nbId, recs] of Array.from(groups.entries()).sort((a, b) => b[1].length - a[1].length)) {
+    const name = neighborhoodNames.get(nbId) ?? "Bairro não identificado";
+    const themeCount = new Map<string, number>();
+    const wordCount = new Map<string, number>();
+    const relations = new Set<string>();
+    for (const r of recs) {
+      if (r.respondent_territory_relation) relations.add(getRespondentTerritoryRelationLabel(r.respondent_territory_relation));
+      for (const w of (r.words_used ?? "").split(/[,;\s]+/).map((x) => x.trim().toLowerCase()).filter((x) => x.length > 3)) {
+        wordCount.set(w, (wordCount.get(w) ?? 0) + 1);
+      }
+    }
+    const topWords = Array.from(wordCount.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([w]) => w).join(", ");
+    lines.push(`### ${name} (${recs.length} escuta${recs.length !== 1 ? "s" : ""})`);
+    if (relations.size > 0) lines.push(`Vínculos: ${Array.from(relations).join(", ")}`);
+    if (topWords) lines.push(`Palavras recorrentes: ${topWords}`);
+    const priorities = recs.filter((r) => r.priority_mentioned?.trim()).map((r) => r.priority_mentioned!.trim());
+    if (priorities.length > 0) lines.push(`Prioridades: ${priorities.slice(0, 3).join(" / ")}`);
+    lines.push("");
+  }
+  return lines.join("\n");
+}
+
 export function buildActionDebrief(action: ActionForPilot, records: ListeningRecordForPilot[]): GeneratedActionDebrief {
   const fullMetrics = getActionPilotMetrics(records);
   const safeReviewedRecords = records.filter(
@@ -54,6 +88,15 @@ export function buildActionDebrief(action: ActionForPilot, records: ListeningRec
   const isFair = action.action_type === "banca_escuta" || action.title.toLowerCase().includes("feira");
   const title = isFair ? "O que ouvimos na feira" : "O que ouvimos nesta ação";
   const warnings: string[] = [];
+
+  // Construção do mapa nome de bairro a partir dos registros existentes (apenas IDs conhecidos)
+  const respondentNeighborhoodNames = new Map<string, string>();
+  for (const r of records) {
+    if (r.respondent_neighborhood_id && !respondentNeighborhoodNames.has(r.respondent_neighborhood_id)) {
+      // O nome é resolvido no servidor; aqui só mapeamos o que temos disponível
+      respondentNeighborhoodNames.set(r.respondent_neighborhood_id, r.respondent_neighborhood_id);
+    }
+  }
 
   if (fullMetrics.draft > 0) {
     warnings.push("Há escutas ainda não revisadas. Recomenda-se revisar antes de aprovar a devolutiva.");
@@ -95,6 +138,8 @@ ${formatBullets(unexpected, "- Nenhum ponto inesperado registrado.")}`;
   const nextSteps =
     "A equipe deve revisar esta síntese, confirmar se as pendências foram tratadas e definir quais pontos serão aprofundados em diálogo com o território.";
 
+  const respondentSection = buildRespondentTerritorySection(sourceRecords, respondentNeighborhoodNames);
+
   const generatedMarkdown = `# ${title}
 
 ## Dados da ação
@@ -117,7 +162,7 @@ ${keyFindings}
 
 ${nextSteps}
 
-## Nota metodológica
+${respondentSection ? `${respondentSection}\n` : ""}## Nota metodológica
 
 ${defaultMethodologyNote}
 

@@ -177,6 +177,16 @@ export default function AjudaPage() {
           </Panel>
         </div>
 
+        <Panel className="mt-6" icon={<MapPinned className="h-5 w-5" />} title="Território da ação × território de referência do entrevistado">
+          <div className="space-y-3 text-sm leading-6 text-stone-700">
+            <p><strong>Território da ação</strong> é onde a banca aconteceu — o bairro onde a equipe esteve. Sempre obrigatório ao cadastrar uma escuta.</p>
+            <p><strong>Território de referência do entrevistado</strong> é de onde a pessoa fala, ou seja, onde ela mora, trabalha, estuda ou circula. É um campo opcional, preenchido apenas se a pessoa mencionar ou aceitar compartilhar.</p>
+            <p>Esses dois campos podem ser iguais ou diferentes. Uma pessoa que mora em outro bairro pode participar de uma banca no centro, por exemplo.</p>
+            <p>O campo de referência serve para entender a diversidade territorial das pessoas escutadas, sem restringir a análise ao local da banca.</p>
+            <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900"><strong>Atenção:</strong> nunca registre rua, número, CEP ou coordenada geográfica. Use sempre o bairro oficial — o menor nível de agregação permitido.</p>
+          </div>
+        </Panel>
+
         <Panel className="mt-6" icon={<UsersRound className="h-5 w-5" />} title="Papéis no sistema">
           <div className="grid gap-3 md:grid-cols-3">
             <Role title="Admin" text="Administra cadastros, aprova devolutivas, fecha e reabre dossiês." />
@@ -186,12 +196,19 @@ export default function AjudaPage() {
         </Panel>
 
         <Panel className="mt-6" icon={<UsersRound className="h-5 w-5" />} title="Login com Google">
-          <div className="grid gap-3 md:grid-cols-2">
-            {googleLoginChecklist.map((item) => (
-              <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-3 text-sm text-stone-700" key={item}>
-                {item}
-              </div>
-            ))}
+          <div className="space-y-3 text-sm leading-6 text-stone-700">
+            <p>O login com Google confirma a identidade, mas <strong>não libera acesso automático</strong>. Após autenticar, o sistema verifica se existe um papel (role) autorizado no perfil.</p>
+            <div className="grid gap-3 md:grid-cols-2">
+              {googleLoginChecklist.map((item) => (
+                <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-3 text-sm text-stone-700" key={item}>
+                  {item}
+                </div>
+              ))}
+            </div>
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+              <strong>Aguardando liberação?</strong> Um admin ou coordenador precisa definir seu papel na tabela <code className="rounded bg-amber-100 px-1 text-xs">profiles</code> com um dos valores: <code className="rounded bg-amber-100 px-1 text-xs">admin</code>, <code className="rounded bg-amber-100 px-1 text-xs">coordenacao</code> ou <code className="rounded bg-amber-100 px-1 text-xs">equipe</code>. Consulte o documento <strong>docs/liberacao-usuarios-google.md</strong> para o passo a passo.
+            </div>
+            <p className="text-xs text-stone-500">Para revogar acesso: basta apagar o valor do campo role (definir como null). O usuário será redirecionado para a tela de aguardando liberação na próxima sessão.</p>
           </div>
         </Panel>
 

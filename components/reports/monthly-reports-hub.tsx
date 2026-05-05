@@ -46,7 +46,7 @@ export function MonthlyReportsHub() {
       }
 
       setActions((actionsResult.data ?? []) as ActionWithNeighborhood[]);
-      setRecords((recordsResult.data ?? []) as RecordWithNeighborhood[]);
+      setRecords((recordsResult.data ?? []) as unknown as RecordWithNeighborhood[]);
       setLoading(false);
     }
 
