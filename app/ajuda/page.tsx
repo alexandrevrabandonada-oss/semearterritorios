@@ -126,6 +126,13 @@ const firstRealActionChecklist = [
   "decisão pós-banca registrada"
 ];
 
+const googleLoginChecklist = [
+  "Entrar com Google confirma identidade, mas não libera acesso automático.",
+  "A coordenação precisa definir seu papel em profiles: admin, coordenacao ou equipe.",
+  "Sem perfil autorizado, a tela exibida será aguardando liberação.",
+  "Não é necessário criar senha para usar o login com Google."
+];
+
 export default function AjudaPage() {
   return (
     <AppShell activeHref="/ajuda">
@@ -175,6 +182,16 @@ export default function AjudaPage() {
             <Role title="Admin" text="Administra cadastros, aprova devolutivas, fecha e reabre dossiês." />
             <Role title="Coordenação" text="Revisa decisões institucionais, aprova devolutivas e pode marcar suficiência." />
             <Role title="Equipe" text="Cadastra ações e escutas, revisa dados e prepara rascunhos." />
+          </div>
+        </Panel>
+
+        <Panel className="mt-6" icon={<UsersRound className="h-5 w-5" />} title="Login com Google">
+          <div className="grid gap-3 md:grid-cols-2">
+            {googleLoginChecklist.map((item) => (
+              <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-3 text-sm text-stone-700" key={item}>
+                {item}
+              </div>
+            ))}
           </div>
         </Panel>
 

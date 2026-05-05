@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+const AUTHORIZED_ROLES = ["admin", "coordenacao", "equipe"] as const;
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -31,17 +33,46 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isPublicRoute = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/api/');
+  const pathname = request.nextUrl.pathname;
+  const isPublicRoute =
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/auth/callback") ||
+    pathname.startsWith("/auth/logout");
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
-    url.pathname = '/login';
+    url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  if (user && request.nextUrl.pathname.startsWith('/login')) {
+  if (!user) {
+    return supabaseResponse;
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const hasAuthorizedProfile = !!profile?.role && AUTHORIZED_ROLES.includes(profile.role);
+
+  if (!hasAuthorizedProfile && !pathname.startsWith("/aguardando-liberacao") && !isPublicRoute) {
     const url = request.nextUrl.clone();
-    url.pathname = '/';
+    url.pathname = "/aguardando-liberacao";
+    return NextResponse.redirect(url);
+  }
+
+  if (hasAuthorizedProfile && pathname.startsWith("/aguardando-liberacao")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url);
+  }
+
+  if (pathname.startsWith("/login")) {
+    const url = request.nextUrl.clone();
+    url.pathname = hasAuthorizedProfile ? "/" : "/aguardando-liberacao";
     return NextResponse.redirect(url);
   }
 

@@ -50,7 +50,7 @@ type CreatedByRow = {
 export type Profile = TimestampedRow & {
   id: string;
   full_name: string | null;
-  role: "equipe" | "coordenacao" | "admin";
+  role: "equipe" | "coordenacao" | "admin" | null;
 };
 
 export type Neighborhood = TimestampedRow &

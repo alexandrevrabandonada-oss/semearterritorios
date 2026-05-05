@@ -1,11 +1,45 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { login } from "./actions";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
+  const [oauthError, setOauthError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setAuthError(params.get("error"));
+  }, []);
+
+  async function handleGoogleLogin() {
+    setGoogleLoading(true);
+    setOauthError(null);
+
+    const supabase = createBrowserSupabaseClient();
+    if (!supabase) {
+      setOauthError("Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+      setGoogleLoading(false);
+      return;
+    }
+
+    const origin = window.location.origin;
+    const { error: signInError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${origin}/auth/callback?next=/`
+      }
+    });
+
+    if (signInError) {
+      setOauthError("Nao foi possivel iniciar o login com Google.");
+      setGoogleLoading(false);
+    }
+  }
 
   async function handleSubmit(formData: FormData) {
     setLoading(true);
@@ -23,6 +57,24 @@ export default function LoginPage() {
         <h1 className="text-3xl font-semibold tracking-tight text-semear-green text-center mb-6">
           Semear Territórios
         </h1>
+        {(authError === "oauth" || oauthError) && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+            {oauthError ?? "Nao foi possivel concluir o login com Google. Tente novamente."}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={handleGoogleLogin}
+          disabled={googleLoading}
+          className="mb-4 w-full min-h-11 rounded-full border border-semear-green/25 bg-white px-4 text-sm font-semibold text-semear-green transition hover:border-semear-green/40 hover:bg-semear-offwhite disabled:opacity-50"
+        >
+          {googleLoading ? "Redirecionando..." : "Entrar com Google"}
+        </button>
+        <div className="mb-4 flex items-center gap-3 text-xs uppercase tracking-[0.12em] text-stone-400">
+          <span className="h-px flex-1 bg-semear-gray" />
+          <span>ou</span>
+          <span className="h-px flex-1 bg-semear-gray" />
+        </div>
         <form action={handleSubmit} className="space-y-4">
           {error && (
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
