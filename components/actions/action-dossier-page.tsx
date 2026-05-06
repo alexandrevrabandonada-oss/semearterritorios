@@ -12,7 +12,7 @@ import {
   parseClosureChecklist,
   type ClosureChecklist
 } from "@/lib/action-closures";
-import { getActionPilotMetrics, getActionReadiness, type ActionForPilot, type ListeningRecordForPilot } from "@/lib/action-pilot";
+import { getActionPilotMetrics, getActionReadiness, summarizeOccupations, type ActionForPilot, type ListeningRecordForPilot } from "@/lib/action-pilot";
 import { getActionStatusLabel, getActionTypeLabel } from "@/lib/actions";
 import type { ActionClosure, ActionDebrief, ClosureStatus, Json, Profile } from "@/lib/database.types";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -110,6 +110,7 @@ export function ActionDossierPage({ actionId }: Props) {
   const loadedAction = action;
   const metrics = getActionPilotMetrics(records);
   const reviewedPercent = metrics.total > 0 ? Math.round((metrics.reviewed / metrics.total) * 100) : 0;
+  const occupationSummary = summarizeOccupations(records);
   const canCoordinate = profile?.role === "admin" || profile?.role === "coordenacao";
   const virtualClosure = closure ? { ...closure, ...form, documentation_checklist: form.documentation_checklist as unknown as Json } : null;
   const markdown = buildClosureMarkdown({ action: loadedAction, records, debrief, closure: virtualClosure as ActionClosure | null });
@@ -307,6 +308,8 @@ export function ActionDossierPage({ actionId }: Props) {
             <Mini title="Palavras recorrentes" items={metrics.topWords.map((item) => `${item.label} (${item.count})`)} />
             <Mini title="Lugares mencionados" items={metrics.places.map((item) => `${item.label} (${item.count})`)} />
             <Mini title="Prioridades apontadas" items={metrics.priorities.map((item) => `${item.label} (${item.count})`)} />
+            <Mini title="Ocupações (agregado)" items={occupationSummary.groups.map((item) => `${item.label} (${item.count})`)} />
+            <Mini title="Escutas sem ocupação informada" items={[occupationSummary.withoutOccupation.toString()]} />
             <Mini title="Observações inesperadas" items={metrics.unexpected} />
           </Panel>
 

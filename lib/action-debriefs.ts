@@ -3,6 +3,7 @@ import {
   getActionPilotMetrics,
   getActionReadiness,
   hasPossibleSensitiveData,
+  summarizeOccupations,
   type ActionForPilot,
   type ListeningRecordForPilot
 } from "@/lib/action-pilot";
@@ -84,6 +85,7 @@ export function buildActionDebrief(action: ActionForPilot, records: ListeningRec
     ? safeReviewedRecords
     : records.filter((record) => !hasPossibleSensitiveData(record));
   const metrics = getActionPilotMetrics(sourceRecords);
+  const occupationSummary = summarizeOccupations(sourceRecords);
   const bairro = action.neighborhoods?.name ?? "território informado";
   const isFair = action.action_type === "banca_escuta" || action.title.toLowerCase().includes("feira");
   const title = isFair ? "O que ouvimos na feira" : "O que ouvimos nesta ação";
@@ -113,7 +115,10 @@ export function buildActionDebrief(action: ActionForPilot, records: ListeningRec
   const publicSummary = [
     `Nesta ação, foram registradas ${fullMetrics.total} escutas no território ${bairro}.`,
     `Para esta devolutiva, a síntese considera preferencialmente registros revisados e sem alerta de dado sensível. Até o momento, ${fullMetrics.reviewed} escuta(s) estão revisada(s) e ${fullMetrics.draft} permanecem em rascunho.`,
-    `Os temas mais recorrentes foram: ${formatInline(metrics.topThemes.slice(0, 5))}. As palavras que mais apareceram foram: ${formatInline(metrics.topWords.slice(0, 8))}.`
+    `Os temas mais recorrentes foram: ${formatInline(metrics.topThemes.slice(0, 5))}. As palavras que mais apareceram foram: ${formatInline(metrics.topWords.slice(0, 8))}.`,
+    occupationSummary.groups.length > 0
+      ? `Entre as ocupações informadas, apareceram principalmente: ${occupationSummary.groups.slice(0, 5).map((item) => `${item.label} (${item.count})`).join(", ")}.`
+      : "Não houve ocupações com frequência suficiente para leitura agregada segura nesta ação."
   ].join("\n\n");
 
   const places = metrics.places.map((item) => `${sanitizePublicPlace(item.label)} (${item.count})`).filter(Boolean);
@@ -131,6 +136,18 @@ ${formatBullets(places, "- Nenhum lugar mencionado de forma agregada.")}
 
 Prioridades apontadas:
 ${formatBullets(priorities, "- Nenhuma prioridade apontada.")}
+
+Ocupação / atividade principal (agregado):
+${formatBullets(
+  occupationSummary.groups.map((item) => `${item.label} (${item.count})`),
+  "- Não houve ocupações com frequência suficiente para exibição agregada segura."
+)}
+
+Escutas sem ocupação informada:
+- ${occupationSummary.withoutOccupation}
+
+Escutas agrupadas por baixa frequência/risco:
+- ${occupationSummary.lowFrequencyOrRiskyCount}
 
 Pontos inesperados:
 ${formatBullets(unexpected, "- Nenhum ponto inesperado registrado.")}`;

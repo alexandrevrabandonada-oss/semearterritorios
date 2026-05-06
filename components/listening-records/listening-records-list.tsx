@@ -26,9 +26,23 @@ type Filters = {
   respondentNeighborhoodId: string;
   respondentCity: string;
   respondentRelation: string;
+  occupation: string;
+  occupationSearch: string;
 };
 
-const initialFilters: Filters = { month: "", neighborhoodId: "", actionId: "", themeId: "", status: "", quality: "", respondentNeighborhoodId: "", respondentCity: "", respondentRelation: "" };
+const initialFilters: Filters = {
+  month: "",
+  neighborhoodId: "",
+  actionId: "",
+  themeId: "",
+  status: "",
+  quality: "",
+  respondentNeighborhoodId: "",
+  respondentCity: "",
+  respondentRelation: "",
+  occupation: "",
+  occupationSearch: ""
+};
 
 export function ListeningRecordsList() {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
@@ -96,6 +110,8 @@ export function ListeningRecordsList() {
     if (filters.respondentNeighborhoodId && record.respondent_neighborhood_id !== filters.respondentNeighborhoodId) return false;
     if (filters.respondentCity && record.respondent_city !== filters.respondentCity) return false;
     if (filters.respondentRelation && record.respondent_territory_relation !== filters.respondentRelation) return false;
+    if (filters.occupation && (record.respondent_occupation ?? "") !== filters.occupation) return false;
+    if (filters.occupationSearch && !(record.respondent_occupation ?? "").toLowerCase().includes(filters.occupationSearch.toLowerCase())) return false;
     if (filters.quality === "no_theme" && record.listening_record_themes.length > 0) return false;
     if (filters.quality === "no_summary" && record.team_summary?.trim()) return false;
     if (filters.quality === "no_priority" && record.priority_mentioned?.trim()) return false;
@@ -106,6 +122,10 @@ export function ListeningRecordsList() {
     
     return true;
   });
+
+  const occupationOptions = Array.from(
+    new Set(records.map((record) => record.respondent_occupation?.trim()).filter(Boolean) as string[])
+  ).sort((a, b) => a.localeCompare(b, "pt-BR"));
 
   function updateFilter<TField extends keyof Filters>(field: TField, value: Filters[TField]) {
     setFilters((current) => ({ ...current, [field]: value }));
@@ -185,6 +205,11 @@ export function ListeningRecordsList() {
             <option value="fala_sobre">Fala sobre</option>
             <option value="nao_informado">Não informado</option>
           </FilterSelect>
+          <FilterSelect label="Ocupação" value={filters.occupation} onChange={(value) => updateFilter("occupation", value)}>
+            <option value="">Todas</option>
+            {occupationOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+          </FilterSelect>
+          <FilterInput label="Busca textual de ocupação" type="text" value={filters.occupationSearch} onChange={(value) => updateFilter("occupationSearch", value)} />
         </div>
       </div>
 
@@ -221,6 +246,9 @@ export function ListeningRecordsList() {
                 <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800">
                   Ref.: {record.respondent_neighborhoods?.name ?? "…"}{record.respondent_territory_relation ? ` · ${getRespondentTerritoryRelationLabel(record.respondent_territory_relation)}` : ""}
                 </span>
+              ) : null}
+              {record.respondent_occupation ? (
+                <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-800">Ocupação: {record.respondent_occupation}</span>
               ) : null}
             </div>
           </Link>

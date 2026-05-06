@@ -12,6 +12,7 @@ import {
   Layers3,
   MapPinned,
   MessageSquareText,
+  UsersRound,
   Save,
   Tag,
   Sparkles,
@@ -119,6 +120,7 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
         bairro: r.neighborhoods?.name ?? "Sem bairro",
         acao: r.actions?.title ?? "Sem ação",
         origem: getSourceTypeLabel(r.source_type),
+        ocupacao: r.respondent_occupation ?? "não informado",
         temas: r.listening_record_themes.map(t => t.themes?.name).filter(Boolean),
         prioridade: r.priority_mentioned ?? "",
         inesperado: r.unexpected_notes ?? "",
@@ -337,6 +339,10 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
 
           <Panel title="Tipos de ação" icon={<ClipboardList className="h-5 w-5" />}>
             {report.actionTypeCounts.length > 0 ? <TagList items={report.actionTypeCounts.map((item) => `${item.name} (${item.count})`)} /> : <PedagogicEmpty text="Nenhuma ação registrada neste mês." />}
+          </Panel>
+
+          <Panel title="Ocupações informadas (agregado)" icon={<UsersRound className="h-5 w-5" />}>
+            {report.occupationCounts.length > 0 ? <TagList items={report.occupationCounts.map((item) => `${item.name} (${item.count})`)} /> : <PedagogicEmpty text="Sem ocupações com frequência suficiente para leitura agregada segura." />}
           </Panel>
 
           <Panel title="Prioridades apontadas" icon={<AlertCircle className="h-5 w-5" />}>

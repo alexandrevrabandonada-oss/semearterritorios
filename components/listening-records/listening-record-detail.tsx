@@ -10,6 +10,7 @@ import type { Action, ListeningRecord, Neighborhood, PlaceMentioned, NormalizedP
 import { getReviewStatusLabel, getSourceTypeLabel } from "@/lib/listening-records";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { getOfficialNeighborhoodsForSelect } from "@/lib/neighborhoods";
+import { hasPossibleSensitiveOccupation } from "@/lib/action-pilot";
 
 type RecordWithRelations = ListeningRecord & {
   actions: Pick<Action, "id" | "title"> | null;
@@ -95,6 +96,12 @@ export function ListeningRecordDetail({ recordId }: { recordId: string }) {
         </div>
         <h2 className="mt-5 text-3xl font-semibold tracking-tight text-semear-green">Escuta registrada</h2>
 
+        {hasPossibleSensitiveOccupation(record.respondent_occupation) ? (
+          <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
+            Verifique se a ocupação não identifica a pessoa. Prefira descrição geral.
+          </p>
+        ) : null}
+
         <section className="mt-8 rounded-[1.5rem] border-2 border-semear-green/30 bg-semear-green-soft/70 p-5">
           <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-semear-green">Fala original / síntese livre</h3>
           <p className="mt-4 whitespace-pre-wrap text-base leading-8 text-stone-800">{record.free_speech_text}</p>
@@ -107,6 +114,7 @@ export function ListeningRecordDetail({ recordId }: { recordId: string }) {
           <Info title="Faixa etária aproximada" value={record.approximate_age_range} />
           <Info title="Palavras usadas" value={record.words_used} />
           <Info title="Lugares citados" value={record.places_mentioned_text} />
+          <Info title="Ocupação / atividade principal (opcional)" value={record.respondent_occupation} />
           <Info title="Prioridade apontada" value={record.priority_mentioned} />
           <Info title="Resumo da equipe" value={record.team_summary} />
           <Info title="Observações inesperadas" value={record.unexpected_notes} />

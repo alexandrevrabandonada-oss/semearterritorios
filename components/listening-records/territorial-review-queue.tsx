@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { AlertTriangle, Filter, MapPinned } from "lucide-react";
 import { TerritorialReviewPanel } from "@/components/listening-records/territorial-review-panel";
-import { hasPossibleSensitiveData } from "@/lib/action-pilot";
+import { hasPossibleSensitiveData, hasPossibleSensitiveOccupation } from "@/lib/action-pilot";
 import type { Action, Neighborhood } from "@/lib/database.types";
 import {
   getTerritorialReviewStatusLabel,
@@ -165,6 +165,14 @@ export function TerritorialReviewQueue() {
                   </div>
                   <p className="mt-3 line-clamp-2 text-sm leading-6 text-stone-700">{record.team_summary || record.free_speech_text}</p>
                   <p className="mt-2 text-sm text-stone-600">Lugares livres: {record.places_mentioned_text || "não informado"}</p>
+                  <p className="mt-2 text-sm text-stone-600">
+                    Ocupação / atividade principal: {record.respondent_occupation?.trim() || "não informado"}
+                  </p>
+                  {hasPossibleSensitiveOccupation(record.respondent_occupation) ? (
+                    <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+                      Verifique se a ocupação não identifica a pessoa. Prefira descrição geral.
+                    </p>
+                  ) : null}
                   <p className="mt-2 text-sm text-stone-600">
                     Estruturados: {record.places_mentioned.length > 0 ? record.places_mentioned.map((place) => `${place.place_name}${place.normalized_places ? ` → ${place.normalized_places.normalized_name}` : ""} (${place.place_type ?? "sem tipo"})`).join(", ") : "nenhum"}
                   </p>

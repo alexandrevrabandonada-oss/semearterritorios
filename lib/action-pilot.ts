@@ -22,6 +22,15 @@ const sensitivePatterns = [
   /\b(?:rua|avenida|av\.|travessa|alameda)\s+[^,.;\n]+,\s*\d+\b/i
 ];
 
+const occupationSensitivePatterns = [
+  /\b(?:empresa|escola|colegio|colégio|creche|hospital|clinica|clínica|posto|ubs|upa|cras|secretaria|setor|departamento|unidade|filial)\b/i,
+  /\b(?:rua|avenida|av\.|travessa|alameda|numero|n[ºo]|cep)\b/i,
+  /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{3}[-.\s]?\d{2}\b/,
+  /\b\d{4,5}[-.\s]?\d{4}\b/,
+  /\b[\w.%+-]+@[\w.-]+\.[a-zA-Z]{2,}\b/,
+  /\b(?:matricula|matrícula|registro|id funcional)\b/i
+];
+
 const stopWords = new Set([
   "a",
   "o",
@@ -53,9 +62,92 @@ const stopWords = new Set([
   "muito"
 ]);
 
-export function hasPossibleSensitiveData(record: Pick<ListeningRecord, "free_speech_text" | "team_summary" | "places_mentioned_text">) {
+export function hasPossibleSensitiveData(
+  record: Pick<ListeningRecord, "free_speech_text" | "team_summary" | "places_mentioned_text"> & {
+    respondent_occupation?: string | null;
+  }
+) {
   const text = [record.free_speech_text, record.team_summary, record.places_mentioned_text].filter(Boolean).join(" ");
-  return sensitivePatterns.some((pattern) => pattern.test(text));
+  return sensitivePatterns.some((pattern) => pattern.test(text)) || hasPossibleSensitiveOccupation(record.respondent_occupation);
+}
+
+export function hasPossibleSensitiveOccupation(value: string | null | undefined) {
+  const text = value?.trim();
+  if (!text) return false;
+  return occupationSensitivePatterns.some((pattern) => pattern.test(text));
+}
+
+type RecordForOccupationSummary = Pick<ListeningRecord, "respondent_occupation"> & {
+  listening_record_themes?: Array<{ themes: Pick<Theme, "name"> | null }>;
+};
+
+export type OccupationGroupSummary = {
+  label: string;
+  count: number;
+  topThemes: string[];
+};
+
+export function summarizeOccupations(records: RecordForOccupationSummary[], minSafeCount = 2) {
+  const map = new Map<string, { label: string; count: number; themeCount: Map<string, number>; risky: boolean }>();
+  let withoutOccupation = 0;
+  let riskyCount = 0;
+
+  for (const record of records) {
+    const occupation = record.respondent_occupation?.trim();
+    if (!occupation) {
+      withoutOccupation += 1;
+      continue;
+    }
+
+    const key = occupation.toLowerCase().replace(/\s+/g, " ").trim();
+    const current = map.get(key) ?? {
+      label: occupation,
+      count: 0,
+      themeCount: new Map<string, number>(),
+      risky: hasPossibleSensitiveOccupation(occupation)
+    };
+    current.count += 1;
+    current.risky = current.risky || hasPossibleSensitiveOccupation(occupation);
+    for (const item of record.listening_record_themes ?? []) {
+      if (item.themes?.name) {
+        current.themeCount.set(item.themes.name, (current.themeCount.get(item.themes.name) ?? 0) + 1);
+      }
+    }
+    map.set(key, current);
+  }
+
+  const groups = Array.from(map.values())
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR"));
+
+  const visibleGroups: OccupationGroupSummary[] = [];
+  let lowFrequencyOrRiskyCount = 0;
+
+  for (const group of groups) {
+    if (group.risky) riskyCount += group.count;
+    if (group.risky || group.count < minSafeCount) {
+      lowFrequencyOrRiskyCount += group.count;
+      continue;
+    }
+
+    const topThemes = Array.from(group.themeCount.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "pt-BR"))
+      .slice(0, 3)
+      .map(([name, count]) => `${name} (${count})`);
+
+    visibleGroups.push({
+      label: group.label,
+      count: group.count,
+      topThemes
+    });
+  }
+
+  return {
+    groups: visibleGroups,
+    withoutOccupation,
+    lowFrequencyOrRiskyCount,
+    riskyCount,
+    totalWithOccupation: records.length - withoutOccupation
+  };
 }
 
 export function isVeryShortSpeech(record: Pick<ListeningRecord, "free_speech_text">) {

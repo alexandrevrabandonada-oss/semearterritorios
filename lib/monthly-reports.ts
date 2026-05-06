@@ -1,6 +1,7 @@
 import { getActionTypeLabel } from "@/lib/actions";
 import type { Action, ListeningRecord, Neighborhood, Theme } from "@/lib/database.types";
 import { getRespondentTerritoryRelationLabel, getReviewStatusLabel, getSourceTypeLabel } from "@/lib/listening-records";
+import { summarizeOccupations } from "@/lib/action-pilot";
 
 type ActionWithNeighborhood = Action & {
   neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
@@ -22,6 +23,7 @@ export type MonthlyReportData = {
   actionTypeCounts: Array<{ name: string; count: number }>;
   topThemes: Array<{ name: string; count: number }>;
   sourceTypeCounts: Array<{ name: string; count: number }>;
+  occupationCounts: Array<{ name: string; count: number }>;
   priorities: Array<{ name: string; count: number }>;
   unexpectedTopics: Array<{ name: string; count: number }>;
   activeSearchSummary: string;
@@ -63,6 +65,8 @@ export function buildMonthlyReportData(month: string, actions: ActionWithNeighbo
   const actionTypeCounts = countBy(actions, (item) => getActionTypeLabel(item.action_type));
   const topThemes = countThemes(records).slice(0, 8);
   const sourceTypeCounts = countBy(records, (item) => getSourceTypeLabel(item.source_type));
+  const occupationSummary = summarizeOccupations(records);
+  const occupationCounts = occupationSummary.groups.map((item) => ({ name: item.label, count: item.count }));
   const priorities = countTextValues(records, (item) => item.priority_mentioned).slice(0, 8);
   const unexpectedTopics = countTextValues(records, (item) => item.unexpected_notes).slice(0, 8);
   const pendingReviews = records.filter((item) => item.review_status === "draft");
@@ -76,6 +80,7 @@ export function buildMonthlyReportData(month: string, actions: ActionWithNeighbo
     actionTypeCounts,
     topThemes,
     sourceTypeCounts,
+    occupationCounts,
     priorities,
     unexpectedTopics,
     activeSearchSummary: buildActiveSearchSummary(month, actions, records, involvedNeighborhoods, sourceTypeCounts),
@@ -96,6 +101,7 @@ export function buildMonthlyReportPlainText(report: MonthlyReportData) {
     `Bairros envolvidos: ${report.involvedNeighborhoods.join(", ") || "Nenhum bairro informado"}`,
     `Tipos de acao: ${formatCountList(report.actionTypeCounts)}`,
     `Temas mais recorrentes: ${formatCountList(report.topThemes)}`,
+    `Ocupações informadas (agregado seguro): ${formatCountList(report.occupationCounts)}`,
     `Sintese de busca ativa: ${report.activeSearchSummary}`,
     `Sintese pedagogica: ${report.pedagogicalSummary}`,
     `Temas inesperados: ${formatCountList(report.unexpectedTopics)}`,
@@ -125,6 +131,9 @@ export function buildMonthlyReportMarkdown(report: MonthlyReportData) {
     "",
     "## Temas mais recorrentes",
     formatBulletList(report.topThemes),
+    "",
+    "## Ocupação / atividade principal (agregado)",
+    formatBulletList(report.occupationCounts),
     "",
     "## Sintese de busca ativa",
     report.activeSearchSummary,
@@ -169,6 +178,7 @@ export function buildMonthlyReportCsv(report: MonthlyReportData) {
     "municipio_referencia_entrevistado",
     "bairro_referencia_entrevistado",
     "vinculo_territorio"
+    ,"ocupacao_atividade_principal"
   ];
 
   const rows = report.records.map((record) => [
@@ -185,7 +195,8 @@ export function buildMonthlyReportCsv(report: MonthlyReportData) {
     sanitizeCsv(record.team_summary ?? ""),
     record.respondent_city ?? "",
     (record as RecordWithRelations).respondent_neighborhoods?.name ?? "",
-    record.respondent_territory_relation ? getRespondentTerritoryRelationLabel(record.respondent_territory_relation) : ""
+    record.respondent_territory_relation ? getRespondentTerritoryRelationLabel(record.respondent_territory_relation) : "",
+    record.respondent_occupation ?? ""
   ]);
 
   return [headers.join(","), ...rows.map((row) => row.map(escapeCsv).join(","))].join("\n");

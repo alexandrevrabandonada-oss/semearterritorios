@@ -15,6 +15,7 @@ import type {
   Theme
 } from "@/lib/database.types";
 import { respondentTerritoryRelationOptions, reviewStatusOptions, sourceTypeOptions } from "@/lib/listening-records";
+import { hasPossibleSensitiveOccupation } from "@/lib/action-pilot";
 import { formatNeighborhoodOption, getOfficialNeighborhoodsForSelect } from "@/lib/neighborhoods";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
@@ -38,6 +39,7 @@ type FormValues = {
   respondent_city: string;
   respondent_neighborhood_id: string;
   respondent_territory_relation: string;
+  respondent_occupation: string;
 };
 
 const defaultValues: FormValues = {
@@ -57,7 +59,8 @@ const defaultValues: FormValues = {
   theme_ids: [],
   respondent_city: "Volta Redonda",
   respondent_neighborhood_id: "",
-  respondent_territory_relation: ""
+  respondent_territory_relation: "",
+  respondent_occupation: ""
 };
 
 type Props = {
@@ -141,7 +144,8 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
           theme_ids: (themesLinkResult.data ?? []).map((item) => item.theme_id),
           respondent_city: record.respondent_city ?? "Volta Redonda",
           respondent_neighborhood_id: record.respondent_neighborhood_id ?? "",
-          respondent_territory_relation: record.respondent_territory_relation ?? ""
+          respondent_territory_relation: record.respondent_territory_relation ?? "",
+          respondent_occupation: record.respondent_occupation ?? ""
         });
       }
 
@@ -224,7 +228,8 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
       created_by: user.id,
       respondent_city: values.respondent_city.trim() || null,
       respondent_neighborhood_id: (values.respondent_city.trim() === "Volta Redonda" && values.respondent_neighborhood_id) ? values.respondent_neighborhood_id : null,
-      respondent_territory_relation: (values.respondent_territory_relation as RespondentTerritoryRelation) || null
+      respondent_territory_relation: (values.respondent_territory_relation as RespondentTerritoryRelation) || null,
+      respondent_occupation: values.respondent_occupation.trim() || null
     };
 
     const recordResult =
@@ -375,6 +380,21 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
               </select>
             </label>
           </div>
+          <label className="mt-4 block">
+            <span className="text-sm font-semibold text-semear-green">Ocupação / atividade principal <span className="text-xs font-medium text-stone-500">(opcional)</span></span>
+            <input
+              className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
+              placeholder="Ex.: aposentada, estudante, comerciante, trabalhador da indústria"
+              value={values.respondent_occupation}
+              onChange={(e) => updateField("respondent_occupation", e.target.value)}
+            />
+            <p className="mt-2 text-xs leading-5 text-stone-600">Campo opcional. Não registre nome da empresa, escola, setor específico ou local de trabalho.</p>
+          </label>
+          {hasPossibleSensitiveOccupation(values.respondent_occupation) ? (
+            <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
+              Verifique se a ocupação não identifica a pessoa. Prefira descrição geral.
+            </p>
+          ) : null}
         </div>
 
         <div className="mt-8 rounded-[1.5rem] border border-dashed border-semear-green/25 bg-semear-offwhite p-5">

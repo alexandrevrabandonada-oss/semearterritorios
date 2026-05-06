@@ -114,6 +114,8 @@ export type ListeningRecord = TimestampedRow &
     respondent_neighborhood_id: string | null;
     /** Vínculo do entrevistado com o território de referência (Tijolo 039). */
     respondent_territory_relation: RespondentTerritoryRelation | null;
+    /** Ocupação/atividade principal informada de forma agregada (Tijolo 041). */
+    respondent_occupation: string | null;
   };
 
 export type Theme = TimestampedRow &

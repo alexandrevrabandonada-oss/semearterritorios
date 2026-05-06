@@ -175,6 +175,15 @@ export default function AjudaPage() {
               <p>Se aparecer alerta de possível dado sensível, revise antes de aprovar devolutiva ou fechar dossiê.</p>
             </div>
           </Panel>
+
+          <Panel icon={<ClipboardList className="h-5 w-5" />} title="Ocupação / atividade principal">
+            <div className="space-y-3 text-sm leading-6 text-stone-700">
+              <p>Campo opcional para entender a diversidade das pessoas escutadas por perfil ocupacional.</p>
+              <p>Registre de forma geral: estudante, aposentado(a), autônomo(a), comerciante, trabalhador(a) da indústria, trabalho doméstico/cuidados, etc.</p>
+              <p>Não registre nome da empresa, escola, setor específico, local de trabalho ou qualquer dado que identifique a pessoa.</p>
+              <p>Ocupações raras ou muito específicas devem ser revisadas antes de entrar em devolutiva pública.</p>
+            </div>
+          </Panel>
         </div>
 
         <Panel className="mt-6" icon={<MapPinned className="h-5 w-5" />} title="Território da ação × território de referência do entrevistado">

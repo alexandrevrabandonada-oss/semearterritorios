@@ -7,7 +7,7 @@ import { AlertTriangle, ClipboardList, FileText, FolderCheck, MapPinned, Message
 import { PostActionDecisionPanel } from "@/components/post-action/post-action-decision-panel";
 import { InternalMapReadinessPanel } from "@/components/territories/internal-map-readiness-panel";
 import { MapGoNoGoPanel } from "@/components/territories/map-go-no-go-panel";
-import { getActionPilotMetrics, type ActionForPilot } from "@/lib/action-pilot";
+import { getActionPilotMetrics, summarizeOccupations, type ActionForPilot } from "@/lib/action-pilot";
 import { getActionStatusLabel, getActionTypeLabel } from "@/lib/actions";
 import { getClosureStatusLabel } from "@/lib/action-closures";
 import { getRespondentTerritoryRelationLabel } from "@/lib/listening-records";
@@ -93,6 +93,7 @@ Recomendação da ação: ${territorialRecommendation}
   const reviewedPercent = metrics.total > 0 ? Math.round((metrics.reviewed / metrics.total) * 100) : 0;
   const territoryCount = new Set(actionRecords.map((record) => record.neighborhood_id).filter(Boolean)).size;
   const diagnostics = getDiagnostics(metrics, debrief, closure);
+  const occupationSummary = summarizeOccupations(actionRecords as Array<TerritorialReviewRecord & { listening_record_themes?: Array<{ themes: { name: string } | null }> }>);
 
   return (
     <section className="pb-10">
@@ -211,6 +212,32 @@ Recomendação da ação: ${territorialRecommendation}
               </section>
             );
           })()}
+
+          <section className="mt-6 rounded-[2rem] border border-white/80 bg-white p-6 shadow-soft">
+            <h3 className="font-semibold text-semear-green">Escutas por ocupação / atividade principal</h3>
+            <p className="mt-2 text-xs leading-5 text-stone-500">
+              Leitura agregada para apoiar análise territorial. Ocupações com baixa frequência ou com risco de identificação aparecem agrupadas para proteção.
+            </p>
+            <div className="mt-4 space-y-3">
+              {occupationSummary.groups.length > 0 ? occupationSummary.groups.map((group) => (
+                <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4" key={group.label}>
+                  <p className="text-sm font-semibold text-semear-green">{group.label} ({group.count})</p>
+                  <p className="mt-1 text-xs text-stone-600">Temas recorrentes: {group.topThemes.length > 0 ? group.topThemes.join(", ") : "não registrado"}</p>
+                </div>
+              )) : (
+                <p className="text-sm text-stone-600">Não há ocupações com frequência suficiente para exibição individual segura.</p>
+              )}
+            </div>
+            {occupationSummary.lowFrequencyOrRiskyCount > 0 ? (
+              <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+                {occupationSummary.lowFrequencyOrRiskyCount} escuta(s) foram agregadas como &quot;outras ocupações&quot; por baixa frequência ou risco de identificação.
+              </p>
+            ) : null}
+            {occupationSummary.riskyCount > 0 ? (
+              <p className="mt-2 text-xs text-stone-500">{occupationSummary.riskyCount} escuta(s) têm ocupação com possível detalhamento identificável e devem ser revisadas antes de uso público.</p>
+            ) : null}
+            <p className="mt-2 text-xs text-stone-500">{occupationSummary.withoutOccupation} escuta(s) sem ocupação informada.</p>
+          </section>
 
           <section className="mt-6 rounded-[2rem] border border-white/80 bg-white p-6 shadow-soft">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
