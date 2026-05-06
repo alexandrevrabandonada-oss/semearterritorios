@@ -9,7 +9,16 @@ import { ActionReadinessPanel } from "@/components/actions/action-readiness-pane
 import { ActionSynthesis } from "@/components/actions/action-synthesis";
 import { getActionPilotMetrics, type ListeningRecordForPilot } from "@/lib/action-pilot";
 import { getClosureStatusLabel } from "@/lib/action-closures";
-import type { Action, ActionClosure, ActionDebrief, ActionStatus, ActionType, Neighborhood } from "@/lib/database.types";
+import type {
+  Action,
+  ActionClosure,
+  ActionDebrief,
+  ActionStatus,
+  ActionTeamMember,
+  ActionType,
+  Neighborhood,
+  TeamMember
+} from "@/lib/database.types";
 import { getActionStatusLabel, getActionTypeLabel } from "@/lib/actions";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
@@ -21,10 +30,15 @@ type ActionDetailProps = {
   actionId: string;
 };
 
+type ParticipantWithTeamMember = ActionTeamMember & {
+  team_members: Pick<TeamMember, "id" | "display_name" | "role_label"> | null;
+};
+
 export function ActionDetail({ actionId }: ActionDetailProps) {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const [action, setAction] = useState<ActionWithNeighborhood | null>(null);
   const [records, setRecords] = useState<ListeningRecordForPilot[]>([]);
+  const [participants, setParticipants] = useState<ParticipantWithTeamMember[]>([]);
   const [debrief, setDebrief] = useState<ActionDebrief | null>(null);
   const [closure, setClosure] = useState<ActionClosure | null>(null);
   const [editing, setEditing] = useState(false);
@@ -42,7 +56,7 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
       }
 
       setLoading(true);
-      const [result, recordsResult, debriefResult, closureResult] = await Promise.all([
+      const [result, recordsResult, participantsResult, debriefResult, closureResult] = await Promise.all([
         supabase
           .from("actions")
           .select("*, neighborhoods:neighborhood_id(id, name)")
@@ -52,6 +66,11 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
           .from("listening_records")
           .select("*, listening_record_themes(themes:theme_id(id, name))")
           .eq("action_id", actionId),
+        supabase
+          .from("action_team_members")
+          .select("*, team_members:team_member_id(id, display_name, role_label)")
+          .eq("action_id", actionId)
+          .order("created_at", { ascending: true }),
         supabase.from("action_debriefs").select("*").eq("action_id", actionId).maybeSingle(),
         supabase.from("action_closures").select("*").eq("action_id", actionId).maybeSingle()
       ]);
@@ -60,14 +79,22 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
         return;
       }
 
-      if (result.error || recordsResult.error || debriefResult.error || closureResult.error) {
-        setError(result.error?.message ?? recordsResult.error?.message ?? debriefResult.error?.message ?? closureResult.error?.message ?? "Erro ao carregar ação.");
+      if (result.error || recordsResult.error || participantsResult.error || debriefResult.error || closureResult.error) {
+        setError(
+          result.error?.message ??
+            recordsResult.error?.message ??
+            participantsResult.error?.message ??
+            debriefResult.error?.message ??
+            closureResult.error?.message ??
+            "Erro ao carregar ação."
+        );
         setLoading(false);
         return;
       }
 
       setAction(result.data as ActionWithNeighborhood);
       setRecords((recordsResult.data ?? []) as ListeningRecordForPilot[]);
+      setParticipants((participantsResult.data ?? []) as ParticipantWithTeamMember[]);
       setDebrief(debriefResult.data as ActionDebrief | null);
       setClosure(closureResult.data as ActionClosure | null);
       setLoading(false);
@@ -186,6 +213,35 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
           <TextBlock title="Objetivo" value={action.objective} />
           <TextBlock title="Resumo" value={action.summary} />
           <TextBlock title="Observações" value={action.notes} />
+          <section className="rounded-2xl border border-semear-gray bg-white p-5">
+            <h3 className="font-semibold text-semear-green">Participantes da ação</h3>
+            {participants.length > 0 ? (
+              <ul className="mt-3 space-y-3">
+                {participants.map((participant) => (
+                  <li className="rounded-xl border border-semear-gray bg-semear-offwhite p-3" key={participant.id}>
+                    <p className="text-sm font-semibold text-semear-green">
+                      {participant.team_members?.display_name ?? "Membro não encontrado"}
+                    </p>
+                    <p className="mt-1 text-xs text-stone-600">
+                      {participant.team_members?.role_label ?? "Função não informada"}
+                    </p>
+                    <p className="mt-2 text-xs text-stone-600">
+                      {participant.responsibility ? `Responsabilidade: ${participant.responsibility}` : "Responsabilidade não informada."}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 text-sm leading-6 text-stone-600">
+                Nenhum participante padronizado foi vinculado. Use o campo legado de equipe apenas como observação.
+              </p>
+            )}
+            {action.team ? (
+              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+                Registro legado de equipe: {action.team}
+              </div>
+            ) : null}
+          </section>
           <div className="rounded-2xl border border-dashed border-semear-green/25 bg-semear-offwhite p-5">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-semear-earth">

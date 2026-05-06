@@ -148,6 +148,7 @@ export default function AjudaPage() {
         <div className="mt-6 grid gap-4 md:grid-cols-3">
           <QuickLink href="/escutas/lote" icon={<Keyboard className="h-5 w-5" />} title="Digitar fichas" text="Modo lote para cadastrar fichas da banca como rascunho." />
           <QuickLink href="/acoes" icon={<ClipboardList className="h-5 w-5" />} title="Ações" text="Cadastrar ação, abrir piloto, devolutiva e dossiê." />
+          <QuickLink href="/equipe" icon={<UsersRound className="h-5 w-5" />} title="Equipe" text="Cadastrar membros operacionais, entrevistadores e participantes." />
           <QuickLink href="/pos-banca" icon={<FileText className="h-5 w-5" />} title="Pós-banca" text="Consolidar resultados, ver decisão e copiar relatório pós-banca." />
           <QuickLink href="/relatorios" icon={<FileText className="h-5 w-5" />} title="Relatórios" text="Conferir leitura mensal e alertas de dossiê." />
           <QuickLink href="/territorios/lugares" icon={<MapPinned className="h-5 w-5" />} title="Normalizar lugares" text="Padronizar lugares citados e marcar visibilidade antes do mapa." />
@@ -155,6 +156,7 @@ export default function AjudaPage() {
           <QuickLink href="/escutas/revisao-territorial" icon={<MapPinned className="h-5 w-5" />} title="Revisão territorial" text="Revisar lugares livres, estruturados e status territorial por escuta." />
           <QuickLink href="/territorios/normalizacao/qualidade" icon={<ShieldCheck className="h-5 w-5" />} title="Qualidade da normalização" text="Detectar duplicidades, ambiguidade e sensíveis antes do mapa." />
           <QuickLink href="/mapa/interno" icon={<MapPinned className="h-5 w-5" />} title="Portão do mapa" text="Verificar se o protótipo interno está liberado pela homologação persistente." />
+          <QuickLink href="/transparencia/snapshots" icon={<ShieldCheck className="h-5 w-5" />} title="Transparência Viva" text="Gerar snapshots agregados para futura camada pública." />
         </div>
 
         <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_0.9fr]">
@@ -182,6 +184,16 @@ export default function AjudaPage() {
               <p>Registre de forma geral: estudante, aposentado(a), autônomo(a), comerciante, trabalhador(a) da indústria, trabalho doméstico/cuidados, etc.</p>
               <p>Não registre nome da empresa, escola, setor específico, local de trabalho ou qualquer dado que identifique a pessoa.</p>
               <p>Ocupações raras ou muito específicas devem ser revisadas antes de entrar em devolutiva pública.</p>
+            </div>
+          </Panel>
+
+          <Panel icon={<UsersRound className="h-5 w-5" />} title="Equipe, entrevistadores e participantes">
+            <div className="space-y-3 text-sm leading-6 text-stone-700">
+              <p><strong>Cadastro operacional ≠ acesso ao sistema.</strong> O módulo Equipe (<code>/equipe</code>) registra quem participa de ações e escutas — mas não concede login. Acesso é controlado por <em>profiles</em> e pelo fluxo de liberação de usuário Google.</p>
+              <p>Uma pessoa pode ter cadastro operacional (<em>team_members</em>) sem nunca fazer login, e vice-versa. Os dois cadastros são independentes.</p>
+              <p>Em escutas, selecione o entrevistador no cadastro da equipe para padronizar nomes nos relatórios internos. O campo de texto livre (<em>interviewer_name</em>) permanece como fallback para registros legados.</p>
+              <p>Em ações, vincule os participantes e informe a responsabilidade de cada pessoa para melhorar a rastreabilidade do dossiê.</p>
+              <p>Para devolutiva pública, nunca exponha nomes individuais, e-mails ou responsabilidades. Use linguagem agregada como &quot;Equipe SEMEAR&quot;.</p>
             </div>
           </Panel>
         </div>
@@ -238,6 +250,32 @@ export default function AjudaPage() {
           <p className="text-sm leading-6 text-stone-700">
             A versão oficial nasce de dados digitados e revisados pela equipe. A devolutiva e o dossiê são determinísticos, revisáveis e não usam IA como fonte oficial.
           </p>
+        </Panel>
+
+        <Panel className="mt-6" icon={<ShieldCheck className="h-5 w-5" />} title="Transparência Viva">
+          <div className="space-y-3 text-sm leading-6 text-stone-700">
+            <p>O público só pode ver snapshots aprovados e publicados. A página pública futura nunca deve ler escutas brutas diretamente.</p>
+            <p>Dados brutos, fala original, entrevistadores, e-mails, CPF, telefone, endereço, rua, número, CEP e dado de saúde individual ficam internos.</p>
+            <p>Devolutiva pública precisa ser revisada e aprovada antes de entrar em snapshot. O mapa público só pode ser agregado por território, sem ponto individual.</p>
+            <p>Transparência não substitui cuidado com privacidade: recortes pequenos devem aparecer como dados insuficientes, e ocupações raras devem ser agrupadas.</p>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link className="inline-flex min-h-11 items-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/transparencia/snapshots">Abrir snapshots</Link>
+            <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/transparencia/preview">Preview interno</Link>
+          </div>
+        </Panel>
+
+        <Panel className="mt-6" icon={<ShieldCheck className="h-5 w-5" />} title="Revisão de transparência pública">
+          <div className="space-y-3 text-sm leading-6 text-stone-700">
+            <p>Snapshot nasce como rascunho. O público só vê `published`; antes disso, a peça é interna, editável e sujeita a revisão editorial.</p>
+            <p>Antes de publicar, é obrigatório revisar o checklist de privacidade, conferir riscos no texto e validar a regra de amostra mínima por território.</p>
+            <p>Snapshot público não substitui relatório interno, dossiê ou devolutiva operacional. Transparência Viva é devolutiva segura, não abertura do banco bruto.</p>
+            <p>Se um snapshot publicado for editado, ele volta para revisão e precisa de nova validação antes de reaparecer como publicado.</p>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link className="inline-flex min-h-11 items-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/transparencia/snapshots">Lista de snapshots</Link>
+            <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/transparencia/preview">Abrir preview</Link>
+          </div>
         </Panel>
 
         <Panel className="mt-6" icon={<ClipboardList className="h-5 w-5" />} title="Antes de avançar">

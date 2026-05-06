@@ -8,7 +8,9 @@ import {
   Map,
   MapPinned,
   MessageSquareText,
-  Tag
+  ShieldCheck,
+  Tag,
+  UsersRound
 } from "lucide-react";
 import type { ComponentType } from "react";
 
@@ -36,9 +38,11 @@ export type EmptyModule = {
 export const navigationItems: NavigationItem[] = [
   { label: "Dashboard", href: "/", icon: Home },
   { label: "Ações", href: "/acoes", icon: ClipboardList },
+  { label: "Equipe", href: "/equipe", icon: UsersRound },
   { label: "Escutas", href: "/escutas", icon: MessageSquareText },
   { label: "Territórios", href: "/territorios", icon: MapPinned },
   { label: "Mapa", href: "/mapa", icon: Map },
+  { label: "Transparência", href: "/transparencia/snapshots", icon: ShieldCheck },
   { label: "Relatórios", href: "/relatorios", icon: FileText },
   { label: "Pós-banca", href: "/pos-banca", icon: Lightbulb },
   { label: "Ajuda", href: "/ajuda", icon: HelpCircle }

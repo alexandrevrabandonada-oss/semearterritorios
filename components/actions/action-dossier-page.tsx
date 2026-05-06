@@ -14,7 +14,15 @@ import {
 } from "@/lib/action-closures";
 import { getActionPilotMetrics, getActionReadiness, summarizeOccupations, type ActionForPilot, type ListeningRecordForPilot } from "@/lib/action-pilot";
 import { getActionStatusLabel, getActionTypeLabel } from "@/lib/actions";
-import type { ActionClosure, ActionDebrief, ClosureStatus, Json, Profile } from "@/lib/database.types";
+import type {
+  ActionClosure,
+  ActionDebrief,
+  ActionTeamMember,
+  ClosureStatus,
+  Json,
+  Profile,
+  TeamMember
+} from "@/lib/database.types";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type Props = {
@@ -44,6 +52,7 @@ export function ActionDossierPage({ actionId }: Props) {
   const [action, setAction] = useState<ActionForPilot | null>(null);
   const [records, setRecords] = useState<ListeningRecordForPilot[]>([]);
   const [debrief, setDebrief] = useState<ActionDebrief | null>(null);
+  const [participants, setParticipants] = useState<(ActionTeamMember & { team_members: Pick<TeamMember, "id" | "display_name" | "role_label"> | null })[]>([]);
   const [closure, setClosure] = useState<ActionClosure | null>(null);
   const [profile, setProfile] = useState<Pick<Profile, "id" | "role"> | null>(null);
   const [form, setForm] = useState<ClosureForm>(emptyForm);
@@ -64,17 +73,30 @@ export function ActionDossierPage({ actionId }: Props) {
 
       const userResult = await supabase.auth.getUser();
       const userId = userResult.data.user?.id;
-      const [actionResult, recordsResult, debriefResult, closureResult, profileResult] = await Promise.all([
+      const [actionResult, recordsResult, participantsResult, debriefResult, closureResult, profileResult] = await Promise.all([
         supabase.from("actions").select("*, neighborhoods:neighborhood_id(id, name)").eq("id", actionId).single(),
         supabase.from("listening_records").select("*, listening_record_themes(themes:theme_id(id, name))").eq("action_id", actionId).order("created_at", { ascending: true }),
+        supabase
+          .from("action_team_members")
+          .select("*, team_members:team_member_id(id, display_name, role_label)")
+          .eq("action_id", actionId)
+          .order("created_at", { ascending: true }),
         supabase.from("action_debriefs").select("*").eq("action_id", actionId).maybeSingle(),
         supabase.from("action_closures").select("*").eq("action_id", actionId).maybeSingle(),
         userId ? supabase.from("profiles").select("id, role").eq("id", userId).maybeSingle() : Promise.resolve({ data: null, error: null })
       ]);
 
       if (ignore) return;
-      if (actionResult.error || recordsResult.error || debriefResult.error || closureResult.error || profileResult.error) {
-        setError(actionResult.error?.message ?? recordsResult.error?.message ?? debriefResult.error?.message ?? closureResult.error?.message ?? profileResult.error?.message ?? "Erro ao carregar dossiê.");
+      if (actionResult.error || recordsResult.error || participantsResult.error || debriefResult.error || closureResult.error || profileResult.error) {
+        setError(
+          actionResult.error?.message ??
+            recordsResult.error?.message ??
+            participantsResult.error?.message ??
+            debriefResult.error?.message ??
+            closureResult.error?.message ??
+            profileResult.error?.message ??
+            "Erro ao carregar dossiê."
+        );
         setLoading(false);
         return;
       }
@@ -82,6 +104,7 @@ export function ActionDossierPage({ actionId }: Props) {
       const loadedClosure = closureResult.data as ActionClosure | null;
       setAction(actionResult.data as ActionForPilot);
       setRecords((recordsResult.data ?? []) as ListeningRecordForPilot[]);
+      setParticipants((participantsResult.data ?? []) as (ActionTeamMember & { team_members: Pick<TeamMember, "id" | "display_name" | "role_label"> | null })[]);
       setDebrief(debriefResult.data as ActionDebrief | null);
       setClosure(loadedClosure);
       setProfile(profileResult.data as Pick<Profile, "id" | "role"> | null);
@@ -103,6 +126,18 @@ export function ActionDossierPage({ actionId }: Props) {
       ignore = true;
     };
   }, [actionId, supabase]);
+
+  const interviewerCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    records.forEach((record) => {
+      const normalized = record.interviewer_name.trim();
+      if (!normalized) return;
+      counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
+    });
+    return Array.from(counts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "pt-BR"));
+  }, [records]);
 
   if (loading) return <StateBox>Carregando dossiê da ação...</StateBox>;
   if (error || !action) return <StateBox tone="error">{error ?? "Ação não encontrada."}</StateBox>;
@@ -311,6 +346,31 @@ export function ActionDossierPage({ actionId }: Props) {
             <Mini title="Ocupações (agregado)" items={occupationSummary.groups.map((item) => `${item.label} (${item.count})`)} />
             <Mini title="Escutas sem ocupação informada" items={[occupationSummary.withoutOccupation.toString()]} />
             <Mini title="Observações inesperadas" items={metrics.unexpected} />
+          </Panel>
+
+          <Panel title="Equipe e entrevistadores" icon={<FolderCheck className="h-5 w-5" />}>
+            <Mini
+              title="Participantes da ação"
+              items={
+                participants.length > 0
+                  ? participants.map((participant) => {
+                      const name = participant.team_members?.display_name ?? "Membro não encontrado";
+                      const role = participant.team_members?.role_label ?? "Sem função";
+                      const responsibility = participant.responsibility ? ` · ${participant.responsibility}` : "";
+                      return `${name} (${role})${responsibility}`;
+                    })
+                  : ["Sem participantes vinculados em cadastro padronizado."]
+              }
+            />
+            <Mini
+              title="Escutas por entrevistador"
+              items={
+                interviewerCounts.length > 0
+                  ? interviewerCounts.map((item) => `${item.name} (${item.count})`)
+                  : ["Sem escutas registradas."]
+              }
+            />
+            {loadedAction.team ? <Mini title="Registro legado de equipe" items={[loadedAction.team]} /> : null}
           </Panel>
 
           <Panel title="Decisão da coordenação e notas" icon={<CheckCircle2 className="h-5 w-5" />}>

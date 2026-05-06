@@ -23,6 +23,7 @@ export type InternalMapHomologationDecision =
   | "go_desenho_tecnico"
   | "go_prototipo_interno"
   | "manter_mapa_lista";
+export type PublicTransparencySnapshotStatus = "draft" | "reviewed" | "approved" | "published" | "archived";
 
 export type NeighborhoodStatus = "oficial" | "provisorio" | "revisar" | "nao_usar";
 export type NeighborhoodSector = "SCN" | "SO" | "SN" | "SL" | "SS" | "SCS" | "SSO";
@@ -82,6 +83,27 @@ export type Action = TimestampedRow &
     notes: string | null;
   };
 
+export type TeamMember = TimestampedRow &
+  CreatedByRow & {
+    id: string;
+    profile_id: string | null;
+    display_name: string;
+    email: string | null;
+    role_label: string | null;
+    active: boolean;
+    can_interview: boolean;
+    can_join_actions: boolean;
+    notes: string | null;
+  };
+
+export type ActionTeamMember = TimestampedRow &
+  CreatedByRow & {
+    id: string;
+    action_id: string;
+    team_member_id: string;
+    responsibility: string | null;
+  };
+
 /** Vínculo do entrevistado com o território de referência (Tijolo 039). */
 export type RespondentTerritoryRelation =
   | "mora"
@@ -116,6 +138,8 @@ export type ListeningRecord = TimestampedRow &
     respondent_territory_relation: RespondentTerritoryRelation | null;
     /** Ocupação/atividade principal informada de forma agregada (Tijolo 041). */
     respondent_occupation: string | null;
+    /** Entrevistador padronizado por membro da equipe (Tijolo 042). */
+    interviewer_team_member_id: string | null;
   };
 
 export type Theme = TimestampedRow &
@@ -228,6 +252,38 @@ export type InternalMapHomologation = TimestampedRow &
     rejected_at: string | null;
   };
 
+export type PublicTransparencySnapshot = TimestampedRow &
+  CreatedByRow & {
+    id: string;
+    title: string;
+    period_start: string | null;
+    period_end: string | null;
+    status: PublicTransparencySnapshotStatus;
+    public_summary: string | null;
+    generated_summary: string | null;
+    edited_summary: string | null;
+    methodology_notes: string | null;
+    opening_text: string | null;
+    listening_text: string | null;
+    limits_text: string | null;
+    next_steps_text: string | null;
+    totals: Json;
+    territory_summary: Json;
+    theme_summary: Json;
+    word_summary: Json;
+    action_timeline: Json;
+    debrief_links: Json;
+    review_checklist: Json;
+    privacy_notes: string | null;
+    approved_by: string | null;
+    approved_at: string | null;
+    published_at: string | null;
+    last_reviewed_by: string | null;
+    last_reviewed_at: string | null;
+    last_edited_by: string | null;
+    last_edited_at: string | null;
+  };
+
 export type Database = {
   public: {
     Tables: {
@@ -267,6 +323,43 @@ export type Database = {
           }
         ];
       };
+      team_members: {
+        Row: TeamMember;
+        Insert: Omit<TeamMember, "id" | "created_at" | "updated_at" | "active" | "can_interview" | "can_join_actions"> & {
+          id?: string;
+          active?: boolean;
+          can_interview?: boolean;
+          can_join_actions?: boolean;
+        };
+        Update: Partial<Omit<TeamMember, "id" | "created_at" | "updated_at">>;
+        Relationships: [
+          {
+            foreignKeyName: "team_members_profile_id_fkey";
+            columns: ["profile_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      action_team_members: {
+        Row: ActionTeamMember;
+        Insert: Omit<ActionTeamMember, "id" | "created_at" | "updated_at"> & { id?: string };
+        Update: Partial<Omit<ActionTeamMember, "id" | "created_at" | "updated_at">>;
+        Relationships: [
+          {
+            foreignKeyName: "action_team_members_action_id_fkey";
+            columns: ["action_id"];
+            referencedRelation: "actions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "action_team_members_team_member_id_fkey";
+            columns: ["team_member_id"];
+            referencedRelation: "team_members";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       listening_records: {
         Row: ListeningRecord;
         Insert: Omit<
@@ -297,6 +390,12 @@ export type Database = {
             foreignKeyName: "listening_records_respondent_neighborhood_id_fkey";
             columns: ["respondent_neighborhood_id"];
             referencedRelation: "neighborhoods";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "listening_records_interviewer_team_member_id_fkey";
+            columns: ["interviewer_team_member_id"];
+            referencedRelation: "team_members";
             referencedColumns: ["id"];
           }
         ];
@@ -439,6 +538,42 @@ export type Database = {
           {
             foreignKeyName: "internal_map_homologations_rejected_by_fkey";
             columns: ["rejected_by"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      public_transparency_snapshots: {
+        Row: PublicTransparencySnapshot;
+        Insert: Partial<Omit<PublicTransparencySnapshot, "created_at" | "updated_at">> & {
+          title: string;
+          id?: string;
+          status?: PublicTransparencySnapshotStatus;
+          totals?: Json;
+          territory_summary?: Json;
+          theme_summary?: Json;
+          word_summary?: Json;
+          action_timeline?: Json;
+          debrief_links?: Json;
+          review_checklist?: Json;
+        };
+        Update: Partial<Omit<PublicTransparencySnapshot, "id" | "created_at" | "updated_at">>;
+        Relationships: [
+          {
+            foreignKeyName: "public_transparency_snapshots_approved_by_fkey";
+            columns: ["approved_by"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "public_transparency_snapshots_last_reviewed_by_fkey";
+            columns: ["last_reviewed_by"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "public_transparency_snapshots_last_edited_by_fkey";
+            columns: ["last_edited_by"];
             referencedRelation: "profiles";
             referencedColumns: ["id"];
           }

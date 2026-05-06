@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CalendarDays, MapPinned, MessageSquareText, Plus, Search, SlidersHorizontal } from "lucide-react";
-import type { Action, ListeningRecord, Neighborhood, ReviewStatus, Theme } from "@/lib/database.types";
+import type { Action, ListeningRecord, Neighborhood, TeamMember, Theme } from "@/lib/database.types";
 import { getReviewStatusLabel, getRespondentTerritoryRelationLabel, getSourceTypeLabel, reviewStatusOptions } from "@/lib/listening-records";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { hasNoWordsUsed, hasPossibleSensitiveData, isVeryShortSpeech } from "@/lib/action-pilot";
@@ -13,6 +13,7 @@ type RecordWithRelations = ListeningRecord & {
   actions: Pick<Action, "id" | "title"> | null;
   neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
   respondent_neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
+  interviewer_team_member: Pick<TeamMember, "id" | "display_name"> | null;
   listening_record_themes: Array<{ themes: Pick<Theme, "id" | "name"> | null }>;
 };
 
@@ -26,6 +27,7 @@ type Filters = {
   respondentNeighborhoodId: string;
   respondentCity: string;
   respondentRelation: string;
+  interviewerTeamMemberId: string;
   occupation: string;
   occupationSearch: string;
 };
@@ -40,6 +42,7 @@ const initialFilters: Filters = {
   respondentNeighborhoodId: "",
   respondentCity: "",
   respondentRelation: "",
+  interviewerTeamMemberId: "",
   occupation: "",
   occupationSearch: ""
 };
@@ -50,6 +53,7 @@ export function ListeningRecordsList() {
   const [actions, setActions] = useState<Action[]>([]);
   const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
   const [themes, setThemes] = useState<Theme[]>([]);
+  const [interviewers, setInterviewers] = useState<TeamMember[]>([]);
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,20 +68,28 @@ export function ListeningRecordsList() {
         return;
       }
 
-      const [recordsResult, actionsResult, neighborhoodsResult, themesResult] = await Promise.all([
+      const [recordsResult, actionsResult, neighborhoodsResult, themesResult, interviewersResult] = await Promise.all([
         supabase
           .from("listening_records")
-          .select("*, actions:action_id(id, title), neighborhoods:neighborhood_id(id, name), respondent_neighborhoods:respondent_neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name))")
+          .select("*, actions:action_id(id, title), neighborhoods:neighborhood_id(id, name), respondent_neighborhoods:respondent_neighborhood_id(id, name), interviewer_team_member:interviewer_team_member_id(id, display_name), listening_record_themes(themes:theme_id(id, name))")
           .order("date", { ascending: false }),
         supabase.from("actions").select("*").order("action_date", { ascending: false }),
         supabase.from("neighborhoods").select("*").eq("status", "oficial").order("sector", { ascending: true }).order("name", { ascending: true }),
-        supabase.from("themes").select("*").eq("is_active", true).order("name", { ascending: true })
+        supabase.from("themes").select("*").eq("is_active", true).order("name", { ascending: true }),
+        supabase.from("team_members").select("*").eq("active", true).eq("can_interview", true).order("display_name", { ascending: true })
       ]);
 
       if (ignore) return;
 
-      if (recordsResult.error || actionsResult.error || neighborhoodsResult.error || themesResult.error) {
-        setError(recordsResult.error?.message ?? actionsResult.error?.message ?? neighborhoodsResult.error?.message ?? themesResult.error?.message ?? "Erro ao carregar escutas.");
+      if (recordsResult.error || actionsResult.error || neighborhoodsResult.error || themesResult.error || interviewersResult.error) {
+        setError(
+          recordsResult.error?.message ??
+            actionsResult.error?.message ??
+            neighborhoodsResult.error?.message ??
+            themesResult.error?.message ??
+            interviewersResult.error?.message ??
+            "Erro ao carregar escutas."
+        );
         setLoading(false);
         return;
       }
@@ -86,6 +98,7 @@ export function ListeningRecordsList() {
       setActions(actionsResult.data ?? []);
       setNeighborhoods(getOfficialNeighborhoodsForSelect(neighborhoodsResult.data ?? []));
       setThemes(themesResult.data ?? []);
+      setInterviewers((interviewersResult.data ?? []) as TeamMember[]);
       const params = new URLSearchParams(window.location.search);
       setFilters((current) => ({
         ...current,
@@ -110,6 +123,7 @@ export function ListeningRecordsList() {
     if (filters.respondentNeighborhoodId && record.respondent_neighborhood_id !== filters.respondentNeighborhoodId) return false;
     if (filters.respondentCity && record.respondent_city !== filters.respondentCity) return false;
     if (filters.respondentRelation && record.respondent_territory_relation !== filters.respondentRelation) return false;
+    if (filters.interviewerTeamMemberId && record.interviewer_team_member_id !== filters.interviewerTeamMemberId) return false;
     if (filters.occupation && (record.respondent_occupation ?? "") !== filters.occupation) return false;
     if (filters.occupationSearch && !(record.respondent_occupation ?? "").toLowerCase().includes(filters.occupationSearch.toLowerCase())) return false;
     if (filters.quality === "no_theme" && record.listening_record_themes.length > 0) return false;
@@ -205,6 +219,10 @@ export function ListeningRecordsList() {
             <option value="fala_sobre">Fala sobre</option>
             <option value="nao_informado">Não informado</option>
           </FilterSelect>
+          <FilterSelect label="Entrevistador" value={filters.interviewerTeamMemberId} onChange={(value) => updateFilter("interviewerTeamMemberId", value)}>
+            <option value="">Todos</option>
+            {interviewers.map((item) => <option key={item.id} value={item.id}>{item.display_name}</option>)}
+          </FilterSelect>
           <FilterSelect label="Ocupação" value={filters.occupation} onChange={(value) => updateFilter("occupation", value)}>
             <option value="">Todas</option>
             {occupationOptions.map((item) => <option key={item} value={item}>{item}</option>)}
@@ -234,6 +252,7 @@ export function ListeningRecordsList() {
             <div className="mt-4 flex flex-wrap gap-3 text-sm text-stone-600">
               <span className="inline-flex items-center gap-2"><CalendarDays className="h-4 w-4" aria-hidden="true" />{new Date(`${record.date}T00:00:00`).toLocaleDateString("pt-BR")}</span>
               <span className="inline-flex items-center gap-2"><MessageSquareText className="h-4 w-4" aria-hidden="true" />{record.actions?.title ?? "Sem ação"}</span>
+              <span className="inline-flex items-center gap-2">Entrevistador: {record.interviewer_team_member?.display_name ?? record.interviewer_name}</span>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">{record.listening_record_themes.slice(0, 4).map((item) => item.themes ? <span className="rounded-full bg-semear-offwhite px-3 py-1 text-xs font-semibold text-stone-600" key={item.themes.id}>{item.themes.name}</span> : null)}</div>
             <div className="mt-3 flex flex-wrap gap-2">

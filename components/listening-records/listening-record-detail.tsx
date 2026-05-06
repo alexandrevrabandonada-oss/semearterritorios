@@ -6,7 +6,15 @@ import { ArrowLeft, CheckCircle2, Edit3 } from "lucide-react";
 import { ListeningRecordForm } from "@/components/listening-records/listening-record-form";
 import { ListeningQualityChecklist } from "@/components/listening-records/listening-quality-checklist";
 import { TerritorialReviewPanel } from "@/components/listening-records/territorial-review-panel";
-import type { Action, ListeningRecord, Neighborhood, PlaceMentioned, NormalizedPlace, Theme } from "@/lib/database.types";
+import type {
+  Action,
+  ListeningRecord,
+  Neighborhood,
+  PlaceMentioned,
+  NormalizedPlace,
+  TeamMember,
+  Theme
+} from "@/lib/database.types";
 import { getReviewStatusLabel, getSourceTypeLabel } from "@/lib/listening-records";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { getOfficialNeighborhoodsForSelect } from "@/lib/neighborhoods";
@@ -15,6 +23,7 @@ import { hasPossibleSensitiveOccupation } from "@/lib/action-pilot";
 type RecordWithRelations = ListeningRecord & {
   actions: Pick<Action, "id" | "title"> | null;
   neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
+  interviewer_team_member: Pick<TeamMember, "id" | "display_name"> | null;
   listening_record_themes: Array<{ themes: Pick<Theme, "id" | "name"> | null }>;
   places_mentioned: Array<Pick<PlaceMentioned, "id" | "place_name" | "place_type" | "notes" | "neighborhood_id" | "normalized_place_id"> & {
     normalized_places?: Pick<NormalizedPlace, "id" | "normalized_name" | "visibility" | "place_type"> | null;
@@ -40,7 +49,7 @@ export function ListeningRecordDetail({ recordId }: { recordId: string }) {
     const [result, neighborhoodsResult] = await Promise.all([
       supabase
         .from("listening_records")
-        .select("*, actions:action_id(id, title), neighborhoods:neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name)), places_mentioned(id, place_name, place_type, notes, neighborhood_id, normalized_place_id, normalized_places:normalized_place_id(id, normalized_name, visibility, place_type))")
+        .select("*, actions:action_id(id, title), neighborhoods:neighborhood_id(id, name), interviewer_team_member:interviewer_team_member_id(id, display_name), listening_record_themes(themes:theme_id(id, name)), places_mentioned(id, place_name, place_type, notes, neighborhood_id, normalized_place_id, normalized_places:normalized_place_id(id, normalized_name, visibility, place_type))")
         .eq("id", recordId)
         .single(),
       supabase.from("neighborhoods").select("*").eq("status", "oficial").order("name", { ascending: true })
@@ -110,7 +119,7 @@ export function ListeningRecordDetail({ recordId }: { recordId: string }) {
         <div className="mt-6 grid gap-4 lg:grid-cols-3">
           <Info title="Ação" value={record.actions?.title} />
           <Info title="Bairro/Território" value={record.neighborhoods?.name} />
-          <Info title="Entrevistador" value={record.interviewer_name} />
+          <Info title="Entrevistador" value={record.interviewer_team_member?.display_name ?? record.interviewer_name} />
           <Info title="Faixa etária aproximada" value={record.approximate_age_range} />
           <Info title="Palavras usadas" value={record.words_used} />
           <Info title="Lugares citados" value={record.places_mentioned_text} />

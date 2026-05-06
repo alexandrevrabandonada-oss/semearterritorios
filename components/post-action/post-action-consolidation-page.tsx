@@ -11,7 +11,7 @@ import { getActionPilotMetrics, summarizeOccupations, type ActionForPilot } from
 import { getActionStatusLabel, getActionTypeLabel } from "@/lib/actions";
 import { getClosureStatusLabel } from "@/lib/action-closures";
 import { getRespondentTerritoryRelationLabel } from "@/lib/listening-records";
-import type { ActionClosure, ActionDebrief, Neighborhood } from "@/lib/database.types";
+import type { ActionClosure, ActionDebrief, Neighborhood, TeamMember } from "@/lib/database.types";
 import { buildTerritorialQualityByNeighborhood, buildTerritorialQualityReport } from "@/lib/territorial-quality";
 import { getTerritorialQualityMetrics, getTerritorialQualityRecommendation, type TerritorialReviewRecord } from "@/lib/territorial-review";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -40,7 +40,7 @@ export function PostActionConsolidationPage() {
 
       const [actionsResult, recordsResult, debriefsResult, closuresResult, neighborhoodsResult] = await Promise.all([
         supabase.from("actions").select("*, neighborhoods:neighborhood_id(id, name)").order("action_date", { ascending: false }),
-        supabase.from("listening_records").select("*, listening_record_themes(themes:theme_id(id, name)), places_mentioned(id, place_name, place_type, notes, neighborhood_id, normalized_place_id, normalized_places:normalized_place_id(id, normalized_name, visibility, place_type))").order("date", { ascending: false }),
+        supabase.from("listening_records").select("*, interviewer_team_member:interviewer_team_member_id(id, display_name), listening_record_themes(themes:theme_id(id, name)), places_mentioned(id, place_name, place_type, notes, neighborhood_id, normalized_place_id, normalized_places:normalized_place_id(id, normalized_name, visibility, place_type))").order("date", { ascending: false }),
         supabase.from("action_debriefs").select("*"),
         supabase.from("action_closures").select("*"),
         supabase.from("neighborhoods").select("*").order("name", { ascending: true })
@@ -94,6 +94,20 @@ Recomendação da ação: ${territorialRecommendation}
   const territoryCount = new Set(actionRecords.map((record) => record.neighborhood_id).filter(Boolean)).size;
   const diagnostics = getDiagnostics(metrics, debrief, closure);
   const occupationSummary = summarizeOccupations(actionRecords as Array<TerritorialReviewRecord & { listening_record_themes?: Array<{ themes: { name: string } | null }> }>);
+  const interviewerCounts = Array.from(
+    actionRecords.reduce((acc, record) => {
+      const interviewerRecord = record as TerritorialReviewRecord & {
+        interviewer_name: string;
+        interviewer_team_member?: Pick<TeamMember, "display_name"> | null;
+      };
+      const normalized = interviewerRecord.interviewer_team_member?.display_name ?? interviewerRecord.interviewer_name;
+      if (!normalized?.trim()) return acc;
+      acc.set(normalized, (acc.get(normalized) ?? 0) + 1);
+      return acc;
+    }, new Map<string, number>())
+  )
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "pt-BR"));
 
   return (
     <section className="pb-10">
@@ -237,6 +251,24 @@ Recomendação da ação: ${territorialRecommendation}
               <p className="mt-2 text-xs text-stone-500">{occupationSummary.riskyCount} escuta(s) têm ocupação com possível detalhamento identificável e devem ser revisadas antes de uso público.</p>
             ) : null}
             <p className="mt-2 text-xs text-stone-500">{occupationSummary.withoutOccupation} escuta(s) sem ocupação informada.</p>
+          </section>
+
+          <section className="mt-6 rounded-[2rem] border border-white/80 bg-white p-6 shadow-soft">
+            <h3 className="font-semibold text-semear-green">Escutas por entrevistador (uso interno)</h3>
+            <p className="mt-2 text-xs leading-5 text-stone-500">
+              Painel interno de acompanhamento operacional. Não exportar nomes em materiais públicos.
+            </p>
+            <div className="mt-4 space-y-2">
+              {interviewerCounts.length > 0 ? (
+                interviewerCounts.map((item) => (
+                  <p className="rounded-xl border border-semear-gray bg-semear-offwhite px-3 py-2 text-sm text-semear-green" key={item.name}>
+                    <strong>{item.name}</strong>: {item.count} escuta(s)
+                  </p>
+                ))
+              ) : (
+                <p className="text-sm text-stone-600">Nenhum entrevistador registrado para esta ação.</p>
+              )}
+            </div>
           </section>
 
           <section className="mt-6 rounded-[2rem] border border-white/80 bg-white p-6 shadow-soft">

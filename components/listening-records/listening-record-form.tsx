@@ -12,6 +12,7 @@ import type {
   RespondentTerritoryRelation,
   ReviewStatus,
   SourceType,
+  TeamMember,
   Theme
 } from "@/lib/database.types";
 import { respondentTerritoryRelationOptions, reviewStatusOptions, sourceTypeOptions } from "@/lib/listening-records";
@@ -26,6 +27,7 @@ type FormValues = {
   neighborhood_id: string;
   date: string;
   source_type: SourceType;
+  interviewer_team_member_id: string;
   interviewer_name: string;
   approximate_age_range: string;
   free_speech_text: string;
@@ -47,6 +49,7 @@ const defaultValues: FormValues = {
   neighborhood_id: "",
   date: new Date().toISOString().slice(0, 10),
   source_type: "feira",
+  interviewer_team_member_id: "",
   interviewer_name: "",
   approximate_age_range: "",
   free_speech_text: "",
@@ -75,6 +78,7 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
   const [actions, setActions] = useState<Action[]>([]);
   const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
   const [themes, setThemes] = useState<Theme[]>([]);
+  const [interviewers, setInterviewers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,19 +93,21 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
         return;
       }
 
-      const [actionsResult, neighborhoodsResult, themesResult] = await Promise.all([
+      const [actionsResult, neighborhoodsResult, themesResult, interviewersResult] = await Promise.all([
         supabase.from("actions").select("*").order("action_date", { ascending: false }),
         supabase.from("neighborhoods").select("*").eq("status", "oficial").order("sector", { ascending: true }).order("name", { ascending: true }),
-        supabase.from("themes").select("*").eq("is_active", true).order("name", { ascending: true })
+        supabase.from("themes").select("*").eq("is_active", true).order("name", { ascending: true }),
+        supabase.from("team_members").select("*").eq("active", true).eq("can_interview", true).order("display_name", { ascending: true })
       ]);
 
       if (ignore) return;
 
-      if (actionsResult.error || neighborhoodsResult.error || themesResult.error) {
+      if (actionsResult.error || neighborhoodsResult.error || themesResult.error || interviewersResult.error) {
         setError(
           actionsResult.error?.message ??
             neighborhoodsResult.error?.message ??
             themesResult.error?.message ??
+            interviewersResult.error?.message ??
             "Erro ao carregar dados."
         );
         setLoading(false);
@@ -111,6 +117,7 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
       setActions(actionsResult.data ?? []);
       setNeighborhoods(getOfficialNeighborhoodsForSelect(neighborhoodsResult.data ?? []));
       setThemes(themesResult.data ?? []);
+      setInterviewers((interviewersResult.data ?? []) as TeamMember[]);
 
       if (mode === "edit" && recordId) {
         const [recordResult, themesLinkResult] = await Promise.all([
@@ -132,6 +139,7 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
           neighborhood_id: record.neighborhood_id ?? "",
           date: record.date,
           source_type: record.source_type,
+          interviewer_team_member_id: record.interviewer_team_member_id ?? "",
           interviewer_name: record.interviewer_name,
           approximate_age_range: record.approximate_age_range ?? "",
           free_speech_text: record.free_speech_text,
@@ -169,6 +177,15 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
       theme_ids: current.theme_ids.includes(themeId)
         ? current.theme_ids.filter((id) => id !== themeId)
         : [...current.theme_ids, themeId]
+    }));
+  }
+
+  function updateInterviewer(teamMemberId: string) {
+    const selected = interviewers.find((item) => item.id === teamMemberId);
+    setValues((current) => ({
+      ...current,
+      interviewer_team_member_id: teamMemberId,
+      interviewer_name: selected?.display_name ?? current.interviewer_name
     }));
   }
 
@@ -217,6 +234,7 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
       date: values.date,
       source_type: values.source_type,
       interviewer_name: values.interviewer_name.trim(),
+      interviewer_team_member_id: values.interviewer_team_member_id || null,
       approximate_age_range: values.approximate_age_range.trim() || null,
       free_speech_text: values.free_speech_text.trim(),
       team_summary: values.team_summary.trim() || null,
@@ -319,6 +337,12 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
           <Input label="Data" type="date" value={values.date} onChange={(value) => updateField("date", value)} required />
           <Select label="Tipo de origem" value={values.source_type} onChange={(value) => updateField("source_type", value as SourceType)}>
             {sourceTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </Select>
+          <Select label="Entrevistador (cadastro da equipe)" value={values.interviewer_team_member_id} onChange={updateInterviewer}>
+            <option value="">Selecione...</option>
+            {interviewers.map((member) => (
+              <option key={member.id} value={member.id}>{member.display_name}</option>
+            ))}
           </Select>
           <Input label="Entrevistador" value={values.interviewer_name} onChange={(value) => updateField("interviewer_name", value)} required />
           <Input label="Faixa etária aproximada opcional" value={values.approximate_age_range} onChange={(value) => updateField("approximate_age_range", value)} placeholder="Ex.: 30-39, pessoa idosa, jovem" />

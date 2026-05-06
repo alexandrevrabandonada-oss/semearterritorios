@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { ArrowLeft, Save, AlertTriangle, PlayCircle } from "lucide-react";
-import type { Action, Neighborhood, RespondentTerritoryRelation, Theme } from "@/lib/database.types";
+import { ArrowLeft, AlertTriangle, PlayCircle } from "lucide-react";
+import type { Action, Neighborhood, RespondentTerritoryRelation, SourceType, TeamMember, Theme } from "@/lib/database.types";
 import { respondentTerritoryRelationOptions } from "@/lib/listening-records";
 import { hasPossibleSensitiveOccupation } from "@/lib/action-pilot";
 import { formatNeighborhoodOption, getOfficialNeighborhoodsForSelect } from "@/lib/neighborhoods";
@@ -15,6 +15,7 @@ type BatchFormValues = {
   places_mentioned_text: string;
   priority_mentioned: string;
   unexpected_notes: string;
+  interviewer_team_member_id: string;
   interviewer_name: string;
   approximate_age_range: string;
   theme_ids: string[];
@@ -30,6 +31,7 @@ const initialFormValues: BatchFormValues = {
   places_mentioned_text: "",
   priority_mentioned: "",
   unexpected_notes: "",
+  interviewer_team_member_id: "",
   interviewer_name: "",
   approximate_age_range: "",
   theme_ids: [],
@@ -46,6 +48,7 @@ type ActionWithRelations = Action & {
 export function ListeningRecordBatchForm() {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const [actions, setActions] = useState<ActionWithRelations[]>([]);
+  const [interviewers, setInterviewers] = useState<TeamMember[]>([]);
   const [themes, setThemes] = useState<Theme[]>([]);
   const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,7 +57,8 @@ export function ListeningRecordBatchForm() {
 
   // Travas da sessão
   const [lockedActionId, setLockedActionId] = useState<string>("");
-  const [lockedSourceType, setLockedSourceType] = useState<string>("feira");
+  const [lockedSourceType, setLockedSourceType] = useState<SourceType>("feira");
+  const [lockedInterviewerTeamMemberId, setLockedInterviewerTeamMemberId] = useState<string>("");
 
   function handleSelectAction(actionId: string) {
     setLockedActionId(actionId);
@@ -62,6 +66,16 @@ export function ListeningRecordBatchForm() {
     if (action?.action_type === "banca_escuta") {
       setLockedSourceType("feira");
     }
+  }
+
+  function handleSelectInterviewer(teamMemberId: string) {
+    setLockedInterviewerTeamMemberId(teamMemberId);
+    const interviewer = interviewers.find((item) => item.id === teamMemberId);
+    setValues((prev) => ({
+      ...prev,
+      interviewer_team_member_id: teamMemberId,
+      interviewer_name: interviewer?.display_name ?? prev.interviewer_name
+    }));
   }
   
   // Dados do form
@@ -81,15 +95,17 @@ export function ListeningRecordBatchForm() {
     let ignore = false;
     async function load() {
       if (!supabase) return;
-      const [actionsRes, themesRes, neighborhoodsRes] = await Promise.all([
+      const [actionsRes, themesRes, neighborhoodsRes, interviewersRes] = await Promise.all([
         supabase.from("actions").select("*, neighborhoods:neighborhood_id(id, name)").order("action_date", { ascending: false }),
         supabase.from("themes").select("*").eq("is_active", true).order("name", { ascending: true }),
-        supabase.from("neighborhoods").select("*").eq("status", "oficial").order("sector", { ascending: true }).order("name", { ascending: true })
+        supabase.from("neighborhoods").select("*").eq("status", "oficial").order("sector", { ascending: true }).order("name", { ascending: true }),
+        supabase.from("team_members").select("*").eq("active", true).eq("can_interview", true).order("display_name", { ascending: true })
       ]);
       if (ignore) return;
       setActions((actionsRes.data ?? []) as ActionWithRelations[]);
       setThemes(themesRes.data ?? []);
       setNeighborhoods(getOfficialNeighborhoodsForSelect(neighborhoodsRes.data ?? []));
+      setInterviewers((interviewersRes.data ?? []) as TeamMember[]);
       setLoading(false);
     }
     void load();
@@ -156,8 +172,9 @@ export function ListeningRecordBatchForm() {
       action_id: action.id,
       neighborhood_id: action.neighborhood_id,
       date: action.action_date,
-      source_type: lockedSourceType as any,
+      source_type: lockedSourceType,
       interviewer_name: values.interviewer_name.trim(),
+      interviewer_team_member_id: values.interviewer_team_member_id || null,
       approximate_age_range: values.approximate_age_range.trim() || null,
       free_speech_text: values.free_speech_text.trim(),
       team_summary: null,
@@ -198,6 +215,7 @@ export function ListeningRecordBatchForm() {
     // Keep interviewer_name and respondent fields across records (common for same person)
     setValues({
       ...initialFormValues,
+      interviewer_team_member_id: lockedInterviewerTeamMemberId,
       interviewer_name: values.interviewer_name,
       respondent_city: values.respondent_city,
       respondent_neighborhood_id: values.respondent_neighborhood_id,
@@ -234,7 +252,7 @@ export function ListeningRecordBatchForm() {
               </label>
               <label>
                 <span className="text-sm font-semibold text-semear-green">Origem</span>
-                <select className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" value={lockedSourceType} onChange={e => setLockedSourceType(e.target.value)}>
+                <select className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" value={lockedSourceType} onChange={e => setLockedSourceType(e.target.value as SourceType)}>
                   <option value="feira">Feira</option>
                   <option value="cras">CRAS</option>
                   <option value="escola">Escola</option>
@@ -243,6 +261,15 @@ export function ListeningRecordBatchForm() {
                   <option value="oficina">Oficina</option>
                   <option value="caminhada">Caminhada</option>
                   <option value="outro">Outro</option>
+                </select>
+              </label>
+              <label className="md:col-span-2">
+                <span className="text-sm font-semibold text-semear-green">Selecione o membro da equipe que conduziu a escuta (fixo na sessão)</span>
+                <select className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" value={lockedInterviewerTeamMemberId} onChange={e => handleSelectInterviewer(e.target.value)}>
+                  <option value="">Selecione...</option>
+                  {interviewers.map((interviewer) => (
+                    <option key={interviewer.id} value={interviewer.id}>{interviewer.display_name}</option>
+                  ))}
                 </select>
               </label>
             </div>
