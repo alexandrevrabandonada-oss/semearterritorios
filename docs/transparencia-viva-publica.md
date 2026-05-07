@@ -14,11 +14,23 @@ A transparência pública só deve ler `public_transparency_snapshots` com `stat
 
 1. Gerar rascunho determinístico em `/transparencia/snapshots`.
 2. Abrir o editor em `/transparencia/snapshots/[id]`.
-3. Revisar texto público, bloco metodológico, limites e próximos passos.
+3. Revisar conteúdo e bloco metodológico.
 4. Conferir checklist de privacidade.
-5. Coordenação ou admin marca como revisado.
-6. Coordenação ou admin aprova.
-7. Coordenação ou admin publica.
+5. Registrar comentários e resolver pendências críticas.
+6. Coordenação ou admin marca como `reviewed`.
+7. Coordenação ou admin aprova.
+8. Coordenação ou admin publica.
+9. Se necessário, gerar pacote institucional em `/transparencia/homologacao`.
+
+## Trilha de auditoria
+
+Cada snapshot pode ter:
+
+- versões editoriais;
+- comentários de revisão;
+- checklist persistido;
+- alerta de risco persistido;
+- pacote formal de homologação institucional.
 
 ## Checklist de privacidade
 
@@ -36,17 +48,21 @@ Antes de publicar, o snapshot deve confirmar:
 - lugares sensíveis não aparecem;
 - publicação foi revisada por coordenação ou admin.
 
+## Regra de comentários
+
+Comentários de `privacidade`, `dados` e `metodologia` bloqueiam a publicação enquanto estiverem pendentes.
+
+Comentários de `texto` não bloqueiam sozinhos, mas só podem ser assumidos por coordenação ou admin na publicação final.
+
 ## Regra de edição
 
 `draft` pode ser editado pela equipe autora, coordenação e admin.
 
 `reviewed`, `approved`, `published` e `archived` ficam sob coordenação ou admin.
 
-O editor registra resumo gerado, resumo editado, última edição e última revisão.
-
 ## Regra de republicação
 
-Se um snapshot `published` for editado, ele volta automaticamente para `reviewed` e perde `published_at`. A decisão adotada neste tijolo é conservadora: toda republicação exige nova revisão e nova publicação.
+Se um snapshot `published` for editado, ele volta automaticamente para `reviewed` e perde `published_at`. Toda republicação exige nova revisão e nova publicação.
 
 ## Quem pode publicar
 
@@ -54,13 +70,13 @@ Somente `coordenacao` ou `admin` podem aprovar e publicar snapshots.
 
 ## O que pode aparecer
 
-- Totais agregados de ações, escutas revisadas, territórios alcançados, devolutivas aprovadas e dossiês fechados.
-- Ranking geral de temas.
-- Palavras recorrentes sanitizadas.
-- Escutas por território de referência ou território da ação, somente em agregação.
-- Linha do tempo de ações realizadas.
-- Devolutivas aprovadas, sem nomes individuais.
-- Aviso metodológico e notas de privacidade.
+- totais agregados de ações, escutas revisadas, territórios alcançados, devolutivas aprovadas e dossiês fechados;
+- ranking geral de temas;
+- palavras recorrentes sanitizadas;
+- escutas por território de referência ou território da ação, somente em agregação;
+- linha do tempo de ações realizadas;
+- devolutivas aprovadas, sem nomes individuais;
+- aviso metodológico e notas de privacidade.
 
 ## O que nunca entra no payload público
 
@@ -80,8 +96,24 @@ Territórios com menos de 5 escutas revisadas devem aparecer como `dados insufic
 
 Ocupação só pode entrar de forma agregada. Ocupações com contagem menor que 3 devem ser agrupadas como `outras ocupações`.
 
+## Versões e pacote institucional
+
+- snapshot: peça editorial viva;
+- versão: congelamento editorial em eventos de status;
+- pacote institucional: congelamento formal para assinatura interna.
+
+O pacote institucional deve ser usado quando a coordenação precisar registrar aprovação formal antes de orientar integração pública futura.
+
+## Export seguro
+
+O pacote de homologação inclui metadados, checklist, alertas, versões, comentários, payload congelado e decisão institucional, mas não inclui dados brutos nem qualquer identificador pessoal.
+
 ## Integração futura com Portal PWA SEMEAR
 
-A rota `/api/public/transparencia-viva` retorna apenas o último snapshot com `status = published`, sem campos brutos e sem dados internos. O Portal PWA deve consumir essa API ou uma view equivalente com a mesma regra de segurança.
+A rota `/api/public/transparencia-viva` retorna apenas o último snapshot com `status = published`, sem campos brutos e sem dados internos.
 
-Antes de abrir página pública real, validar novamente RLS, payload da API, cache, logs, ausência de `service_role` no bundle público e checklist de privacidade.
+Quando houver integração com o Portal PWA:
+
+- consumir apenas snapshot `published`;
+- usar pacote `signed` como referência institucional;
+- validar novamente RLS, payload, cache, logs e ausência de `service_role` no bundle público.

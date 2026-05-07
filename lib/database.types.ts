@@ -24,6 +24,9 @@ export type InternalMapHomologationDecision =
   | "go_prototipo_interno"
   | "manter_mapa_lista";
 export type PublicTransparencySnapshotStatus = "draft" | "reviewed" | "approved" | "published" | "archived";
+export type SnapshotReviewCommentType = "privacidade" | "texto" | "metodologia" | "dados" | "aprovacao" | "publicacao" | "outro";
+export type TransparencyHomologationPackageStatus = "draft" | "ready_for_signature" | "signed" | "rejected" | "archived";
+export type TransparencyHomologationDecision = "aprovado_para_publicacao" | "revisar_antes_de_publicar" | "rejeitado" | "arquivado";
 
 export type NeighborhoodStatus = "oficial" | "provisorio" | "revisar" | "nao_usar";
 export type NeighborhoodSector = "SCN" | "SO" | "SN" | "SL" | "SS" | "SCS" | "SSO";
@@ -267,6 +270,7 @@ export type PublicTransparencySnapshot = TimestampedRow &
     listening_text: string | null;
     limits_text: string | null;
     next_steps_text: string | null;
+    current_risk_report: Json;
     totals: Json;
     territory_summary: Json;
     theme_summary: Json;
@@ -282,6 +286,66 @@ export type PublicTransparencySnapshot = TimestampedRow &
     last_reviewed_at: string | null;
     last_edited_by: string | null;
     last_edited_at: string | null;
+  };
+
+export type PublicTransparencySnapshotVersion = {
+  id: string;
+  snapshot_id: string;
+  version_number: number;
+  status_at_time: string | null;
+  title: string | null;
+  public_summary: string | null;
+  edited_summary: string | null;
+  privacy_notes: string | null;
+  totals: Json;
+  territory_summary: Json;
+  theme_summary: Json;
+  word_summary: Json;
+  action_timeline: Json;
+  review_checklist: Json;
+  risk_report: Json;
+  change_reason: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type PublicTransparencySnapshotReviewComment = {
+  id: string;
+  snapshot_id: string;
+  author_id: string | null;
+  comment: string;
+  comment_type: SnapshotReviewCommentType;
+  resolved: boolean;
+  resolved_by: string | null;
+  resolved_at: string | null;
+  created_at: string;
+};
+
+export type PublicTransparencyHomologationPackage = TimestampedRow &
+  CreatedByRow & {
+    id: string;
+    snapshot_id: string;
+    snapshot_version_id: string | null;
+    package_code: string;
+    status: TransparencyHomologationPackageStatus;
+    title: string;
+    period_start: string | null;
+    period_end: string | null;
+    institutional_summary: string | null;
+    methodology_note: string | null;
+    privacy_statement: string | null;
+    approval_checklist: Json;
+    risk_report: Json;
+    audit_export: string | null;
+    frozen_payload: Json;
+    decision: TransparencyHomologationDecision | null;
+    decision_reason: string | null;
+    prepared_by: string | null;
+    prepared_at: string | null;
+    signed_by: string | null;
+    signed_at: string | null;
+    rejected_by: string | null;
+    rejected_at: string | null;
   };
 
 export type Database = {
@@ -579,9 +643,73 @@ export type Database = {
           }
         ];
       };
+      public_transparency_snapshot_versions: {
+        Row: PublicTransparencySnapshotVersion;
+        Insert: Partial<Omit<PublicTransparencySnapshotVersion, "created_at">> & {
+          snapshot_id: string;
+          version_number: number;
+        };
+        Update: Partial<Omit<PublicTransparencySnapshotVersion, "id" | "created_at">>;
+        Relationships: [
+          {
+            foreignKeyName: "public_transparency_snapshot_versions_snapshot_id_fkey";
+            columns: ["snapshot_id"];
+            referencedRelation: "public_transparency_snapshots";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      public_transparency_snapshot_review_comments: {
+        Row: PublicTransparencySnapshotReviewComment;
+        Insert: Partial<Omit<PublicTransparencySnapshotReviewComment, "created_at" | "resolved" | "resolved_by" | "resolved_at">> & {
+          snapshot_id: string;
+          comment: string;
+          comment_type: SnapshotReviewCommentType;
+        };
+        Update: Partial<Omit<PublicTransparencySnapshotReviewComment, "id" | "created_at">>;
+        Relationships: [
+          {
+            foreignKeyName: "public_transparency_snapshot_review_comments_snapshot_id_fkey";
+            columns: ["snapshot_id"];
+            referencedRelation: "public_transparency_snapshots";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      public_transparency_homologation_packages: {
+        Row: PublicTransparencyHomologationPackage;
+        Insert: Partial<Omit<PublicTransparencyHomologationPackage, "created_at" | "updated_at">> & {
+          snapshot_id: string;
+          package_code: string;
+          title: string;
+        };
+        Update: Partial<Omit<PublicTransparencyHomologationPackage, "id" | "created_at" | "updated_at">>;
+        Relationships: [
+          {
+            foreignKeyName: "public_transparency_homologation_packages_snapshot_id_fkey";
+            columns: ["snapshot_id"];
+            referencedRelation: "public_transparency_snapshots";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "public_transparency_homologation_packages_snapshot_version_id_fkey";
+            columns: ["snapshot_version_id"];
+            referencedRelation: "public_transparency_snapshot_versions";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      create_public_transparency_snapshot_version: {
+        Args: {
+          p_snapshot_id: string;
+          p_reason?: string | null;
+        };
+        Returns: string;
+      };
+    };
     Enums: {
       source_type: SourceType;
       review_status: ReviewStatus;

@@ -121,6 +121,9 @@ export function TransparencySnapshotsPage() {
           <Link className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/transparencia/preview">
             <Eye className="h-4 w-4" /> Abrir preview interno
           </Link>
+          <Link className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/transparencia/homologacao">
+            <ShieldCheck className="h-4 w-4" /> Homologação institucional
+          </Link>
         </div>
       </div>
 

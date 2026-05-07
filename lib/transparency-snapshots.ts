@@ -90,6 +90,7 @@ export function buildTransparencySnapshotDraft(input: TransparencyDraftInput) {
     public_summary: summary,
     generated_summary: summary,
     edited_summary: summary,
+    current_risk_report: {},
     totals,
     territory_summary: territorySummary,
     theme_summary: themeSummary,
@@ -113,7 +114,7 @@ export function buildTransparencySnapshotDraft(input: TransparencyDraftInput) {
 
 export function getLatestPreviewSnapshot(snapshots: PublicTransparencySnapshot[]) {
   return snapshots
-    .filter((snapshot) => snapshot.status === "published" || snapshot.status === "approved")
+    .filter((snapshot) => snapshot.status === "published" || snapshot.status === "approved" || snapshot.status === "reviewed")
     .sort((a, b) => (b.published_at ?? b.approved_at ?? b.updated_at).localeCompare(a.published_at ?? a.approved_at ?? a.updated_at))[0] ?? null;
 }
 
@@ -140,6 +141,7 @@ export function mergeTransparencyDraftIntoSnapshot(snapshot: PublicTransparencyS
     listening_text: snapshot.listening_text || draft.listening_text,
     limits_text: snapshot.limits_text || draft.limits_text,
     next_steps_text: snapshot.next_steps_text || draft.next_steps_text,
+    current_risk_report: snapshot.current_risk_report ?? {},
     review_checklist: normalizeTransparencyChecklist(snapshot.review_checklist)
   };
 }

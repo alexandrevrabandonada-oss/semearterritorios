@@ -2,13 +2,21 @@
 
 ## Objetivo
 
-O editor de snapshot público existe para transformar o rascunho determinístico da Transparência Viva em uma peça revisável, editável e segura antes da publicação.
+O editor de snapshot público transforma o rascunho determinístico da Transparência Viva em uma peça revisável, auditável e pronta para homologação institucional antes da publicação.
 
-## Onde editar
+## Onde operar
 
-- Lista de snapshots: `/transparencia/snapshots`
-- Editor por snapshot: `/transparencia/snapshots/[id]`
-- Preview interno: `/transparencia/preview`
+- lista de snapshots: `/transparencia/snapshots`
+- editor por snapshot: `/transparencia/snapshots/[id]`
+- preview interno: `/transparencia/preview`
+- homologação institucional: `/transparencia/homologacao`
+
+## Abas do editor
+
+1. `Conteúdo`
+2. `Checklist`
+3. `Auditoria`
+4. `Comentários`
 
 ## Campos editáveis
 
@@ -34,24 +42,51 @@ Os blocos abaixo continuam sendo gerados de forma determinística e podem ser re
 - `action_timeline`
 - `debrief_links`
 
-## Diff básico
+## Trilha de auditoria
 
-O editor mostra:
+O editor registra:
 
 - texto gerado originalmente;
 - texto editado atualmente;
 - diff textual básico;
+- versões editoriais;
+- comentários de revisão;
 - última edição;
-- última revisão.
+- última revisão;
+- pacote institucional vinculado, quando existir.
 
-## Publicação
+## Regra de comentários
 
-O botão de publicar só deve ser usado quando:
+Comentários de `privacidade`, `dados` e `metodologia` bloqueiam a publicação enquanto estiverem pendentes.
 
-- o checklist estiver completo;
-- não houver CPF, telefone ou e-mail detectado;
-- a revisão final tiver sido feita por coordenação ou admin.
+Comentários de `texto` não bloqueiam sozinhos, mas exigem validação final de coordenação ou admin.
 
 ## Republicação
 
 Se o snapshot publicado for editado, o status volta para `reviewed`. Isso impede manter um snapshot público alterado sem nova revisão.
+
+## Homologação institucional
+
+O card `Homologação institucional` no editor permite:
+
+- ver se já existe pacote vinculado;
+- gerar pacote institucional a partir do snapshot;
+- abrir o pacote para assinatura, rejeição ou arquivamento.
+
+Pacote institucional congela:
+
+- snapshot aprovado;
+- versão editorial de referência;
+- checklist multi-etapa;
+- relatório de risco;
+- payload congelado sanitizado;
+- decisão institucional.
+
+## Export seguro
+
+No editor do snapshot existem dois artefatos distintos:
+
+- `Copiar resumo da auditoria`: resumo editorial interno do snapshot;
+- `Gerar pacote de homologação`: cria o artefato institucional versionado.
+
+O export nunca inclui fala original, escutas brutas, entrevistador, e-mail, CPF, telefone, endereço, dado de saúde individual ou lugar sensível.

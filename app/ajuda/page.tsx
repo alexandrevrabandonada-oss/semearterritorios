@@ -157,6 +157,7 @@ export default function AjudaPage() {
           <QuickLink href="/territorios/normalizacao/qualidade" icon={<ShieldCheck className="h-5 w-5" />} title="Qualidade da normalização" text="Detectar duplicidades, ambiguidade e sensíveis antes do mapa." />
           <QuickLink href="/mapa/interno" icon={<MapPinned className="h-5 w-5" />} title="Portão do mapa" text="Verificar se o protótipo interno está liberado pela homologação persistente." />
           <QuickLink href="/transparencia/snapshots" icon={<ShieldCheck className="h-5 w-5" />} title="Transparência Viva" text="Gerar snapshots agregados para futura camada pública." />
+          <QuickLink href="/transparencia/homologacao" icon={<ShieldCheck className="h-5 w-5" />} title="Homologação institucional" text="Congelar versão, assinar internamente e preparar integração pública segura." />
         </div>
 
         <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_0.9fr]">
@@ -275,6 +276,32 @@ export default function AjudaPage() {
           <div className="mt-4 flex flex-wrap gap-2">
             <Link className="inline-flex min-h-11 items-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/transparencia/snapshots">Lista de snapshots</Link>
             <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/transparencia/preview">Abrir preview</Link>
+          </div>
+        </Panel>
+
+        <Panel className="mt-6" icon={<ShieldCheck className="h-5 w-5" />} title="Auditoria da Transparência Viva">
+          <div className="space-y-3 text-sm leading-6 text-stone-700">
+            <p>Toda publicação precisa deixar rastro. Versões editoriais registram mudanças de status, data, autor e motivo.</p>
+            <p>Comentários críticos de privacidade, dados e metodologia devem ser resolvidos antes da publicação. Comentários de texto ficam sinalizados para decisão final da coordenação ou admin.</p>
+            <p>O pacote de homologação serve para prestação institucional e não inclui fala original, escuta bruta, dado pessoal nem lugar sensível.</p>
+            <p>O público só vê snapshot `published`. Todo o restante da auditoria permanece interno e autenticado.</p>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link className="inline-flex min-h-11 items-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/transparencia/snapshots">Abrir editorial</Link>
+            <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/transparencia/preview">Ver preview</Link>
+          </div>
+        </Panel>
+
+        <Panel className="mt-6" icon={<ShieldCheck className="h-5 w-5" />} title="Pacote institucional da Transparência Viva">
+          <div className="space-y-3 text-sm leading-6 text-stone-700">
+            <p>Snapshot é a síntese pública; versão registra mudanças editoriais; comentários registram revisão; pacote congela uma versão para aprovação institucional.</p>
+            <p>Só pacote assinado deve orientar integração pública futura. Antes disso, o material permanece interno, autenticado e revisável.</p>
+            <p>O pacote institucional nunca inclui fala original, escuta bruta, entrevistador, e-mail, CPF, telefone, endereço, dado de saúde individual ou lugar sensível.</p>
+            <p>Assinatura exige checklist multi-etapa completo, comentários críticos resolvidos e snapshot já aprovado ou publicado.</p>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link className="inline-flex min-h-11 items-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/transparencia/homologacao">Abrir homologação</Link>
+            <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/transparencia/snapshots">Abrir editor</Link>
           </div>
         </Panel>
 

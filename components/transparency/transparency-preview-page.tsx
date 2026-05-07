@@ -3,10 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, CalendarDays, FileText, MapPinned, MessageSquareText, ShieldCheck, Tag } from "lucide-react";
-import type { PublicTransparencySnapshot } from "@/lib/database.types";
+import type { PublicTransparencyHomologationPackage, PublicTransparencySnapshot } from "@/lib/database.types";
 import { getLatestPreviewSnapshot, getSnapshotStatusLabel, MIN_PUBLIC_TERRITORY_SAMPLE } from "@/lib/transparency-snapshots";
 import { buildTransparencyTextBlob, detectTransparencyPrivacyRisks } from "@/lib/transparency-privacy";
+import { buildSnapshotAuditStatus, getSnapshotReviewComments, getSnapshotVersions, type SnapshotAuditStatus } from "@/lib/transparency-audit";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { getHomologationPackages } from "@/lib/transparency-homologation";
 
 type CountItem = { count: number };
 type ThemeItem = CountItem & { theme: string };
@@ -18,6 +20,16 @@ type DebriefItem = { title: string; approved_at: string | null };
 export function TransparencyPreviewPage() {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const [snapshot, setSnapshot] = useState<PublicTransparencySnapshot | null>(null);
+  const [homologationPackage, setHomologationPackage] = useState<PublicTransparencyHomologationPackage | null>(null);
+  const [auditStatus, setAuditStatus] = useState<SnapshotAuditStatus>({
+    pendingCriticalComments: 0,
+    pendingTextComments: 0,
+    pendingOtherComments: 0,
+    hasBlockingComments: false,
+    hasTextWarnings: false,
+    lastVersionAt: null,
+    totalVersions: 0
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,10 +41,24 @@ export function TransparencyPreviewPage() {
         setLoading(false);
         return;
       }
-      const result = await supabase.from("public_transparency_snapshots").select("*").in("status", ["published", "approved"]).order("updated_at", { ascending: false });
+      const result = await supabase.from("public_transparency_snapshots").select("*").in("status", ["published", "approved", "reviewed"]).order("updated_at", { ascending: false });
       if (ignore) return;
       if (result.error) setError(result.error.message);
-      else setSnapshot(getLatestPreviewSnapshot((result.data ?? []) as PublicTransparencySnapshot[]));
+      else {
+        const latest = getLatestPreviewSnapshot((result.data ?? []) as PublicTransparencySnapshot[]);
+        setSnapshot(latest);
+        if (latest) {
+          const [versions, comments, packages] = await Promise.all([
+            getSnapshotVersions(supabase, latest.id),
+            getSnapshotReviewComments(supabase, latest.id),
+            getHomologationPackages(supabase, latest.id)
+          ]);
+          if (!ignore) {
+            setAuditStatus(buildSnapshotAuditStatus(versions, comments));
+            setHomologationPackage(packages[0] ?? null);
+          }
+        }
+      }
       setLoading(false);
     }
     void load();
@@ -76,12 +102,19 @@ export function TransparencyPreviewPage() {
           <span className="rounded-full bg-white/14 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-white">status: {getSnapshotStatusLabel(snapshot.status)}</span>
           {!isPublished ? <span className="rounded-full bg-semear-yellow px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-semear-green">Preview interno - não público</span> : null}
         </div>
+        <p className="mt-4 text-xs text-white/70">Preview interno. Publicação depende de snapshot published e auditoria sem bloqueios.</p>
       </div>
 
       {riskReport.hasBlockingRisk || riskReport.hasWarningRisk ? (
         <div className={`mt-6 rounded-[1.5rem] border p-4 text-sm ${riskReport.hasBlockingRisk ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
           <AlertTriangle className="mr-2 inline h-4 w-4" />
           Possível dado identificável. Revise antes de publicar.
+        </div>
+      ) : null}
+      {auditStatus.hasBlockingComments ? (
+        <div className="mt-4 rounded-[1.5rem] border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <AlertTriangle className="mr-2 inline h-4 w-4" />
+          Há comentários críticos pendentes de auditoria. A publicação deve permanecer bloqueada.
         </div>
       ) : null}
 
@@ -93,6 +126,24 @@ export function TransparencyPreviewPage() {
         <Metric icon={<FileText className="h-5 w-5" />} label="Devolutivas" value={totals.approved_debriefs ?? 0} />
         <Metric icon={<FileText className="h-5 w-5" />} label="Dossiês" value={totals.closed_dossiers ?? 0} />
       </div>
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Metric icon={<ShieldCheck className="h-5 w-5" />} label="Comentários críticos" value={auditStatus.pendingCriticalComments} />
+        <Metric icon={<MessageSquareText className="h-5 w-5" />} label="Comentários de texto" value={auditStatus.pendingTextComments} />
+        <Metric icon={<FileText className="h-5 w-5" />} label="Versões" value={auditStatus.totalVersions} />
+        <Metric icon={<CalendarDays className="h-5 w-5" />} label="Última versão" value={auditStatus.lastVersionAt ? 1 : 0} suffix={auditStatus.lastVersionAt ? new Date(auditStatus.lastVersionAt).toLocaleDateString("pt-BR") : "não registrada"} />
+      </div>
+
+      <Panel className="mt-6" title="Status de auditoria institucional" icon={<ShieldCheck className="h-5 w-5" />}>
+        <div className="grid gap-3 md:grid-cols-3">
+          <MetricCard label="Pacote institucional" value={homologationPackage ? homologationPackage.package_code : "não criado"} />
+          <MetricCard label="Status do pacote" value={homologationPackage ? homologationPackage.status : "pendente"} />
+          <MetricCard label="Última atualização" value={homologationPackage?.updated_at ? new Date(homologationPackage.updated_at).toLocaleString("pt-BR") : "não registrada"} />
+        </div>
+        <p className="mt-4 text-sm leading-6 text-stone-700">
+          Preview interno. Publicação depende de snapshot published e auditoria sem bloqueios.
+        </p>
+      </Panel>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-2">
         <Panel title="O que estamos ouvindo" icon={<MessageSquareText className="h-5 w-5" />}>
@@ -158,8 +209,8 @@ export function TransparencyPreviewPage() {
   );
 }
 
-function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
-  return <div className="rounded-3xl border border-white/80 bg-white p-5 shadow-soft"><div className="mb-4 flex h-10 w-10 items-center justify-center rounded-2xl bg-semear-green-soft text-semear-green">{icon}</div><p className="text-sm text-stone-600">{label}</p><strong className="mt-1 block text-3xl text-semear-green">{value}</strong></div>;
+function Metric({ icon, label, value, suffix }: { icon: React.ReactNode; label: string; value: number; suffix?: string }) {
+  return <div className="rounded-3xl border border-white/80 bg-white p-5 shadow-soft"><div className="mb-4 flex h-10 w-10 items-center justify-center rounded-2xl bg-semear-green-soft text-semear-green">{icon}</div><p className="text-sm text-stone-600">{label}</p><strong className="mt-1 block text-3xl text-semear-green">{value}</strong>{suffix ? <p className="mt-1 text-xs text-stone-500">{suffix}</p> : null}</div>;
 }
 
 function Panel({ icon, title, children, className = "" }: { icon: React.ReactNode; title: string; children: React.ReactNode; className?: string }) {
@@ -169,6 +220,10 @@ function Panel({ icon, title, children, className = "" }: { icon: React.ReactNod
 function RankList({ items, empty = "Não há dados suficientes." }: { items: Array<{ label: string; count: number }>; empty?: string }) {
   if (items.length === 0) return <p className="text-sm text-stone-500">{empty}</p>;
   return <div className="space-y-2">{items.map((item) => <p className="rounded-xl bg-semear-offwhite px-3 py-2 text-sm text-stone-700" key={item.label}><strong className="text-semear-green">{item.label}</strong>{item.count > 0 ? ` (${item.count})` : ""}</p>)}</div>;
+}
+
+function MetricCard({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{label}</p><p className="mt-2 text-sm text-semear-green">{value}</p></div>;
 }
 
 function StateBox({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "error" }) {
