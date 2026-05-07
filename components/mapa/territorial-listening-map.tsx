@@ -112,6 +112,7 @@ export function TerritorialListeningMap() {
   const totalPlacesMentioned = territorialCards.reduce((sum, item) => sum + item.totalPlaces, 0);
   const strongestTerritory = territorialCards.find((item) => item.totalRecords > 0) ?? null;
   const overallThemeRanking = countThemes(filteredRecords);
+  const overallPlaceRanking = countPlaces(filteredRecords);
   const maxRecords = Math.max(...territorialCards.map((item) => item.totalRecords), 1);
 
   function updateFilter<TField extends keyof Filters>(field: TField, value: Filters[TField]) {
@@ -258,6 +259,9 @@ export function TerritorialListeningMap() {
                         <span>Última escuta: {card.latestDate ? formatDate(card.latestDate) : "Sem registro"}</span>
                         <span>{card.totalPlaces} estruturados · {card.freeTextPlaces} em texto livre</span>
                       </div>
+                      <Link className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/territorios">
+                        Ver detalhes do território
+                      </Link>
                     </article>
                   ))}
                 </div>
@@ -296,6 +300,20 @@ export function TerritorialListeningMap() {
                       Antes de qualquer camada geográfica, revise lugares em texto livre e conclua a revisão territorial. Há {freeTextPlacesCount} escuta(s) com lugares em texto livre no recorte.
                     </p>
                   </div>
+                </Panel>
+
+                <Panel title="Palavras recorrentes" icon={<MessageSquareText className="h-5 w-5" />}>
+                  {overallPlaceRanking.length > 0 ? (
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                      {overallPlaceRanking.slice(0, 14).map((item) => (
+                        <span className="whitespace-nowrap rounded-full border border-semear-gray bg-semear-offwhite px-3 py-1 text-xs font-semibold text-stone-700" key={item.name}>
+                          {item.name} <span className="text-semear-earth">{item.count}</span>
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <PedagogicEmpty text="Os lugares citados aparecerão aqui em chips roláveis quando houver dados suficientes." />
+                  )}
                 </Panel>
 
                 <Panel title="Acessos rápidos" icon={<Route className="h-5 w-5" />}>

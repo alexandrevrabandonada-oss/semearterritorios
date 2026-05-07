@@ -234,6 +234,19 @@ export default function AjudaPage() {
           </div>
         </Panel>
 
+        <Panel className="mt-6" icon={<Keyboard className="h-5 w-5" />} title="Uso no celular">
+          <div className="space-y-3 text-sm leading-6 text-stone-700">
+            <p>Use <strong>Digitar fichas</strong> como rota principal em campo. Antes de começar, selecione a ação e o entrevistador da sessão.</p>
+            <p>Durante a banca, salve cada registro como rascunho e siga para a próxima ficha. A revisão pode ser feita depois, com mais calma, em <strong>/escutas</strong>.</p>
+            <p>Se a conexão ou a tela estiverem ruins, priorize digitação, revisão rápida e pendências. Relatórios grandes, homologações e análises extensas funcionam melhor no desktop.</p>
+            <p>Mesmo no celular, não registre CPF, telefone, endereço, e-mail, nome completo de pessoa escutada ou outro identificador pessoal.</p>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <Link className="inline-flex min-h-11 items-center justify-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/escutas/lote">Abrir Digitar</Link>
+            <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/escutas?status=draft">Revisar rascunhos</Link>
+          </div>
+        </Panel>
+
         <Panel className="mt-6" icon={<ShieldCheck className="h-5 w-5" />} title="Antes de usar com dados reais">
           <div className="grid gap-3 md:grid-cols-3">
             {realDataChecklist.map((item) => (

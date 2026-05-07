@@ -130,6 +130,24 @@ Recomendação da ação: ${territorialRecommendation}
         </label>
       </div>
 
+      <section className="mt-4 rounded-[1.5rem] border border-semear-gray/80 bg-white p-4 shadow-soft lg:hidden">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">Leitura guiada</p>
+        <ol className="mt-3 grid gap-2 text-sm text-stone-700">
+          {[
+            "1. Selecionar ação",
+            "2. Ler resumo da operação",
+            "3. Conferir pendências",
+            "4. Ver temas e palavras",
+            "5. Ver territórios de referência",
+            "6. Conferir devolutiva e dossiê",
+            "7. Avaliar qualidade territorial",
+            "8. Copiar decisão final"
+          ].map((item) => (
+            <li className="rounded-xl bg-semear-offwhite px-3 py-2" key={item}>{item}</li>
+          ))}
+        </ol>
+      </section>
+
       {!selectedAction ? (
         <StateBox>Nenhuma ação encontrada. Cadastre uma ação antes de consolidar o pós-banca.</StateBox>
       ) : (
@@ -137,7 +155,7 @@ Recomendação da ação: ${territorialRecommendation}
           <article className="mt-6 rounded-[2rem] border border-white/80 bg-white p-6 shadow-soft">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Dados da ação</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">1. Resumo da ação</p>
                 <h3 className="mt-2 text-2xl font-semibold text-semear-green">{selectedAction.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-stone-600">
                   {new Date(`${selectedAction.action_date}T00:00:00`).toLocaleDateString("pt-BR")} · {selectedAction.neighborhoods?.name ?? "sem território"} · {getActionTypeLabel(selectedAction.action_type)} · {getActionStatusLabel(selectedAction.status)}
@@ -151,6 +169,11 @@ Recomendação da ação: ${territorialRecommendation}
               </div>
             </div>
           </article>
+
+          <div className="mt-6 rounded-[1.5rem] border border-semear-gray/80 bg-white p-4 shadow-soft">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">2. Pendências e indicadores</p>
+            <p className="mt-2 text-sm text-stone-600">Use os cartões abaixo para decidir rapidamente se a ação já pode avançar para devolutiva, dossiê e decisão final.</p>
+          </div>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Metric icon={<MessageSquareText className="h-5 w-5" />} label="Escutas" value={metrics.total.toString()} />
@@ -184,6 +207,7 @@ Recomendação da ação: ${territorialRecommendation}
             if (respondentGroups.length === 0) return null;
             return (
               <section className="mt-6 rounded-[2rem] border border-white/80 bg-white p-6 shadow-soft">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">3. Territórios de referência</p>
                 <h3 className="font-semibold text-semear-green">Leitura por território de referência do entrevistado</h3>
                 <p className="mt-2 text-xs leading-5 text-stone-500">
                   Separação entre território da ação (onde a banca ocorreu) e território de referência de cada entrevistado.<br />
@@ -228,6 +252,7 @@ Recomendação da ação: ${territorialRecommendation}
           })()}
 
           <section className="mt-6 rounded-[2rem] border border-white/80 bg-white p-6 shadow-soft">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">4. Perfil agregado</p>
             <h3 className="font-semibold text-semear-green">Escutas por ocupação / atividade principal</h3>
             <p className="mt-2 text-xs leading-5 text-stone-500">
               Leitura agregada para apoiar análise territorial. Ocupações com baixa frequência ou com risco de identificação aparecem agrupadas para proteção.
@@ -254,6 +279,7 @@ Recomendação da ação: ${territorialRecommendation}
           </section>
 
           <section className="mt-6 rounded-[2rem] border border-white/80 bg-white p-6 shadow-soft">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">5. Operação interna</p>
             <h3 className="font-semibold text-semear-green">Escutas por entrevistador (uso interno)</h3>
             <p className="mt-2 text-xs leading-5 text-stone-500">
               Painel interno de acompanhamento operacional. Não exportar nomes em materiais públicos.
@@ -272,6 +298,7 @@ Recomendação da ação: ${territorialRecommendation}
           </section>
 
           <section className="mt-6 rounded-[2rem] border border-white/80 bg-white p-6 shadow-soft">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">6. Diagnóstico e decisão</p>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <h3 className="font-semibold text-semear-green">Diagnóstico automático</h3>

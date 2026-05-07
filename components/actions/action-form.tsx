@@ -394,10 +394,12 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
                 const checked = Object.prototype.hasOwnProperty.call(selectedTeamMembers, member.id);
                 return (
                   <div className="rounded-xl border border-semear-gray bg-white p-3" key={member.id}>
-                    <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-stone-700">
-                      <input checked={checked} onChange={(event) => updateParticipantSelection(member.id, event.target.checked)} type="checkbox" />
-                      <span>{member.display_name}</span>
-                      <span className="text-xs text-stone-500">{member.role_label ?? "Sem função informada"}</span>
+                    <label className="flex min-h-14 cursor-pointer items-center gap-3 text-sm font-medium text-stone-700">
+                      <input checked={checked} className="h-5 w-5 rounded border-semear-gray text-semear-green focus:ring-semear-green" onChange={(event) => updateParticipantSelection(member.id, event.target.checked)} type="checkbox" />
+                      <span className="flex-1">
+                        <span className="block font-semibold text-semear-green">{member.display_name}</span>
+                        <span className="text-xs text-stone-500">{member.role_label ?? "Sem função informada"}</span>
+                      </span>
                     </label>
                     {checked ? (
                       <input
@@ -440,12 +442,12 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
           </label>
         </div>
 
-        <div className="mt-8 flex flex-wrap gap-3">
-          <button className="inline-flex min-h-12 items-center gap-2 rounded-full bg-semear-green px-5 text-sm font-semibold text-white transition hover:bg-semear-green/92 disabled:cursor-not-allowed disabled:opacity-60" disabled={saving} type="submit">
+        <div className="sticky bottom-20 z-20 mt-8 flex flex-wrap gap-3 rounded-[1.5rem] border border-semear-green/15 bg-white/95 p-4 shadow-soft backdrop-blur md:bottom-4">
+          <button className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full bg-semear-green px-5 text-sm font-semibold text-white transition hover:bg-semear-green/92 disabled:cursor-not-allowed disabled:opacity-60" disabled={saving} type="submit">
             <Save className="h-4 w-4" aria-hidden="true" />
             {saving ? "Salvando..." : "Salvar ação"}
           </button>
-          <Link className="inline-flex min-h-12 items-center rounded-full border border-semear-green/15 bg-white px-5 text-sm font-semibold text-semear-green" href="/acoes">Cancelar</Link>
+          <Link className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full border border-semear-green/15 bg-white px-5 text-sm font-semibold text-semear-green" href="/acoes">Cancelar</Link>
         </div>
       </form>
     </section>

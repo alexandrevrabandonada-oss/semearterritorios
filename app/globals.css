@@ -13,9 +13,7 @@
 
 body {
   margin: 0;
-  background:
-    radial-gradient(circle at top left, rgba(228, 184, 78, 0.18), transparent 32rem),
-    linear-gradient(180deg, #f7f4ec 0%, #f0eee7 100%);
+  background: #f7f4ec;
   color: #1d2b25;
 }
 
@@ -31,6 +29,11 @@ a {
 
 ::selection {
   background: rgba(228, 184, 78, 0.45);
+}
+
+:focus-visible {
+  outline: 2px solid #174A37;
+  outline-offset: 2px;
 }
 
 .print-only {

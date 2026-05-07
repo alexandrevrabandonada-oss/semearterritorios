@@ -25,6 +25,8 @@ type BatchFormValues = {
   respondent_occupation: string;
 };
 
+type SubmitMode = "next" | "draft";
+
 const initialFormValues: BatchFormValues = {
   free_speech_text: "",
   words_used: "",
@@ -54,6 +56,7 @@ export function ListeningRecordBatchForm() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submitMode, setSubmitMode] = useState<SubmitMode>("next");
 
   // Travas da sessão
   const [lockedActionId, setLockedActionId] = useState<string>("");
@@ -211,6 +214,13 @@ export function ListeningRecordBatchForm() {
 
     setSessionCount(c => c + 1);
     setLastSavedId(res.data.id);
+
+    if (submitMode === "draft") {
+      setSaving(false);
+      void window.scrollTo({ top: 0, behavior: "smooth" });
+      window.location.assign(`/escutas?actionId=${action.id}&status=draft`);
+      return;
+    }
     
     // Keep interviewer_name and respondent fields across records (common for same person)
     setValues({
@@ -231,17 +241,42 @@ export function ListeningRecordBatchForm() {
   const selectedAction = actions.find(a => a.id === lockedActionId);
 
   return (
-    <section className="pb-10 max-w-5xl mx-auto">
+    <section className="pb-10 max-w-6xl mx-auto">
       <Link className="mb-5 inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white/70 px-4 text-sm font-semibold text-semear-green" href="/escutas">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         Voltar para escutas
       </Link>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+      <div className="lg:hidden sticky top-[4.75rem] z-20 mb-5 rounded-[1.5rem] border border-semear-green/15 bg-white/95 p-4 shadow-soft backdrop-blur">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">Sessão em campo</p>
+            <p className="mt-1 truncate text-base font-semibold text-semear-green">{selectedAction?.title ?? "Selecione a ação"}</p>
+            <p className="mt-1 text-xs leading-5 text-stone-600">
+              {selectedAction ? `${selectedAction.action_date} · ${selectedAction.neighborhoods?.name || "Sem bairro"}` : "Escolha a ação, o entrevistador e depois digite ficha por ficha."}
+            </p>
+          </div>
+          <div className="rounded-2xl bg-semear-green-soft px-3 py-2 text-right">
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-semear-earth">Sessão</p>
+            <p className="text-2xl font-semibold text-semear-green">{sessionCount}</p>
+          </div>
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <div className="rounded-xl bg-semear-offwhite px-3 py-2 text-xs text-stone-600">
+            <strong className="text-semear-green">Entrevistador:</strong> {values.interviewer_name || "Selecione acima"}
+          </div>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-950">
+            Não registre CPF, telefone ou endereço. Salve como rascunho e revise depois.
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
         <div>
           {/* TRAVA DE AÇÃO */}
           <div className="rounded-[2rem] border border-white/80 bg-white/78 p-6 shadow-soft mb-6">
-            <h2 className="text-xl font-semibold tracking-tight text-semear-green mb-4">Sessão de digitação — fixar ação</h2>
+            <h2 className="text-xl font-semibold tracking-tight text-semear-green mb-4">1. Ação e sessão</h2>
+            <p className="mb-4 text-sm leading-6 text-stone-600">Selecione primeiro a ação, a origem e o entrevistador. Esses dados ficam fixos para acelerar a digitação em campo.</p>
             <div className="grid gap-4 md:grid-cols-2">
               <label>
                 <span className="text-sm font-semibold text-semear-green">Ação</span>
@@ -292,27 +327,37 @@ export function ListeningRecordBatchForm() {
               {error && <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div>}
               {sensitiveAlert && <div className="mb-6 rounded-2xl border border-orange-300 bg-orange-50 p-4 text-sm text-orange-800 font-medium">{sensitiveAlert}</div>}
 
-              <div className="grid gap-5 md:grid-cols-2">
-                <label className="md:col-span-2 rounded-[1.5rem] border-2 border-semear-green/35 bg-semear-green-soft/70 p-4">
+              <div className="space-y-8">
+                <section>
+                  <div className="mb-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">2. Fala e síntese</p>
+                    <h3 className="mt-1 text-lg font-semibold text-semear-green">Registre a fala com conforto no celular</h3>
+                  </div>
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <label className="md:col-span-2 rounded-[1.5rem] border-2 border-semear-green/35 bg-semear-green-soft/70 p-4">
                   <span className="text-sm font-bold text-semear-green">Fala original / síntese livre</span>
                   <textarea className="mt-3 min-h-48 w-full rounded-2xl border border-semear-green/20 bg-white px-4 py-3 text-base leading-7 outline-none focus:border-semear-green" required value={values.free_speech_text} onChange={e => updateField("free_speech_text", e.target.value)} />
-                </label>
+                    </label>
 
-                <label><span className="text-sm font-semibold text-semear-green">Entrevistador</span><input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" required value={values.interviewer_name} onChange={e => updateField("interviewer_name", e.target.value)} /></label>
-                <label><span className="text-sm font-semibold text-semear-green">Faixa etária opcional</span><input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" value={values.approximate_age_range} onChange={e => updateField("approximate_age_range", e.target.value)} /></label>
+                    <label>
+                      <span className="text-sm font-semibold text-semear-green">Entrevistador</span>
+                      <input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" readOnly={Boolean(lockedInterviewerTeamMemberId)} required value={values.interviewer_name} onChange={e => updateField("interviewer_name", e.target.value)} />
+                      <p className="mt-1.5 text-xs text-stone-500">Se o entrevistador foi selecionado no topo da sessão, o nome fica preenchido automaticamente.</p>
+                    </label>
+                    <label><span className="text-sm font-semibold text-semear-green">Faixa etária opcional</span><input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" value={values.approximate_age_range} onChange={e => updateField("approximate_age_range", e.target.value)} /></label>
 
-                <label><span className="text-sm font-semibold text-semear-green">Palavras citadas</span><input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" value={values.words_used} onChange={e => updateField("words_used", e.target.value)} /></label>
-                <label><span className="text-sm font-semibold text-semear-green">Lugares citados</span><input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" value={values.places_mentioned_text} onChange={e => updateField("places_mentioned_text", e.target.value)} /></label>
+                    <label><span className="text-sm font-semibold text-semear-green">Palavras citadas</span><input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" value={values.words_used} onChange={e => updateField("words_used", e.target.value)} /></label>
+                    <label><span className="text-sm font-semibold text-semear-green">Lugares citados</span><input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" value={values.places_mentioned_text} onChange={e => updateField("places_mentioned_text", e.target.value)} /></label>
 
-                <label className="md:col-span-2"><span className="text-sm font-semibold text-semear-green">Prioridade apontada</span><input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" value={values.priority_mentioned} onChange={e => updateField("priority_mentioned", e.target.value)} /></label>
-                <label className="md:col-span-2"><span className="text-sm font-semibold text-semear-green">Observações inesperadas</span><input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" value={values.unexpected_notes} onChange={e => updateField("unexpected_notes", e.target.value)} /></label>
-              </div>
+                    <label className="md:col-span-2"><span className="text-sm font-semibold text-semear-green">Prioridade apontada</span><input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" value={values.priority_mentioned} onChange={e => updateField("priority_mentioned", e.target.value)} /></label>
+                  </div>
+                </section>
 
-              {/* TERRITÓRIO DE REFERÊNCIA DO ENTREVISTADO */}
-              <div className="mt-8 rounded-[1.5rem] border border-semear-green/20 bg-semear-green-soft/40 p-5">
-                <h3 className="font-semibold text-semear-green">Território de referência do entrevistado</h3>
-                <p className="mt-1 text-xs leading-5 text-stone-600">Registre apenas o território agregado de referência da pessoa. Não registre rua, número ou endereço.</p>
-                <div className="mt-4 grid gap-4 md:grid-cols-3">
+                <section className="rounded-[1.5rem] border border-semear-green/20 bg-semear-green-soft/40 p-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">3. Território de referência</p>
+                  <h3 className="mt-1 font-semibold text-semear-green">Território agregado da pessoa escutada</h3>
+                  <p className="mt-1 text-xs leading-5 text-stone-600">Registre apenas município, bairro oficial e vínculo com o território. Não registre rua, número ou endereço.</p>
+                  <div className="mt-4 grid gap-4 md:grid-cols-3">
                   <label>
                     <span className="text-sm font-semibold text-semear-green">Município de referência</span>
                     <input
@@ -350,30 +395,37 @@ export function ListeningRecordBatchForm() {
                       ))}
                     </select>
                   </label>
-                </div>
-                <label className="mt-4 block">
-                  <span className="text-sm font-semibold text-semear-green">Ocupação / atividade principal <span className="text-xs font-medium text-stone-500">(opcional)</span></span>
-                  <input
-                    className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
-                    placeholder="Ex.: aposentada, estudante, comerciante, trabalhador da indústria"
-                    value={values.respondent_occupation}
-                    onChange={e => updateField("respondent_occupation", e.target.value)}
-                  />
-                  <p className="mt-2 text-xs leading-5 text-stone-600">Campo opcional. Não registre nome da empresa, escola, setor específico ou local de trabalho.</p>
-                </label>
-                {hasPossibleSensitiveOccupation(values.respondent_occupation) ? (
-                  <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
-                    Verifique se a ocupação não identifica a pessoa. Prefira descrição geral.
-                  </p>
-                ) : null}
-              </div>
+                  </div>
+                </section>
 
-              <div className="mt-8 rounded-[1.5rem] border border-dashed border-semear-green/25 bg-semear-offwhite p-5">
-                <h3 className="font-semibold text-semear-green">Temas (Codificação preliminar)</h3>
-                <div className="mt-4 flex flex-wrap gap-2">
+                <section>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">4. Perfil opcional</p>
+                  <div className="mt-4 rounded-[1.5rem] border border-semear-gray bg-semear-offwhite p-5">
+                    <label className="block">
+                      <span className="text-sm font-semibold text-semear-green">Ocupação / atividade principal <span className="text-xs font-medium text-stone-500">(opcional)</span></span>
+                      <input
+                        className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
+                        placeholder="Ex.: aposentada, estudante, comerciante, trabalhador da indústria"
+                        value={values.respondent_occupation}
+                        onChange={e => updateField("respondent_occupation", e.target.value)}
+                      />
+                      <p className="mt-2 text-xs leading-5 text-stone-600">Campo opcional. Não registre nome da empresa, escola, setor específico ou local de trabalho.</p>
+                    </label>
+                    {hasPossibleSensitiveOccupation(values.respondent_occupation) ? (
+                      <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
+                        Verifique se a ocupação não identifica a pessoa. Prefira descrição geral.
+                      </p>
+                    ) : null}
+                  </div>
+                </section>
+
+                <section className="rounded-[1.5rem] border border-dashed border-semear-green/25 bg-semear-offwhite p-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">5. Temas</p>
+                  <h3 className="mt-1 font-semibold text-semear-green">Codificação preliminar</h3>
+                  <div className="mt-4 flex flex-wrap gap-2">
                   {themes.map(theme => (
                     <button
-                      className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${values.theme_ids.includes(theme.id) ? "border-semear-green bg-semear-green text-white" : "border-semear-green/20 bg-white text-semear-green"}`}
+                      className={`rounded-full border px-4 py-3 text-sm font-semibold transition ${values.theme_ids.includes(theme.id) ? "border-semear-green bg-semear-green text-white" : "border-semear-green/20 bg-white text-semear-green"}`}
                       key={theme.id}
                       onClick={() => toggleTheme(theme.id)}
                       type="button"
@@ -381,22 +433,35 @@ export function ListeningRecordBatchForm() {
                       {theme.name}
                     </button>
                   ))}
-                </div>
-              </div>
+                  </div>
+                </section>
 
-              <div className="mt-8">
-                <button className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-semear-green px-5 text-base font-semibold text-white disabled:opacity-60" disabled={saving || !lockedActionId} type="submit">
-                  <PlayCircle className="h-5 w-5" aria-hidden="true" />
-                  {saving ? "Salvando..." : "Salvar e digitar próxima"}
-                </button>
-                <p className="text-center mt-3 text-xs text-stone-500 uppercase tracking-widest font-semibold">Digite a ficha como rascunho. A revisão será feita depois, com calma.</p>
+                <section>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">6. Revisão e observações</p>
+                  <div className="mt-4 grid gap-4">
+                    <label><span className="text-sm font-semibold text-semear-green">Observações inesperadas</span><input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" value={values.unexpected_notes} onChange={e => updateField("unexpected_notes", e.target.value)} /></label>
+                  </div>
+                </section>
+
+                <div className="sticky bottom-20 z-20 mt-8 rounded-[1.5rem] border border-semear-green/15 bg-white/95 p-4 shadow-soft backdrop-blur md:bottom-4">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <button className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-semear-green px-5 text-base font-semibold text-white disabled:opacity-60" disabled={saving || !lockedActionId} onClick={() => setSubmitMode("next")} type="submit">
+                      <PlayCircle className="h-5 w-5" aria-hidden="true" />
+                      {saving && submitMode === "next" ? "Salvando..." : "Salvar e digitar próxima"}
+                    </button>
+                    <button className="inline-flex min-h-14 w-full items-center justify-center rounded-full border border-semear-green/20 bg-white px-5 text-base font-semibold text-semear-green disabled:opacity-60" disabled={saving || !lockedActionId} onClick={() => setSubmitMode("draft")} type="submit">
+                      {saving && submitMode === "draft" ? "Salvando..." : "Salvar rascunho"}
+                    </button>
+                  </div>
+                  <p className="mt-3 text-center text-xs text-stone-500 uppercase tracking-widest font-semibold">No celular, digite agora e revise depois com calma.</p>
+                </div>
               </div>
             </div>
           </form>
         </div>
 
         {/* SIDEBAR */}
-        <div className="space-y-6">
+        <div className="hidden space-y-6 xl:block">
           <div className="rounded-[2rem] border border-semear-green/15 bg-white/78 p-6 shadow-soft">
             <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth mb-2">Sessão Atual</h3>
             <p className="text-4xl font-semibold text-semear-green">{sessionCount}</p>

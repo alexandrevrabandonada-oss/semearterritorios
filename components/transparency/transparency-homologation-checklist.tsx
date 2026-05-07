@@ -46,7 +46,7 @@ export function TransparencyHomologationChecklist({
             <label className="flex items-start gap-3 rounded-2xl border border-semear-gray bg-semear-offwhite px-4 py-3" key={item.key}>
               <input
                 checked={checklist[item.key]}
-                className="mt-1 h-4 w-4 rounded border-semear-gray text-semear-green focus:ring-semear-green"
+                className="mt-1 h-5 w-5 rounded border-semear-gray text-semear-green focus:ring-semear-green"
                 disabled={disabled || (item.key === "validated_by_coordination" && !canValidate)}
                 onChange={(event) => onChange({ ...checklist, [item.key]: event.target.checked })}
                 type="checkbox"

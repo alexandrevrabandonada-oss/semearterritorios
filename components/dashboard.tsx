@@ -7,18 +7,26 @@ import {
   BarChart3,
   CalendarDays,
   ClipboardList,
+  FileText,
   FolderCheck,
   Keyboard,
   Layers3,
+  MapIcon,
   MapPinned,
   MessageSquareText,
+  Plus,
   Search,
+  ShieldCheck,
+  Sprout,
   Tag
 } from "lucide-react";
-import type { Action, ActionClosure, ActionDebrief, ActionType, ListeningRecord, Neighborhood, Theme } from "@/lib/database.types";
-import { actionTypeOptions, getActionTypeLabel } from "@/lib/actions";
+import type { Action, ActionClosure, ActionDebrief, ActionType, ListeningRecord, Neighborhood, PublicTransparencySnapshot, Theme } from "@/lib/database.types";
+import { actionTypeOptions } from "@/lib/actions";
 import { getReviewStatusLabel } from "@/lib/listening-records";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { PageHeader } from "@/components/ui/page-header";
+import { MetricCard } from "@/components/ui/metric-card";
+import { FilterBar, FilterField, filterControlClassName } from "@/components/ui/filter-bar";
 
 type RecordWithRelations = ListeningRecord & {
   actions: Pick<Action, "id" | "title" | "action_type"> | null;
@@ -37,6 +45,10 @@ type Filters = {
   themeId: string;
 };
 
+type CountItem = { name: string; count: number };
+type ThemeNeighborhoodCount = { neighborhood: string; theme: string; count: number };
+type TerritoryCardData = { name: string; records: number; actions: number; themes: number; latestDate: string | null; status: "Pendente" | "Em revisão" | "Escutado" };
+
 const initialFilters: Filters = {
   month: "",
   neighborhoodId: "",
@@ -52,7 +64,9 @@ export function Dashboard() {
   const [themes, setThemes] = useState<Theme[]>([]);
   const [closures, setClosures] = useState<ActionClosure[]>([]);
   const [debriefs, setDebriefs] = useState<ActionDebrief[]>([]);
+  const [snapshots, setSnapshots] = useState<PublicTransparencySnapshot[]>([]);
   const [filters, setFilters] = useState<Filters>(initialFilters);
+  const [territorySearch, setTerritorySearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,24 +80,19 @@ export function Dashboard() {
         return;
       }
 
-      const [actionsResult, recordsResult, neighborhoodsResult, themesResult, closuresResult, debriefsResult] = await Promise.all([
-        supabase
-          .from("actions")
-          .select("*, neighborhoods:neighborhood_id(id, name)")
-          .order("action_date", { ascending: false }),
-        supabase
-          .from("listening_records")
-          .select("*, actions:action_id(id, title, action_type), neighborhoods:neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name))")
-          .order("date", { ascending: false }),
+      const [actionsResult, recordsResult, neighborhoodsResult, themesResult, closuresResult, debriefsResult, snapshotsResult] = await Promise.all([
+        supabase.from("actions").select("*, neighborhoods:neighborhood_id(id, name)").order("action_date", { ascending: false }),
+        supabase.from("listening_records").select("*, actions:action_id(id, title, action_type), neighborhoods:neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name))").order("date", { ascending: false }),
         supabase.from("neighborhoods").select("*").order("name", { ascending: true }),
         supabase.from("themes").select("*").eq("is_active", true).order("name", { ascending: true }),
         supabase.from("action_closures").select("*"),
-        supabase.from("action_debriefs").select("*")
+        supabase.from("action_debriefs").select("*"),
+        supabase.from("public_transparency_snapshots").select("*").in("status", ["approved", "published"]).order("updated_at", { ascending: false })
       ]);
 
       if (ignore) return;
 
-      if (actionsResult.error || recordsResult.error || neighborhoodsResult.error || themesResult.error || closuresResult.error || debriefsResult.error) {
+      if (actionsResult.error || recordsResult.error || neighborhoodsResult.error || themesResult.error || closuresResult.error || debriefsResult.error || snapshotsResult.error) {
         setError(
           actionsResult.error?.message ??
             recordsResult.error?.message ??
@@ -91,6 +100,7 @@ export function Dashboard() {
             themesResult.error?.message ??
             closuresResult.error?.message ??
             debriefsResult.error?.message ??
+            snapshotsResult.error?.message ??
             "Erro ao carregar dados do dashboard."
         );
         setLoading(false);
@@ -103,6 +113,7 @@ export function Dashboard() {
       setThemes(themesResult.data ?? []);
       setClosures((closuresResult.data ?? []) as ActionClosure[]);
       setDebriefs((debriefsResult.data ?? []) as ActionDebrief[]);
+      setSnapshots((snapshotsResult.data ?? []) as PublicTransparencySnapshot[]);
       setLoading(false);
     }
 
@@ -141,12 +152,15 @@ export function Dashboard() {
   const actionsWithOpenDossier = filteredActions.filter((action) => closures.find((closure) => closure.action_id === action.id)?.status !== "closed");
   const actionsWithPendingDebrief = filteredActions.filter((action) => debriefs.find((debrief) => debrief.action_id === action.id)?.status !== "approved");
   const actionsWithDraftRecords = filteredActions.filter((action) => filteredRecords.some((record) => record.action_id === action.id && record.review_status === "draft"));
-  const latestAction = filteredActions[0] ?? null;
-  const latestActionRecords = latestAction ? filteredRecords.filter((record) => record.action_id === latestAction.id) : [];
-  const latestActionDebrief = latestAction ? debriefs.find((debrief) => debrief.action_id === latestAction.id) : null;
-  const latestActionClosure = latestAction ? closures.find((closure) => closure.action_id === latestAction.id) : null;
-
+  const territoryCards = buildTerritoryCards(filteredActions, filteredRecords).filter((item) => item.name.toLocaleLowerCase("pt-BR").includes(territorySearch.toLocaleLowerCase("pt-BR")));
   const maxThemeCount = Math.max(...themeCounts.map((item) => item.count), 1);
+  const maxMonthCount = Math.max(...recordsByMonth.map((item) => item.count), 1);
+  const latestSnapshot = snapshots[0] ?? null;
+  const nextAction = filteredActions[0] ?? null;
+  const topNeighborhoods = countBy(
+    filteredRecords.filter((record) => Boolean(record.neighborhoods?.name)),
+    (record) => record.neighborhoods?.name ?? ""
+  ).slice(0, 3);
 
   function updateFilter<TField extends keyof Filters>(field: TField, value: Filters[TField]) {
     setFilters((current) => ({ ...current, [field]: value }));
@@ -154,241 +168,315 @@ export function Dashboard() {
 
   return (
     <section className="pb-10">
-      <div className="rounded-[2rem] border border-white/80 bg-white/72 p-5 shadow-soft sm:p-7">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">
-          Dashboard de padrões
-        </p>
-        <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight text-semear-green sm:text-5xl">
-          Sínteses territoriais para leitura coletiva.
-        </h2>
-        <p className="mt-4 max-w-3xl text-sm leading-6 text-stone-600">
-          Os indicadores são calculados a partir dos dados cadastrados no Supabase. O painel não
-          classifica automaticamente a população: ele organiza padrões para a equipe revisar e
-          devolver ao território.
-        </p>
-      </div>
+      <PageHeader
+        actions={<PrimaryAction href="/acoes/nova" icon={<Plus className="h-4 w-4" />} label="Nova ação" />}
+        description="Sínteses territoriais para leitura coletiva"
+        filters={(
+          <>
+            <select aria-label="Período" className="min-h-11 rounded-xl border border-semear-gray bg-white px-3 text-sm font-semibold text-stone-700 shadow-sm outline-none focus:border-semear-green" onChange={(event) => updateFilter("month", event.target.value)} value={filters.month}>
+              <option value="">Todo o período</option>
+              {recordsByMonth.map((item) => <option key={item.name} value={item.name}>{formatMonth(item.name)}</option>)}
+            </select>
+            <select aria-label="Bairro" className="min-h-11 rounded-xl border border-semear-gray bg-white px-3 text-sm font-semibold text-stone-700 shadow-sm outline-none focus:border-semear-green" onChange={(event) => updateFilter("neighborhoodId", event.target.value)} value={filters.neighborhoodId}>
+              <option value="">Todos os bairros</option>
+              {neighborhoods.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+            <select aria-label="Tema" className="min-h-11 rounded-xl border border-semear-gray bg-white px-3 text-sm font-semibold text-stone-700 shadow-sm outline-none focus:border-semear-green" onChange={(event) => updateFilter("themeId", event.target.value)} value={filters.themeId}>
+              <option value="">Todos os temas</option>
+              {themes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </>
+        )}
+        title="Dashboard de padrões"
+      />
 
-      <div className="mt-5 rounded-[1.5rem] border border-white/80 bg-white/72 p-4 shadow-soft">
-        <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-semear-green">
-          <Search className="h-4 w-4" aria-hidden="true" />
-          Filtros
+      <section className="rounded-2xl border border-semear-gray/80 bg-white p-4 shadow-[0_12px_32px_rgba(23,74,55,0.06)] lg:hidden">
+        <div className="flex items-start gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-semear-green text-semear-yellow">
+            <CalendarDays className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">Hoje / próxima operação</p>
+            <h3 className="mt-1 text-xl font-semibold text-semear-green">
+              {nextAction ? nextAction.title : "Nenhuma ação recente cadastrada"}
+            </h3>
+            <p className="mt-1 text-sm leading-6 text-stone-600">
+              {nextAction
+                ? `${new Date(`${nextAction.action_date}T00:00:00`).toLocaleDateString("pt-BR")} · ${nextAction.neighborhoods?.name ?? "Sem bairro"}`
+                : "Cadastre uma ação para abrir uma sessão de digitação no celular."}
+            </p>
+          </div>
         </div>
-        <div className="grid gap-3 md:grid-cols-4">
-          <FilterInput label="Mês" value={filters.month} onChange={(value) => updateFilter("month", value)} />
-          <FilterSelect label="Bairro" value={filters.neighborhoodId} onChange={(value) => updateFilter("neighborhoodId", value)}>
-            <option value="">Todos</option>
-            {neighborhoods.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </FilterSelect>
-          <FilterSelect label="Tipo de ação" value={filters.actionType} onChange={(value) => updateFilter("actionType", value)}>
-            <option value="">Todos</option>
-            {actionTypeOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-          </FilterSelect>
-          <FilterSelect label="Tema" value={filters.themeId} onChange={(value) => updateFilter("themeId", value)}>
-            <option value="">Todos</option>
-            {themes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </FilterSelect>
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <SecondaryAction href="/escutas/lote" icon={<Keyboard className="h-4 w-4" />} label="Digitar fichas" strong />
+          <SecondaryAction href="/escutas?status=draft" icon={<MessageSquareText className="h-4 w-4" />} label="Revisar escutas" strong />
+          <SecondaryAction href={nextAction ? `/acoes/${nextAction.id}` : "/acoes"} icon={<ClipboardList className="h-4 w-4" />} label="Abrir ação" />
+          <SecondaryAction href={actionsWithOpenDossier[0] ? `/acoes/${actionsWithOpenDossier[0].id}/dossie` : "/acoes"} icon={<FolderCheck className="h-4 w-4" />} label="Fechar dossiê" tone="yellow" />
         </div>
-      </div>
+      </section>
+
+      <section className="hidden overflow-hidden rounded-2xl border border-semear-gray/80 bg-white shadow-[0_12px_32px_rgba(23,74,55,0.06)] lg:block">
+        <div className="grid gap-5 p-5 lg:grid-cols-[1fr_25rem] lg:items-center">
+          <div className="flex items-start gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-semear-green text-semear-yellow">
+              <Sprout className="h-7 w-7" aria-hidden="true" />
+            </div>
+            <div>
+              <p className="max-w-3xl text-sm leading-6 text-stone-700">
+                Este painel reúne os principais indicadores e padrões das escutas realizadas nos territórios. Use os filtros para explorar os dados e apoiar decisões da equipe.
+              </p>
+              <Link className="mt-2 inline-flex text-sm font-semibold text-semear-green hover:underline" href="/ajuda">Saiba mais sobre os indicadores</Link>
+            </div>
+          </div>
+          <div className="hidden h-24 rounded-xl bg-[linear-gradient(135deg,#eef5e8,#cfe0c2)] lg:block" aria-hidden="true" />
+        </div>
+      </section>
 
       {loading ? <StateBox>Carregando dados do dashboard...</StateBox> : null}
       {error ? <StateBox tone="error">{error}</StateBox> : null}
 
       {!loading && !error ? (
         <>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <MetricCard icon={<ClipboardList className="h-5 w-5" />} label="Total de ações" value={filteredActions.length} />
-            <MetricCard icon={<MessageSquareText className="h-5 w-5" />} label="Total de escutas" value={filteredRecords.length} />
-            <MetricCard icon={<MapPinned className="h-5 w-5" />} label="Bairros visitados" value={visitedNeighborhoodIds.size} />
-            <MetricCard icon={<Layers3 className="h-5 w-5" />} label="Pendências de revisão" value={pendingRecords.length} />
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <MetricCard icon={<ClipboardList className="h-5 w-5" />} label="Total de ações" note={`${filteredActions.length} neste recorte`} value={filteredActions.length} />
+            <MetricCard icon={<MessageSquareText className="h-5 w-5" />} label="Total de escutas" note={`${filteredRecords.length} neste recorte`} value={filteredRecords.length} />
+            <MetricCard icon={<MapPinned className="h-5 w-5" />} label="Bairros visitados" note={`${visitedNeighborhoodIds.size} neste recorte`} value={visitedNeighborhoodIds.size} />
+            <MetricCard icon={<Layers3 className="h-5 w-5" />} label="Pendências de revisão" note={pendingRecords.length === 0 ? "Sem alterações" : "Revisão necessária"} tone="yellow" value={pendingRecords.length} />
           </div>
 
-          <section className="mt-5 rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <section className="mt-4 rounded-2xl border border-semear-gray/80 bg-white p-5 shadow-[0_12px_32px_rgba(23,74,55,0.06)]">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Próxima operação</p>
-                <h3 className="mt-2 text-2xl font-semibold text-semear-green">Atalhos para homologação e primeira banca</h3>
-                <p className="mt-2 text-sm leading-6 text-stone-600">
-                  {actionsWithOpenDossier.length} ação(ões) com dossiê aberto, {actionsWithPendingDebrief.length} com devolutiva pendente e {actionsWithDraftRecords.length} com escutas em rascunho.
-                </p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">Próxima operação</p>
+                <h3 className="mt-2 text-2xl font-semibold tracking-tight text-semear-green">Atalhos para homologação e primeira banca</h3>
+                <p className="mt-1 text-sm leading-6 text-stone-600">Acompanhe o andamento dos dossiês e acesse rapidamente suas próximas atividades.</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <QuickAction href="/escutas/lote" icon={<Keyboard className="h-4 w-4" />} label="Digitar fichas" />
-                <QuickAction href="/escutas?status=draft" icon={<MessageSquareText className="h-4 w-4" />} label="Revisar escutas" />
-                <QuickAction href={actionsWithOpenDossier[0] ? `/acoes/${actionsWithOpenDossier[0].id}/dossie` : "/acoes"} icon={<FolderCheck className="h-4 w-4" />} label="Fechar dossiê" />
+                <SecondaryAction href="/escutas/lote" icon={<Keyboard className="h-4 w-4" />} label="Digitar fichas" strong />
+                <SecondaryAction href="/escutas?status=draft" icon={<MessageSquareText className="h-4 w-4" />} label="Revisar escutas" strong />
+                <SecondaryAction href={actionsWithOpenDossier[0] ? `/acoes/${actionsWithOpenDossier[0].id}/dossie` : "/acoes"} icon={<FolderCheck className="h-4 w-4" />} label="Fechar dossiê" tone="yellow" />
               </div>
             </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
-              <OperationList title="Ações recentes" items={filteredActions.slice(0, 3).map((action) => action.title)} />
-              <OperationList title="Dossiê aberto" items={actionsWithOpenDossier.slice(0, 3).map((action) => action.title)} />
-              <OperationList title="Devolutiva pendente" items={actionsWithPendingDebrief.slice(0, 3).map((action) => action.title)} />
+            <div className="mt-4 grid gap-4 lg:grid-cols-3">
+              <OperationList count={filteredActions.slice(0, 2).length} title="Ações recentes" items={filteredActions.slice(0, 2).map((action) => action.title)} />
+              <OperationList count={actionsWithOpenDossier.slice(0, 2).length} title="Dossiê aberto" tone="yellow" items={actionsWithOpenDossier.slice(0, 2).map((action) => action.title)} />
+              <OperationList count={actionsWithPendingDebrief.slice(0, 2).length} title="Devolutiva pendente" tone="earth" items={actionsWithPendingDebrief.slice(0, 2).map((action) => action.title)} empty="Nenhuma devolutiva pendente. Tudo em dia." />
             </div>
           </section>
 
-          <section className="mt-5 rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Última operação</p>
-                <h3 className="mt-2 text-2xl font-semibold text-semear-green">
-                  {latestAction?.title ?? "Nenhuma ação realizada"}
-                </h3>
-                <p className="mt-2 text-sm leading-6 text-stone-600">
-                  {latestAction ? `${new Date(`${latestAction.action_date}T00:00:00`).toLocaleDateString("pt-BR")} · ${latestAction.neighborhoods?.name ?? "sem bairro"}` : "Cadastre a primeira ação para acompanhar o fechamento pós-banca."}
-                </p>
+          <section className="mt-4 grid gap-4 lg:hidden">
+            <Panel title="Pendências do dia" icon={<Layers3 className="h-5 w-5" />}>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <OperationList count={actionsWithOpenDossier.length} title="Dossiês abertos" items={actionsWithOpenDossier.slice(0, 3).map((action) => action.title)} empty="Nenhum dossiê aberto." tone="yellow" />
+                <OperationList count={actionsWithPendingDebrief.length} title="Devolutivas pendentes" items={actionsWithPendingDebrief.slice(0, 3).map((action) => action.title)} empty="Nenhuma devolutiva pendente." tone="earth" />
               </div>
-              {latestAction ? (
-                <div className="flex flex-wrap gap-2">
-                  <Link className="inline-flex min-h-11 items-center justify-center rounded-full bg-semear-green px-5 text-sm font-semibold text-white" href={`/acoes/${latestAction.id}`}>
-                    Abrir ação
-                  </Link>
-                  <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-semear-green/15 bg-white px-5 text-sm font-semibold text-semear-green" href={`/acoes/${latestAction.id}/piloto`}>
-                    Ver piloto
-                  </Link>
-                  <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-semear-green/15 bg-white px-5 text-sm font-semibold text-semear-green" href={`/acoes/${latestAction.id}/dossie`}>
-                    Ver dossiê
-                  </Link>
-                </div>
-              ) : null}
-            </div>
-            {latestAction ? (
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                <SmallMetric label="Escutas" value={latestActionRecords.length.toString()} />
-                <SmallMetric label="Revisadas" value={latestActionRecords.filter((record) => record.review_status === "reviewed").length.toString()} />
-                <SmallMetric label="Rascunhos" value={latestActionRecords.filter((record) => record.review_status === "draft").length.toString()} />
-                <SmallMetric label="Devolutiva" value={latestActionDebrief?.status === "approved" ? "aprovada" : latestActionDebrief?.status ?? "não criada"} />
-                <SmallMetric label="Dossiê" value={latestActionClosure?.status ?? "aberto"} />
+            </Panel>
+
+            <Panel title="Padrões resumidos" icon={<BarChart3 className="h-5 w-5" />}>
+              <div className="grid gap-4">
+                <CompactRanking title="Top 3 temas" items={themeCounts.slice(0, 3).map((item) => `${item.name} (${item.count})`)} empty="Nenhum tema marcado." />
+                <CompactRanking title="Top 3 palavras" items={wordCounts.slice(0, 3).map((item) => `${item.name} (${item.count})`)} empty="Nenhuma palavra recorrente." />
+                <CompactRanking title="Bairros com mais escutas" items={topNeighborhoods.map((item) => `${item.name} (${item.count})`)} empty="Sem bairros no recorte." />
               </div>
-            ) : null}
+            </Panel>
           </section>
 
           {filteredActions.length === 0 && filteredRecords.length === 0 ? (
             <EmptyDashboard />
           ) : (
-            <div className="mt-5 grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-              <Panel title="Temas mais recorrentes" icon={<Tag className="h-5 w-5" />}>
-                {themeCounts.length > 0 ? (
-                  <div className="space-y-4">
-                    {themeCounts.slice(0, 8).map((item) => (
-                      <div key={item.name}>
-                        <div className="mb-2 flex items-center justify-between gap-3 text-sm">
-                          <span className="font-semibold text-semear-green">{item.name}</span>
-                          <span className="text-stone-600">{item.count}</span>
+            <>
+              <div className="mt-4 hidden gap-4 lg:grid xl:grid-cols-4">
+                <Panel title="Temas mais recorrentes" icon={<Tag className="h-5 w-5" />}>
+                  {themeCounts.length > 0 ? (
+                    <div className="space-y-3">
+                      {themeCounts.slice(0, 7).map((item) => (
+                        <div className="grid grid-cols-[minmax(0,7rem)_1fr_2rem] items-center gap-3 text-sm" key={item.name}>
+                          <span className="truncate font-semibold text-semear-green">{item.name}</span>
+                          <div className="h-2.5 rounded-full bg-semear-green-soft">
+                            <div className="h-2.5 rounded-full bg-semear-green" style={{ width: `${(item.count / maxThemeCount) * 100}%` }} />
+                          </div>
+                          <span className="text-right font-semibold text-stone-700">{item.count}</span>
                         </div>
-                        <div className="h-3 rounded-full bg-semear-green-soft">
-                          <div className="h-3 rounded-full bg-semear-green" style={{ width: `${(item.count / maxThemeCount) * 100}%` }} />
+                      ))}
+                    </div>
+                  ) : <PedagogicEmpty text="Nenhum tema foi marcado nas escutas filtradas." />}
+                </Panel>
+
+                <Panel title="Escutas por mês" icon={<CalendarDays className="h-5 w-5" />}>
+                  {recordsByMonth.length > 0 ? (
+                    <div className="flex h-40 items-end gap-3 border-b border-l border-semear-gray px-3 pb-2">
+                      {recordsByMonth.slice(-6).map((item) => (
+                        <div className="flex flex-1 flex-col items-center gap-2" key={item.name}>
+                          <span className="text-xs font-semibold text-semear-green">{item.count}</span>
+                          <div className="w-full rounded-t-xl bg-semear-green" style={{ height: `${Math.max((item.count / maxMonthCount) * 110, 12)}px` }} />
+                          <span className="text-[0.68rem] text-stone-500">{formatMonthShort(item.name)}</span>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                  ) : <PedagogicEmpty text="Ainda não há escutas com data no recorte selecionado." />}
+                </Panel>
+
+                <Panel title="Temas por bairro" icon={<BarChart3 className="h-5 w-5" />}>
+                  {themesByNeighborhood.length > 0 ? (
+                    <SimpleTable headers={["Bairro", "Tema", "Qtd."]} rows={themesByNeighborhood.slice(0, 6).map((item) => [item.neighborhood, item.theme, item.count.toString()])} />
+                  ) : <PedagogicEmpty text="Marque temas em escutas com bairro para formar essa leitura territorial." />}
+                </Panel>
+
+                <Panel title="Palavras recorrentes" icon={<MessageSquareText className="h-5 w-5" />}>
+                  {wordCounts.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {wordCounts.slice(0, 16).map((item) => (
+                        <span className="rounded-full border border-semear-gray bg-semear-offwhite px-2.5 py-1 text-xs font-semibold text-stone-700" key={item.name}>
+                          {item.name} <span className="text-semear-earth">{item.count}</span>
+                        </span>
+                      ))}
+                    </div>
+                  ) : <PedagogicEmpty text="Preencha o campo palavras usadas pela pessoa para ver recorrências." />}
+                </Panel>
+              </div>
+
+              <section className="mt-4 rounded-2xl border border-semear-gray/80 bg-white p-5 shadow-[0_12px_32px_rgba(23,74,55,0.06)]">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-semear-green-soft text-semear-green">
+                      <MapIcon className="h-5 w-5" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-semear-green">Mapa-lista territorial</h3>
+                      <p className="mt-1 text-sm text-stone-600">Lista viva dos territórios escutados. Clique em um território para ver detalhes, histórico e documentos.</p>
+                    </div>
                   </div>
-                ) : <PedagogicEmpty text="Nenhum tema foi marcado nas escutas filtradas." />}
-              </Panel>
-
-              <Panel title="Escutas por mês" icon={<CalendarDays className="h-5 w-5" />}>
-                {recordsByMonth.length > 0 ? (
-                  <SimpleTable headers={["Mês", "Escutas"]} rows={recordsByMonth.map((item) => [formatMonth(item.name), item.count.toString()])} />
-                ) : <PedagogicEmpty text="Ainda não há escutas com data no recorte selecionado." />}
-              </Panel>
-
-              <Panel title="Temas por bairro" icon={<BarChart3 className="h-5 w-5" />}>
-                {themesByNeighborhood.length > 0 ? (
-                  <SimpleTable headers={["Bairro", "Tema", "Qtd."]} rows={themesByNeighborhood.slice(0, 10).map((item) => [item.neighborhood, item.theme, item.count.toString()])} />
-                ) : <PedagogicEmpty text="Marque temas em escutas com bairro para formar essa leitura territorial." />}
-              </Panel>
-
-              <Panel title="Palavras recorrentes" icon={<MessageSquareText className="h-5 w-5" />}>
-                {wordCounts.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {wordCounts.slice(0, 24).map((item) => (
-                      <span className="rounded-full bg-semear-offwhite px-3 py-1 text-sm font-semibold text-stone-700" key={item.name}>
-                        {item.name} <span className="text-semear-earth">{item.count}</span>
-                      </span>
-                    ))}
+                  <div className="relative w-full max-w-sm">
+                    <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-stone-400" aria-hidden="true" />
+                    <input className="min-h-11 w-full rounded-xl border border-semear-gray bg-white pl-9 pr-3 text-sm outline-none focus:border-semear-green" onChange={(event) => setTerritorySearch(event.target.value)} placeholder="Buscar território..." value={territorySearch} />
                   </div>
-                ) : <PedagogicEmpty text="Preencha o campo palavras usadas pela pessoa para ver recorrências." />}
-              </Panel>
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-2 2xl:grid-cols-4">
+                  {territoryCards.slice(0, 8).map((territory) => (
+                    <TerritoryCard key={territory.name} territory={territory} />
+                  ))}
+                </div>
+                {territoryCards.length === 0 ? <PedagogicEmpty text="Nenhum território encontrado neste recorte. Ajuste os filtros ou cadastre novas escutas." /> : null}
+              </section>
 
-              <Panel title="Últimas escutas digitadas" icon={<MessageSquareText className="h-5 w-5" />}>
-                {latestRecords.length > 0 ? (
-                  <div className="space-y-3">
-                    {latestRecords.map((record) => (
-                      <Link className="block rounded-2xl border border-semear-gray bg-white p-4 transition hover:border-semear-green/30" href={`/escutas/${record.id}`} key={record.id}>
-                        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-stone-600">
-                          <span>{new Date(`${record.date}T00:00:00`).toLocaleDateString("pt-BR")}</span>
-                          <span>{getReviewStatusLabel(record.review_status)}</span>
-                          <span>{record.neighborhoods?.name ?? "Sem bairro"}</span>
-                        </div>
-                        <p className="mt-2 line-clamp-2 text-sm leading-6 text-semear-green">{record.free_speech_text}</p>
-                      </Link>
-                    ))}
+              <section className="mt-4 rounded-2xl border border-semear-gray/80 bg-white p-5 shadow-[0_12px_32px_rgba(23,74,55,0.06)]">
+                <div className="grid gap-5 lg:grid-cols-[1fr_28rem] lg:items-center">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-semear-green-soft text-semear-green">
+                      <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-semear-green">Transparência Viva (futura área pública)</h3>
+                      <p className="mt-1 text-sm leading-6 text-stone-600">
+                        Aqui fica o acompanhamento dos snapshots aprovados para publicação pública, sempre por síntese agregada e sem dados brutos.
+                      </p>
+                    </div>
                   </div>
-                ) : <PedagogicEmpty text="As escutas mais recentes aparecerão aqui após a digitação." />}
-              </Panel>
-
-              <Panel title="Pendências de revisão" icon={<Layers3 className="h-5 w-5" />}>
-                {pendingRecords.length > 0 ? (
-                  <SimpleTable headers={["Data", "Bairro", "Ação"]} rows={pendingRecords.slice(0, 8).map((record) => [
-                    new Date(`${record.date}T00:00:00`).toLocaleDateString("pt-BR"),
-                    record.neighborhoods?.name ?? "Sem bairro",
-                    record.actions?.title ?? "Sem ação"
-                  ])} />
-                ) : <PedagogicEmpty text="Não há escutas em rascunho no recorte selecionado." />}
-              </Panel>
-            </div>
+                  <div className="rounded-xl border border-semear-gray bg-semear-offwhite p-4">
+                    <p className="text-sm font-semibold text-semear-green">{latestSnapshot ? latestSnapshot.title : "Área pública em desenvolvimento"}</p>
+                    <p className="mt-1 text-xs text-stone-500">{latestSnapshot ? `Status: ${latestSnapshot.status}` : "Em breve disponível para a comunidade."}</p>
+                    <Link className="mt-3 inline-flex min-h-10 items-center rounded-xl border border-semear-green/15 bg-white px-3 text-sm font-semibold text-semear-green" href="/transparencia/snapshots">Saiba mais</Link>
+                  </div>
+                </div>
+              </section>
+            </>
           )}
+
+          <FilterBar title="Filtros detalhados" onClear={() => setFilters(initialFilters)}>
+            <FilterField label="Mês">
+              <input className={filterControlClassName} onChange={(event) => updateFilter("month", event.target.value)} type="month" value={filters.month} />
+            </FilterField>
+            <FilterField label="Bairro">
+              <select className={filterControlClassName} onChange={(event) => updateFilter("neighborhoodId", event.target.value)} value={filters.neighborhoodId}>
+                <option value="">Todos os bairros</option>
+                {neighborhoods.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
+            </FilterField>
+            <FilterField label="Tipo de ação">
+              <select className={filterControlClassName} onChange={(event) => updateFilter("actionType", event.target.value)} value={filters.actionType}>
+                <option value="">Todos os tipos</option>
+                {actionTypeOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+              </select>
+            </FilterField>
+            <FilterField label="Tema">
+              <select className={filterControlClassName} onChange={(event) => updateFilter("themeId", event.target.value)} value={filters.themeId}>
+                <option value="">Todos os temas</option>
+                {themes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
+            </FilterField>
+          </FilterBar>
         </>
       ) : null}
     </section>
   );
 }
 
-function SmallMetric({ label, value }: { label: string; value: string }) {
+function PrimaryAction({ href, icon, label }: { href: string; icon: ReactNode; label: string }) {
   return (
-    <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{label}</p>
-      <p className="mt-2 text-lg font-semibold text-semear-green">{value}</p>
-    </div>
-  );
-}
-
-function QuickAction({ href, icon, label }: { href: string; icon: ReactNode; label: string }) {
-  return (
-    <Link className="inline-flex min-h-11 items-center gap-2 rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href={href}>
+    <Link className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-semear-yellow px-4 text-sm font-semibold text-semear-green shadow-sm transition hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-semear-green" href={href}>
       {icon}
       {label}
     </Link>
   );
 }
 
-function OperationList({ title, items }: { title: string; items: string[] }) {
+function SecondaryAction({ href, icon, label, tone = "green", strong = false }: { href: string; icon: ReactNode; label: string; tone?: "green" | "yellow"; strong?: boolean }) {
+  const className = tone === "yellow"
+    ? "bg-semear-yellow text-semear-green"
+    : strong
+      ? "bg-semear-green text-white"
+      : "border border-semear-green/15 bg-white text-semear-green";
+  return <Link className={`inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold shadow-sm ${className}`} href={href}>{icon}{label}</Link>;
+}
+
+function OperationList({ title, items, count, empty = "Nenhum item.", tone = "green" }: { title: string; items: string[]; count: number; empty?: string; tone?: "green" | "yellow" | "earth" }) {
+  const toneClass = tone === "yellow" ? "bg-semear-yellow text-semear-green" : tone === "earth" ? "bg-semear-earth text-white" : "bg-green-100 text-green-800";
   return (
-    <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4">
-      <p className="font-semibold text-semear-green">{title}</p>
+    <div className="rounded-xl border border-semear-gray bg-white p-4">
+      <div className="flex items-center gap-2">
+        <p className="font-semibold text-semear-green">{title}</p>
+        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${toneClass}`}>{count}</span>
+      </div>
       {items.length > 0 ? (
-        <ul className="mt-2 space-y-1 text-sm leading-6 text-stone-700">
-          {items.map((item) => <li key={item}>{item}</li>)}
+        <ul className="mt-3 divide-y divide-semear-gray text-sm leading-6 text-stone-700">
+          {items.map((item) => <li className="py-2" key={item}>{item}</li>)}
         </ul>
       ) : (
-        <p className="mt-2 text-sm text-stone-500">Nenhum item.</p>
+        <p className="mt-3 text-sm text-stone-500">{empty}</p>
       )}
     </div>
   );
 }
 
-function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
+function CompactRanking({ title, items, empty }: { title: string; items: string[]; empty: string }) {
   return (
-    <article className="rounded-3xl border border-white/80 bg-white p-5 shadow-soft">
-      <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl bg-semear-green text-white">{icon}</div>
-      <p className="text-sm font-medium text-stone-600">{label}</p>
-      <strong className="mt-2 block text-4xl font-semibold tracking-tight text-semear-green">{value}</strong>
-    </article>
+    <div className="rounded-xl border border-semear-gray bg-semear-offwhite/70 p-4">
+      <p className="text-sm font-semibold text-semear-green">{title}</p>
+      {items.length > 0 ? (
+        <ul className="mt-3 space-y-2 text-sm leading-6 text-stone-700">
+          {items.map((item) => (
+            <li className="rounded-xl bg-white px-3 py-2" key={item}>
+              {item}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 text-sm text-stone-500">{empty}</p>
+      )}
+    </div>
   );
 }
 
 function Panel({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
   return (
-    <section className="rounded-3xl border border-white/80 bg-white/78 p-5 shadow-soft">
-      <div className="mb-5 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-semear-green-soft text-semear-green">{icon}</div>
-        <h3 className="text-lg font-semibold text-semear-green">{title}</h3>
+    <section className="rounded-2xl border border-semear-gray/80 bg-white p-4 shadow-[0_12px_32px_rgba(23,74,55,0.06)]">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-semear-green-soft text-semear-green">{icon}</div>
+          <h3 className="font-semibold text-semear-green">{title}</h3>
+        </div>
+        <span className="text-xs font-semibold text-semear-green">Ver todos</span>
       </div>
       {children}
     </section>
@@ -400,11 +488,11 @@ function SimpleTable({ headers, rows }: { headers: string[]; rows: string[][] })
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
         <thead className="text-xs uppercase tracking-[0.12em] text-stone-500">
-          <tr>{headers.map((header) => <th className="border-b border-semear-gray pb-3 pr-4" key={header}>{header}</th>)}</tr>
+          <tr>{headers.map((header) => <th className="border-b border-semear-gray pb-2 pr-3" key={header}>{header}</th>)}</tr>
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.join("|")}>{row.map((cell, index) => <td className="border-b border-semear-gray/70 py-3 pr-4 text-stone-700" key={`${cell}-${index}`}>{cell}</td>)}</tr>
+            <tr key={row.join("|")}>{row.map((cell, index) => <td className="border-b border-semear-gray/70 py-2.5 pr-3 text-stone-700" key={`${cell}-${index}`}>{cell}</td>)}</tr>
           ))}
         </tbody>
       </table>
@@ -412,34 +500,86 @@ function SimpleTable({ headers, rows }: { headers: string[]; rows: string[][] })
   );
 }
 
-function FilterInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label><span className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{label}</span><input className="mt-2 min-h-11 w-full rounded-2xl border border-semear-gray bg-white px-3 text-sm outline-none focus:border-semear-green" onChange={(event) => onChange(event.target.value)} type="month" value={value} /></label>;
+function TerritoryCard({ territory }: { territory: TerritoryCardData }) {
+  return (
+    <article className="rounded-xl border border-semear-gray bg-white p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h4 className="font-semibold text-semear-green">{territory.name}</h4>
+          <p className="mt-1 text-xs text-stone-500">{territory.status}</p>
+        </div>
+        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${territory.status === "Escutado" ? "bg-green-50 text-green-800" : territory.status === "Em revisão" ? "bg-amber-50 text-amber-900" : "bg-orange-50 text-orange-800"}`}>
+          {territory.status}
+        </span>
+      </div>
+      <div className="mt-4 grid grid-cols-4 gap-2 text-xs">
+        <TerritoryStat label="Escutas" value={territory.records.toString()} />
+        <TerritoryStat label="Temas" value={territory.themes.toString()} />
+        <TerritoryStat label="Ações" value={territory.actions.toString()} />
+        <TerritoryStat label="Última escuta" value={territory.latestDate ? new Date(`${territory.latestDate}T00:00:00`).toLocaleDateString("pt-BR") : "--"} />
+      </div>
+    </article>
+  );
 }
 
-function FilterSelect({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: ReactNode }) {
-  return <label><span className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{label}</span><select className="mt-2 min-h-11 w-full rounded-2xl border border-semear-gray bg-white px-3 text-sm outline-none focus:border-semear-green" onChange={(event) => onChange(event.target.value)} value={value}>{children}</select></label>;
+function TerritoryStat({ label, value }: { label: string; value: string }) {
+  return <div><p className="text-stone-500">{label}</p><p className="mt-1 font-semibold text-stone-900">{value}</p></div>;
 }
 
 function StateBox({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "error" }) {
-  return <div className={`mt-5 rounded-[1.5rem] p-6 text-sm shadow-soft ${tone === "error" ? "border border-red-200 bg-red-50 text-red-800" : "bg-white/72 text-stone-600"}`}>{children}</div>;
+  return <div className={`mt-5 rounded-xl p-5 text-sm shadow-soft ${tone === "error" ? "border border-red-200 bg-red-50 text-red-800" : "border border-semear-gray bg-white text-stone-600"}`}>{children}</div>;
 }
 
 function PedagogicEmpty({ text }: { text: string }) {
-  return <div className="rounded-2xl border border-dashed border-semear-green/25 bg-semear-offwhite p-5 text-sm leading-6 text-stone-600">{text}</div>;
+  return <div className="rounded-xl border border-dashed border-semear-green/25 bg-semear-offwhite p-4 text-sm leading-6 text-stone-600">{text}</div>;
 }
 
 function EmptyDashboard() {
   return (
-    <div className="mt-5 rounded-[1.5rem] border border-dashed border-semear-green/25 bg-semear-offwhite p-8 text-center">
+    <div className="mt-4 rounded-xl border border-dashed border-semear-green/25 bg-white p-8 text-center">
       <h3 className="text-lg font-semibold text-semear-green">Ainda não há dados para sintetizar</h3>
-      <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-stone-600">
-        Cadastre ações e escutas para que o dashboard mostre padrões por mês, bairro e tema.
-      </p>
+      <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-stone-600">Você ainda não tem escutas neste recorte. Comece digitando fichas de uma ação.</p>
+      <Link className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-semear-yellow px-4 text-sm font-semibold text-semear-green" href="/escutas/lote">Digitar fichas</Link>
     </div>
   );
 }
 
-function countBy<TItem>(items: TItem[], getName: (item: TItem) => string) {
+function buildTerritoryCards(actions: ActionWithNeighborhood[], records: RecordWithRelations[]): TerritoryCardData[] {
+  const map = new Map<string, { name: string; records: number; actions: number; themes: Set<string>; latestDate: string | null; draftRecords: number }>();
+
+  actions.forEach((action) => {
+    const name = action.neighborhoods?.name ?? "Sem território";
+    const current = map.get(name) ?? { name, records: 0, actions: 0, themes: new Set<string>(), latestDate: null, draftRecords: 0 };
+    current.actions += 1;
+    map.set(name, current);
+  });
+
+  records.forEach((record) => {
+    const name = record.neighborhoods?.name ?? "Sem território";
+    const current = map.get(name) ?? { name, records: 0, actions: 0, themes: new Set<string>(), latestDate: null, draftRecords: 0 };
+    current.records += 1;
+    if (record.review_status === "draft") current.draftRecords += 1;
+    if (!current.latestDate || record.date > current.latestDate) current.latestDate = record.date;
+    record.listening_record_themes.forEach((item) => {
+      if (item.themes?.name) current.themes.add(item.themes.name);
+    });
+    map.set(name, current);
+  });
+
+  return Array.from(map.values()).map((item): TerritoryCardData => {
+    const status: TerritoryCardData["status"] = item.records === 0 ? "Pendente" : item.draftRecords > 0 ? "Em revisão" : "Escutado";
+    return {
+      name: item.name,
+      records: item.records,
+      actions: item.actions,
+      themes: item.themes.size,
+      latestDate: item.latestDate,
+      status
+    };
+  }).sort((a, b) => b.records - a.records || a.name.localeCompare(b.name));
+}
+
+function countBy<TItem>(items: TItem[], getName: (item: TItem) => string): CountItem[] {
   const map = new Map<string, number>();
   items.forEach((item) => {
     const name = getName(item);
@@ -448,7 +588,7 @@ function countBy<TItem>(items: TItem[], getName: (item: TItem) => string) {
   return Array.from(map.entries()).map(([name, count]) => ({ name, count })).sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function countThemes(records: RecordWithRelations[]) {
+function countThemes(records: RecordWithRelations[]): CountItem[] {
   const map = new Map<string, number>();
   records.forEach((record) => {
     record.listening_record_themes.forEach((item) => {
@@ -458,7 +598,7 @@ function countThemes(records: RecordWithRelations[]) {
   return Array.from(map.entries()).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
 }
 
-function countThemesByNeighborhood(records: RecordWithRelations[]) {
+function countThemesByNeighborhood(records: RecordWithRelations[]): ThemeNeighborhoodCount[] {
   const map = new Map<string, { neighborhood: string; theme: string; count: number }>();
   records.forEach((record) => {
     const neighborhood = record.neighborhoods?.name ?? "Sem bairro";
@@ -472,7 +612,7 @@ function countThemesByNeighborhood(records: RecordWithRelations[]) {
   return Array.from(map.values()).sort((a, b) => b.count - a.count);
 }
 
-function countWords(records: RecordWithRelations[]) {
+function countWords(records: RecordWithRelations[]): CountItem[] {
   const map = new Map<string, number>();
   records.forEach((record) => {
     record.words_used
@@ -489,5 +629,12 @@ function formatMonth(value: string) {
   return new Date(Number(year), Number(month) - 1, 1).toLocaleDateString("pt-BR", {
     month: "long",
     year: "numeric"
+  });
+}
+
+function formatMonthShort(value: string) {
+  const [year, month] = value.split("-");
+  return new Date(Number(year), Number(month) - 1, 1).toLocaleDateString("pt-BR", {
+    month: "short"
   });
 }

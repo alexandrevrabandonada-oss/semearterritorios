@@ -141,6 +141,48 @@ export function ListeningRecordsList() {
     new Set(records.map((record) => record.respondent_occupation?.trim()).filter(Boolean) as string[])
   ).sort((a, b) => a.localeCompare(b, "pt-BR"));
 
+  const filterFields = (
+    <div className="grid gap-3 md:grid-cols-5">
+      <FilterInput label="Mês" type="month" value={filters.month} onChange={(value) => updateFilter("month", value)} />
+      <FilterSelect label="Bairro da ação" value={filters.neighborhoodId} onChange={(value) => updateFilter("neighborhoodId", value)}><option value="">Todos</option>{neighborhoods.map((item) => <option key={item.id} value={item.id}>{formatNeighborhoodOption(item)}</option>)}</FilterSelect>
+      <FilterSelect label="Ação" value={filters.actionId} onChange={(value) => updateFilter("actionId", value)}><option value="">Todas</option>{actions.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</FilterSelect>
+      <FilterSelect label="Tema" value={filters.themeId} onChange={(value) => updateFilter("themeId", value)}><option value="">Todos</option>{themes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</FilterSelect>
+      <FilterSelect label="Status" value={filters.status} onChange={(value) => updateFilter("status", value)}><option value="">Todos</option>{reviewStatusOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</FilterSelect>
+      <FilterSelect label="Qualidade" value={filters.quality} onChange={(value) => updateFilter("quality", value)}>
+        <option value="">Todas</option>
+        <option value="no_theme">Sem tema marcado</option>
+        <option value="no_summary">Sem resumo da equipe</option>
+        <option value="no_priority">Sem prioridade apontada</option>
+        <option value="very_short">Fala muito curta</option>
+        <option value="possible_sensitive">Possível dado sensível</option>
+        <option value="no_words_used">Sem palavras usadas</option>
+        <option value="no_respondent_territory">Sem território de referência</option>
+      </FilterSelect>
+      <FilterSelect label="Município de referência" value={filters.respondentCity} onChange={(value) => updateFilter("respondentCity", value)}>
+        <option value="">Todos</option>
+        <option value="Volta Redonda">Volta Redonda</option>
+      </FilterSelect>
+      <FilterSelect label="Bairro de referência" value={filters.respondentNeighborhoodId} onChange={(value) => updateFilter("respondentNeighborhoodId", value)}><option value="">Todos</option>{neighborhoods.map((item) => <option key={item.id} value={item.id}>{formatNeighborhoodOption(item)}</option>)}</FilterSelect>
+      <FilterSelect label="Vínculo" value={filters.respondentRelation} onChange={(value) => updateFilter("respondentRelation", value)}>
+        <option value="">Todos</option>
+        <option value="mora">Mora</option>
+        <option value="trabalha_estuda">Trabalha / estuda</option>
+        <option value="circula">Circula</option>
+        <option value="fala_sobre">Fala sobre</option>
+        <option value="nao_informado">Não informado</option>
+      </FilterSelect>
+      <FilterSelect label="Entrevistador" value={filters.interviewerTeamMemberId} onChange={(value) => updateFilter("interviewerTeamMemberId", value)}>
+        <option value="">Todos</option>
+        {interviewers.map((item) => <option key={item.id} value={item.id}>{item.display_name}</option>)}
+      </FilterSelect>
+      <FilterSelect label="Ocupação" value={filters.occupation} onChange={(value) => updateFilter("occupation", value)}>
+        <option value="">Todas</option>
+        {occupationOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+      </FilterSelect>
+      <FilterInput label="Busca textual de ocupação" type="text" value={filters.occupationSearch} onChange={(value) => updateFilter("occupationSearch", value)} />
+    </div>
+  );
+
   function updateFilter<TField extends keyof Filters>(field: TField, value: Filters[TField]) {
     setFilters((current) => ({ ...current, [field]: value }));
   }
@@ -188,47 +230,14 @@ export function ListeningRecordsList() {
         </div>
       </div>
 
-      <div className="mt-5 rounded-[1.5rem] border border-white/80 bg-white/72 p-4 shadow-soft">
+      <details className="mt-5 rounded-[1.5rem] border border-white/80 bg-white/72 p-4 shadow-soft md:hidden">
+        <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold text-semear-green"><SlidersHorizontal className="h-4 w-4" aria-hidden="true" />Filtrar escutas</summary>
+        <div className="mt-4">{filterFields}</div>
+      </details>
+
+      <div className="mt-5 hidden rounded-[1.5rem] border border-white/80 bg-white/72 p-4 shadow-soft md:block">
         <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-semear-green"><SlidersHorizontal className="h-4 w-4" aria-hidden="true" />Filtros</div>
-        <div className="grid gap-3 md:grid-cols-5">
-          <FilterInput label="Mês" type="month" value={filters.month} onChange={(value) => updateFilter("month", value)} />
-          <FilterSelect label="Bairro da ação" value={filters.neighborhoodId} onChange={(value) => updateFilter("neighborhoodId", value)}><option value="">Todos</option>{neighborhoods.map((item) => <option key={item.id} value={item.id}>{formatNeighborhoodOption(item)}</option>)}</FilterSelect>
-          <FilterSelect label="Ação" value={filters.actionId} onChange={(value) => updateFilter("actionId", value)}><option value="">Todas</option>{actions.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</FilterSelect>
-          <FilterSelect label="Tema" value={filters.themeId} onChange={(value) => updateFilter("themeId", value)}><option value="">Todos</option>{themes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</FilterSelect>
-          <FilterSelect label="Status" value={filters.status} onChange={(value) => updateFilter("status", value)}><option value="">Todos</option>{reviewStatusOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</FilterSelect>
-          <FilterSelect label="Qualidade" value={filters.quality} onChange={(value) => updateFilter("quality", value)}>
-            <option value="">Todas</option>
-            <option value="no_theme">Sem tema marcado</option>
-            <option value="no_summary">Sem resumo da equipe</option>
-            <option value="no_priority">Sem prioridade apontada</option>
-            <option value="very_short">Fala muito curta</option>
-            <option value="possible_sensitive">Possível dado sensível</option>
-            <option value="no_words_used">Sem palavras usadas</option>
-            <option value="no_respondent_territory">Sem território de referência</option>
-          </FilterSelect>
-          <FilterSelect label="Município de referência" value={filters.respondentCity} onChange={(value) => updateFilter("respondentCity", value)}>
-            <option value="">Todos</option>
-            <option value="Volta Redonda">Volta Redonda</option>
-          </FilterSelect>
-          <FilterSelect label="Bairro de referência" value={filters.respondentNeighborhoodId} onChange={(value) => updateFilter("respondentNeighborhoodId", value)}><option value="">Todos</option>{neighborhoods.map((item) => <option key={item.id} value={item.id}>{formatNeighborhoodOption(item)}</option>)}</FilterSelect>
-          <FilterSelect label="Vínculo" value={filters.respondentRelation} onChange={(value) => updateFilter("respondentRelation", value)}>
-            <option value="">Todos</option>
-            <option value="mora">Mora</option>
-            <option value="trabalha_estuda">Trabalha / estuda</option>
-            <option value="circula">Circula</option>
-            <option value="fala_sobre">Fala sobre</option>
-            <option value="nao_informado">Não informado</option>
-          </FilterSelect>
-          <FilterSelect label="Entrevistador" value={filters.interviewerTeamMemberId} onChange={(value) => updateFilter("interviewerTeamMemberId", value)}>
-            <option value="">Todos</option>
-            {interviewers.map((item) => <option key={item.id} value={item.id}>{item.display_name}</option>)}
-          </FilterSelect>
-          <FilterSelect label="Ocupação" value={filters.occupation} onChange={(value) => updateFilter("occupation", value)}>
-            <option value="">Todas</option>
-            {occupationOptions.map((item) => <option key={item} value={item}>{item}</option>)}
-          </FilterSelect>
-          <FilterInput label="Busca textual de ocupação" type="text" value={filters.occupationSearch} onChange={(value) => updateFilter("occupationSearch", value)} />
-        </div>
+        {filterFields}
       </div>
 
       {loading ? <div className="mt-5 rounded-[1.5rem] bg-white/72 p-6 text-sm font-medium text-stone-600 shadow-soft">Carregando escutas...</div> : null}
@@ -243,15 +252,17 @@ export function ListeningRecordsList() {
 
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
         {filteredRecords.map((record) => (
-          <Link className="rounded-3xl border border-white/80 bg-white p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-semear-green/25" href={`/escutas/${record.id}`} key={record.id}>
+          <article className="rounded-3xl border border-white/80 bg-white p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-semear-green/25" key={record.id}>
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full bg-semear-green-soft px-3 py-1 text-xs font-semibold text-semear-green">{getSourceTypeLabel(record.source_type)}</span>
               <span className="rounded-full bg-semear-yellow/35 px-3 py-1 text-xs font-semibold text-semear-green">{getReviewStatusLabel(record.review_status)}</span>
             </div>
             <p className="mt-4 line-clamp-3 text-base font-semibold leading-7 text-semear-green">{record.free_speech_text}</p>
-            <div className="mt-4 flex flex-wrap gap-3 text-sm text-stone-600">
+            <div className="mt-4 grid gap-2 text-sm text-stone-600">
               <span className="inline-flex items-center gap-2"><CalendarDays className="h-4 w-4" aria-hidden="true" />{new Date(`${record.date}T00:00:00`).toLocaleDateString("pt-BR")}</span>
               <span className="inline-flex items-center gap-2"><MessageSquareText className="h-4 w-4" aria-hidden="true" />{record.actions?.title ?? "Sem ação"}</span>
+              <span className="inline-flex items-center gap-2">Bairro da ação: {record.neighborhoods?.name ?? "Sem bairro"}</span>
+              <span className="inline-flex items-center gap-2">Território de referência: {record.respondent_neighborhoods?.name ?? record.respondent_city ?? "Não informado"}</span>
               <span className="inline-flex items-center gap-2">Entrevistador: {record.interviewer_team_member?.display_name ?? record.interviewer_name}</span>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">{record.listening_record_themes.slice(0, 4).map((item) => item.themes ? <span className="rounded-full bg-semear-offwhite px-3 py-1 text-xs font-semibold text-stone-600" key={item.themes.id}>{item.themes.name}</span> : null)}</div>
@@ -270,7 +281,15 @@ export function ListeningRecordsList() {
                 <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-800">Ocupação: {record.respondent_occupation}</span>
               ) : null}
             </div>
-          </Link>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href={`/escutas/${record.id}`}>
+                Abrir detalhe
+              </Link>
+              <Link className="inline-flex min-h-11 items-center justify-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href={`/escutas/${record.id}`}>
+                Revisar
+              </Link>
+            </div>
+          </article>
         ))}
       </div>
     </section>

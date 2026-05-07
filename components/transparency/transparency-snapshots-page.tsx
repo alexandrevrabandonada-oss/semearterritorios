@@ -114,14 +114,14 @@ export function TransparencySnapshotsPage() {
         <p className="mt-4 max-w-3xl text-sm leading-6 text-stone-600">
           O painel público futuro não lê escutas brutas. Ele só consome snapshots agregados, sanitizados e aprovados pela coordenação.
         </p>
-        <div className="mt-5 flex flex-wrap gap-3">
-          <button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-semear-green px-4 text-sm font-semibold text-white disabled:opacity-60" disabled={saving} onClick={() => void createDraft()} type="button">
+        <div className="mt-5 grid gap-3 sm:flex sm:flex-wrap">
+          <button className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-semear-green px-4 text-sm font-semibold text-white disabled:opacity-60 sm:w-auto" disabled={saving} onClick={() => void createDraft()} type="button">
             <Wand2 className="h-4 w-4" /> Gerar rascunho
           </button>
-          <Link className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/transparencia/preview">
+          <Link className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green sm:w-auto" href="/transparencia/preview">
             <Eye className="h-4 w-4" /> Abrir preview interno
           </Link>
-          <Link className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/transparencia/homologacao">
+          <Link className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green sm:w-auto" href="/transparencia/homologacao">
             <ShieldCheck className="h-4 w-4" /> Homologação institucional
           </Link>
         </div>
@@ -139,14 +139,14 @@ export function TransparencySnapshotsPage() {
                 <h3 className="mt-3 text-2xl font-semibold text-semear-green">{snapshot.title}</h3>
                 <p className="mt-2 max-w-4xl text-sm leading-6 text-stone-600">{snapshot.public_summary}</p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Link className="inline-flex min-h-10 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-3 text-sm font-semibold text-semear-green" href={`/transparencia/snapshots/${snapshot.id}`}>
+              <div className="grid gap-2 sm:flex sm:flex-wrap">
+                <Link className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full border border-semear-green/15 bg-white px-3 text-sm font-semibold text-semear-green sm:w-auto" href={`/transparencia/snapshots/${snapshot.id}`}>
                   <FilePenLine className="h-4 w-4" /> Editar
                 </Link>
                 <SnapshotActions snapshot={snapshot} disabled={saving} onTransition={transition} />
               </div>
             </div>
-            <div className="mt-5 grid gap-3 md:grid-cols-6">
+            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
               {Object.entries((snapshot.totals ?? {}) as Record<string, number>).map(([key, value]) => (
                 <div className="rounded-2xl bg-semear-offwhite p-3" key={key}>
                   <p className="text-xs text-stone-500">{key}</p>
@@ -165,7 +165,7 @@ export function TransparencySnapshotsPage() {
 
 function SnapshotActions({ snapshot, disabled, onTransition }: { snapshot: PublicTransparencySnapshot; disabled: boolean; onTransition: (snapshot: PublicTransparencySnapshot, status: PublicTransparencySnapshot["status"]) => Promise<void> }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="grid gap-2 sm:flex sm:flex-wrap">
       {snapshot.status === "draft" ? <Button disabled={disabled} icon={<FileText className="h-4 w-4" />} label="Marcar revisado" onClick={() => onTransition(snapshot, "reviewed")} /> : null}
       {snapshot.status === "reviewed" ? <Button disabled={disabled} icon={<CheckCircle2 className="h-4 w-4" />} label="Aprovar" onClick={() => onTransition(snapshot, "approved")} /> : null}
       {snapshot.status === "approved" ? <Button disabled={disabled} icon={<Send className="h-4 w-4" />} label="Publicar" onClick={() => onTransition(snapshot, "published")} /> : null}
@@ -175,7 +175,7 @@ function SnapshotActions({ snapshot, disabled, onTransition }: { snapshot: Publi
 }
 
 function Button({ disabled, icon, label, onClick }: { disabled: boolean; icon: React.ReactNode; label: string; onClick: () => void }) {
-  return <button className="inline-flex min-h-10 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-3 text-sm font-semibold text-semear-green disabled:opacity-60" disabled={disabled} onClick={onClick} type="button">{icon}{label}</button>;
+  return <button className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full border border-semear-green/15 bg-white px-3 text-sm font-semibold text-semear-green disabled:opacity-60 sm:w-auto" disabled={disabled} onClick={onClick} type="button">{icon}{label}</button>;
 }
 
 function StateBox({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "error" }) {

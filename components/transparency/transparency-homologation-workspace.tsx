@@ -145,8 +145,8 @@ export function TransparencyHomologationListPage() {
         <p className="mt-4 max-w-3xl text-sm leading-6 text-stone-600">
           O pacote congela uma versão editorial do snapshot, registra decisão institucional e prepara a futura integração pública sem abrir o banco bruto.
         </p>
-        <div className="mt-5 flex flex-wrap gap-3">
-          <Link className="inline-flex min-h-11 items-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/transparencia/snapshots">
+        <div className="mt-5 grid gap-3 sm:flex sm:flex-wrap">
+          <Link className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white sm:w-auto" href="/transparencia/snapshots">
             Voltar aos snapshots
           </Link>
         </div>
@@ -170,9 +170,9 @@ export function TransparencyHomologationListPage() {
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-semear-earth">{getSnapshotStatusLabel(snapshot.status)}</p>
                 <h4 className="mt-2 font-semibold text-semear-green">{snapshot.title}</h4>
                 <p className="mt-2 text-sm leading-6 text-stone-600">{snapshot.public_summary}</p>
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
                   <button
-                    className="inline-flex min-h-10 items-center gap-2 rounded-full bg-semear-green px-3 text-sm font-semibold text-white disabled:opacity-60"
+                    className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full bg-semear-green px-3 text-sm font-semibold text-white disabled:opacity-60 sm:w-auto"
                     disabled={saving}
                     onClick={() => void handleCreatePackage(snapshot.id)}
                     type="button"
@@ -180,7 +180,7 @@ export function TransparencyHomologationListPage() {
                     <FileCheck2 className="h-4 w-4" /> Gerar pacote de homologação
                   </button>
                   {linkedPackage ? (
-                    <Link className="inline-flex min-h-10 items-center rounded-full border border-semear-green/15 bg-white px-3 text-sm font-semibold text-semear-green" href={`/transparencia/homologacao/${linkedPackage.id}`}>
+                    <Link className="inline-flex min-h-10 w-full items-center justify-center rounded-full border border-semear-green/15 bg-white px-3 text-sm font-semibold text-semear-green sm:w-auto" href={`/transparencia/homologacao/${linkedPackage.id}`}>
                       Abrir pacote atual
                     </Link>
                   ) : null}
@@ -212,11 +212,11 @@ export function TransparencyHomologationListPage() {
                     Preparado por {formatPerson(item.prepared_by, people)} · assinado por {formatPerson(item.signed_by, people)} · {formatDate(item.updated_at)}
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Link className="inline-flex min-h-10 items-center rounded-full border border-semear-green/15 bg-white px-3 text-sm font-semibold text-semear-green" href={`/transparencia/homologacao/${item.id}`}>
+                <div className="grid gap-2 sm:flex sm:flex-wrap">
+                  <Link className="inline-flex min-h-10 w-full items-center justify-center rounded-full border border-semear-green/15 bg-white px-3 text-sm font-semibold text-semear-green sm:w-auto" href={`/transparencia/homologacao/${item.id}`}>
                     Abrir
                   </Link>
-                  <Link className="inline-flex min-h-10 items-center rounded-full border border-semear-green/15 bg-white px-3 text-sm font-semibold text-semear-green" href={`/transparencia/homologacao/${item.id}/preview`}>
+                  <Link className="inline-flex min-h-10 w-full items-center justify-center rounded-full border border-semear-green/15 bg-white px-3 text-sm font-semibold text-semear-green sm:w-auto" href={`/transparencia/homologacao/${item.id}/preview`}>
                     Preview print
                   </Link>
                 </div>
