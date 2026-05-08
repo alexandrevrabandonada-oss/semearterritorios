@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Inter } from "next/font/google";
+import { GoogleCalendarConnectionObserver } from "@/components/auth/google-calendar-connection-observer";
 import "./globals.css";
 
 const inter = Inter({
@@ -20,7 +21,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <GoogleCalendarConnectionObserver />
+        {children}
+      </body>
     </html>
   );
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { AlertTriangle, ClipboardList, FileText, Keyboard, MapPinned, ShieldCheck, UsersRound } from "lucide-react";
+import { AlertTriangle, CalendarDays, ClipboardList, FileText, Keyboard, MapPinned, ShieldCheck, UsersRound } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 
 const steps = [
@@ -148,7 +148,9 @@ export default function AjudaPage() {
         <div className="mt-6 grid gap-4 md:grid-cols-3">
           <QuickLink href="/escutas/lote" icon={<Keyboard className="h-5 w-5" />} title="Digitar fichas" text="Modo lote para cadastrar fichas da banca como rascunho." />
           <QuickLink href="/acoes" icon={<ClipboardList className="h-5 w-5" />} title="Ações" text="Cadastrar ação, abrir piloto, devolutiva e dossiê." />
+          <QuickLink href="/agenda" icon={<CalendarDays className="h-5 w-5" />} title="Agenda da Equipe" text="Organizar ações de campo, reuniões, prazos e presença interna." />
           <QuickLink href="/equipe" icon={<UsersRound className="h-5 w-5" />} title="Equipe" text="Cadastrar membros operacionais, entrevistadores e participantes." />
+          <QuickLink href="/memoria" icon={<FileText className="h-5 w-5" />} title="Memória do Projeto" text="Enviar relatórios semanais, anexar documentos e consolidar memória interna." />
           <QuickLink href="/pos-banca" icon={<FileText className="h-5 w-5" />} title="Pós-banca" text="Consolidar resultados, ver decisão e copiar relatório pós-banca." />
           <QuickLink href="/relatorios" icon={<FileText className="h-5 w-5" />} title="Relatórios" text="Conferir leitura mensal e alertas de dossiê." />
           <QuickLink href="/territorios/lugares" icon={<MapPinned className="h-5 w-5" />} title="Normalizar lugares" text="Padronizar lugares citados e marcar visibilidade antes do mapa." />
@@ -214,6 +216,63 @@ export default function AjudaPage() {
             <Role title="Admin" text="Administra cadastros, aprova devolutivas, fecha e reabre dossiês." />
             <Role title="Coordenação" text="Revisa decisões institucionais, aprova devolutivas e pode marcar suficiência." />
             <Role title="Equipe" text="Cadastra ações e escutas, revisa dados e prepara rascunhos." />
+          </div>
+        </Panel>
+
+        <Panel className="mt-6" icon={<FileText className="h-5 w-5" />} title="Relatórios semanais e memória do projeto">
+          <div className="space-y-3 text-sm leading-6 text-stone-700">
+            <p><strong>Quem deve enviar:</strong> membros da equipe com perfil vinculado em <em>team_members</em>. A coordenação também pode registrar relatório em nome de alguém quando necessário.</p>
+            <p><strong>Quando enviar:</strong> ao fim de cada semana de trabalho territorial, preferencialmente antes da revisão da coordenação e do fechamento do mês.</p>
+            <p><strong>O que escrever:</strong> resumo da semana, atividades realizadas, territórios envolvidos, problemas, aprendizados, pendências e próximos passos.</p>
+            <p><strong>O que não escrever:</strong> CPF, telefone, endereço pessoal, nome completo de entrevistado, dado sensível desnecessário ou conteúdo que não deva circular internamente.</p>
+            <p><strong>Como anexar:</strong> use apenas documentos úteis para memória e prestação de contas. Os arquivos sobem para bucket privado e só geram link temporário dentro do sistema.</p>
+            <p><strong>Como a coordenação revisa:</strong> em <strong>/memoria</strong> e <strong>/memoria/[id]</strong>, mudando status para revisão, aprovação, pedido de ajustes ou arquivamento.</p>
+            <p><strong>Como vira memória do projeto:</strong> relatórios aprovados podem gerar entradas internas de atividade, decisão, aprendizado, problema, encaminhamento ou marco. Só coordenação/admin pode marcar algo como candidato ao público.</p>
+          </div>
+        </Panel>
+
+        <Panel className="mt-6" icon={<CalendarDays className="h-5 w-5" />} title="Agenda da Equipe">
+          <div className="space-y-3 text-sm leading-6 text-stone-700">
+            <p><strong>O que é:</strong> a agenda interna organiza ações de campo, bancas de escuta, reuniões, prazos, devolutivas, dossiês e tarefas de memória da equipe.</p>
+            <p><strong>Horários estruturados:</strong> ações agora podem registrar `starts_at`, `ends_at` e `all_day`. Se a atividade ainda não tiver horário fechado, mantenha como dia inteiro ou pendente.</p>
+            <p><strong>Ação x evento:</strong> a ação é o registro territorial principal; o evento da agenda é a camada operacional de organização, presença e lembretes.</p>
+            <p><strong>O que ainda não é:</strong> não é página pública, não envia push, não manda e-mail próprio e não publica nada externamente.</p>
+            <p><strong>Presença:</strong> marcar presença ajuda a memória do projeto e a prestação interna. Não é folha de ponto.</p>
+            <p><strong>Privacidade:</strong> não incluir dados pessoais de entrevistados, endereços pessoais, telefones, CPF ou qualquer identificador sensível.</p>
+            <p><strong>Memória:</strong> eventos concluídos podem virar relatório semanal vinculado e entrada de memória do projeto, sempre com confirmação humana.</p>
+            <p><strong>Geração assistida:</strong> em `/acoes/[id]` é possível sugerir agenda para devolutiva, fechamento do dossiê e revisão das escutas. Em `/memoria` e `/relatorios`, também é possível sugerir prazo para entrega dos relatórios semanais.</p>
+            <p><strong>Google Calendar:</strong> nesta versão a sincronização é manual, auditável e restrita a coordenação/admin. O SEMEAR segue como fonte principal e o Google funciona apenas como espelho operacional.</p>
+            <p><strong>Autenticação:</strong> o evento pode ser sincronizado por service account institucional ou por conexão OAuth manual da coordenação/admin, sempre sem expor token no frontend.</p>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link className="inline-flex min-h-11 items-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/agenda">Abrir agenda</Link>
+            <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/agenda/novo">Novo evento</Link>
+          </div>
+        </Panel>
+
+        <Panel className="mt-6" icon={<CalendarDays className="h-5 w-5" />} title="Google Calendar">
+          <div className="space-y-3 text-sm leading-6 text-stone-700">
+            <p><strong>Fonte principal:</strong> o SEMEAR continua sendo a referência oficial do evento. Google Calendar é apenas espelho operacional.</p>
+            <p><strong>Quem sincroniza:</strong> apenas perfis `admin` e `coordenacao`, a partir de `/agenda/[id]`.</p>
+            <p><strong>O que vai:</strong> resumo operacional, data, horário, território agregado e equipe quando houver e-mail cadastrado.</p>
+            <p><strong>O que não vai:</strong> escutas, relatórios completos, anexos, fala original e qualquer dado sensível.</p>
+            <p><strong>Em caso de sync_error:</strong> conferir calendário institucional, conexão Google ativa, envs e permissões de compartilhamento, depois usar `Tentar novamente`.</p>
+            <p><strong>Importante:</strong> se alguém alterar o evento diretamente no Google, essa mudança não volta automaticamente para o SEMEAR nesta versão.</p>
+            <p><strong>Privacidade:</strong> nunca colocar dados sensíveis no evento interno pensando que eles serão filtrados depois. O cuidado começa no cadastro do evento.</p>
+          </div>
+        </Panel>
+
+        <Panel className="mt-6" icon={<ShieldCheck className="h-5 w-5" />} title="Curadoria da memória pública">
+          <div className="space-y-3 text-sm leading-6 text-stone-700">
+            <p><strong>Objetivo:</strong> transformar registros internos em conteúdo seguro para a Transparência Viva.</p>
+            <p><strong>Onde fazer:</strong> no painel de <strong>/memoria/curadoria</strong>, exclusivo para coordenação e admin.</p>
+            <p><strong>Detector de Riscos:</strong> o sistema analisa automaticamente o texto em busca de CPF, telefones e endereços. Riscos bloqueantes impedem a aprovação pública.</p>
+            <p><strong>Checklist Obrigatório:</strong> toda memória pública deve passar por uma revisão humana manual confirmando a ausência de dados sensíveis e a adequação da linguagem.</p>
+            <p><strong>Visibilidade:</strong> apenas entradas com status <strong>Aprovada Pública</strong> podem ser incluídas em snapshots de transparência e comunicações externas oficiais.</p>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link className="inline-flex min-h-11 items-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/memoria/curadoria">Abrir curadoria</Link>
+            <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/docs/curadoria-memoria-publica.md">Ver governança completa</Link>
           </div>
         </Panel>
 

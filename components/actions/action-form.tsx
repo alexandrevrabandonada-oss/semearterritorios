@@ -10,17 +10,23 @@ import type {
   ActionTeamMember,
   ActionType,
   Neighborhood,
+  Profile,
+  TeamCalendarAttendanceStatus,
   TeamMember
 } from "@/lib/database.types";
 import { actionStatusOptions, actionTypeOptions } from "@/lib/actions";
 import { formatNeighborhoodOption, getOfficialNeighborhoodsForSelect } from "@/lib/neighborhoods";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { formatDateTimeLocalInput, getActionScheduleLabel, getEventAutoType, getSuggestedActionEventEnd, getSuggestedActionEventStart } from "@/lib/team-calendar";
 
 type ActionFormMode = "create" | "edit";
 
 type ActionFormValues = {
   title: string;
   action_date: string;
+  starts_at: string;
+  ends_at: string;
+  all_day: boolean;
   neighborhood_id: string;
   action_type: ActionType;
   location_reference: string;
@@ -35,6 +41,9 @@ type ActionFormValues = {
 const defaultValues: ActionFormValues = {
   title: "",
   action_date: new Date().toISOString().slice(0, 10),
+  starts_at: "",
+  ends_at: "",
+  all_day: false,
   neighborhood_id: "",
   action_type: "banca_escuta",
   location_reference: "",
@@ -50,6 +59,9 @@ function mapActionToFormValues(action: Action): ActionFormValues {
   return {
     title: action.title,
     action_date: action.action_date,
+    starts_at: formatDateTimeLocalInput(action.starts_at),
+    ends_at: formatDateTimeLocalInput(action.ends_at),
+    all_day: action.all_day,
     neighborhood_id: action.neighborhood_id ?? "",
     action_type: action.action_type,
     location_reference: action.location_reference ?? "",
@@ -73,10 +85,16 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
   const [values, setValues] = useState<ActionFormValues>(defaultValues);
   const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [currentProfile, setCurrentProfile] = useState<Pick<Profile, "id" | "role"> | null>(null);
   const [selectedTeamMembers, setSelectedTeamMembers] = useState<Record<string, string>>({});
+  const [createCalendarEvent, setCreateCalendarEvent] = useState(false);
+  const [calendarAllDay, setCalendarAllDay] = useState(false);
+  const [calendarStartsAt, setCalendarStartsAt] = useState(`${defaultValues.action_date}T09:00`);
+  const [calendarEndsAt, setCalendarEndsAt] = useState("");
   const [loading, setLoading] = useState(mode === "edit");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const canManageCalendar = currentProfile?.role === "admin" || currentProfile?.role === "coordenacao";
 
   useEffect(() => {
     let ignore = false;
@@ -89,7 +107,10 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
       }
 
       setLoading(true);
-      const [neighborhoodsResult, teamMembersResult] = await Promise.all([
+      const userResult = await supabase.auth.getUser();
+      const userId = userResult.data.user?.id;
+
+      const [neighborhoodsResult, teamMembersResult, profileResult] = await Promise.all([
         supabase
           .from("neighborhoods")
           .select("*")
@@ -101,23 +122,27 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
           .select("*")
           .eq("active", true)
           .eq("can_join_actions", true)
-          .order("display_name", { ascending: true })
+          .order("display_name", { ascending: true }),
+        userId ? supabase.from("profiles").select("id, role").eq("id", userId).maybeSingle() : Promise.resolve({ data: null, error: null })
       ]);
 
       if (ignore) {
         return;
       }
 
-      if (neighborhoodsResult.error || teamMembersResult.error) {
-        setError(neighborhoodsResult.error?.message ?? teamMembersResult.error?.message ?? "Erro ao carregar formulário.");
+      if (neighborhoodsResult.error || teamMembersResult.error || profileResult.error) {
+        setError(neighborhoodsResult.error?.message ?? teamMembersResult.error?.message ?? profileResult.error?.message ?? "Erro ao carregar formulário.");
         setLoading(false);
         return;
       }
 
       setNeighborhoods(getOfficialNeighborhoodsForSelect(neighborhoodsResult.data ?? []));
       setTeamMembers((teamMembersResult.data ?? []) as TeamMember[]);
+      setCurrentProfile((profileResult.data ?? null) as Pick<Profile, "id" | "role"> | null);
 
       if (mode !== "edit" || !actionId) {
+        setCalendarStartsAt(getSuggestedActionEventStart(defaultValues));
+        setCalendarEndsAt(getSuggestedActionEventEnd(defaultValues));
         setLoading(false);
         return;
       }
@@ -139,6 +164,9 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
 
       if (actionResult.data) {
         setValues(mapActionToFormValues(actionResult.data));
+        setCalendarAllDay(actionResult.data.all_day);
+        setCalendarStartsAt(getSuggestedActionEventStart(actionResult.data));
+        setCalendarEndsAt(getSuggestedActionEventEnd(actionResult.data));
       }
 
       const participantMap = new Map<string, string>();
@@ -157,8 +185,36 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
     };
   }, [actionId, mode, supabase]);
 
+  useEffect(() => {
+    if (!createCalendarEvent) return;
+
+    setCalendarAllDay(values.all_day);
+    setCalendarStartsAt(values.starts_at || `${values.action_date}T09:00`);
+    setCalendarEndsAt(values.ends_at || (values.all_day ? `${values.action_date}T23:59` : ""));
+  }, [createCalendarEvent, values.action_date, values.all_day, values.ends_at, values.starts_at]);
+
   function updateField<TField extends keyof ActionFormValues>(field: TField, value: ActionFormValues[TField]) {
     setValues((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateActionDate(date: string) {
+    setValues((current) => {
+      const nextStartsAt = current.starts_at
+        ? `${date}T${current.starts_at.slice(11, 16)}`
+        : "";
+      const nextEndsAt = current.ends_at
+        ? `${date}T${current.ends_at.slice(11, 16)}`
+        : "";
+      return {
+        ...current,
+        action_date: date,
+        starts_at: nextStartsAt,
+        ends_at: nextEndsAt,
+      };
+    });
+
+    setCalendarStartsAt((current) => (current ? `${date}T${current.slice(11, 16) || "09:00"}` : `${date}T09:00`));
+    setCalendarEndsAt((current) => (current ? `${date}T${current.slice(11, 16) || "23:59"}` : current));
   }
 
   function showError(message: string) {
@@ -201,6 +257,14 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
       return;
     }
 
+    const actionStartsAt = values.starts_at ? new Date(values.starts_at).toISOString() : null;
+    const actionEndsAt = values.ends_at ? new Date(values.ends_at).toISOString() : null;
+
+    if (actionStartsAt && actionEndsAt && new Date(actionEndsAt) < new Date(actionStartsAt)) {
+      showError("O horário final da ação não pode ser anterior ao início.");
+      return;
+    }
+
     const {
       data: { user },
       error: userError
@@ -216,6 +280,9 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
     const basePayload = {
       title: values.title.trim(),
       action_date: values.action_date,
+      starts_at: actionStartsAt,
+      ends_at: actionEndsAt,
+      all_day: values.all_day,
       neighborhood_id: values.neighborhood_id || null,
       action_type: values.action_type,
       location_reference: values.location_reference.trim() || null,
@@ -261,6 +328,55 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
         setSaving(false);
         showError(participantsInsertResult.error.message);
         return;
+      }
+    }
+
+    if (createCalendarEvent && canManageCalendar) {
+      const startsAtIso = calendarAllDay ? new Date(`${values.action_date}T00:00:00`).toISOString() : new Date(calendarStartsAt).toISOString();
+      const endsAtIso = calendarEndsAt
+        ? calendarAllDay
+          ? new Date(`${calendarEndsAt.slice(0, 10)}T23:59:00`).toISOString()
+          : new Date(calendarEndsAt).toISOString()
+        : null;
+
+      const calendarEventResult = await supabase
+        .from("team_calendar_events")
+        .insert({
+          title: values.title.trim(),
+          description: values.summary.trim() || values.notes.trim() || null,
+          event_type: getEventAutoType({ action_type: values.action_type }),
+          starts_at: startsAtIso,
+          ends_at: endsAtIso,
+          all_day: calendarAllDay,
+          status: values.status === "cancelada" ? "cancelled" : values.status === "realizada" ? "done" : "planned",
+          action_id: actionDbId,
+          neighborhood_id: values.neighborhood_id || null,
+          created_by: user.id
+        })
+        .select("id")
+        .single();
+
+      if (calendarEventResult.error) {
+        setSaving(false);
+        showError(calendarEventResult.error.message);
+        return;
+      }
+
+      if (participantRows.length > 0) {
+        const eventParticipantsResult = await supabase.from("team_calendar_event_members").insert(
+          participantRows.map((participant) => ({
+            event_id: calendarEventResult.data.id,
+            team_member_id: participant.team_member_id,
+            responsibility: participant.responsibility,
+            attendance_status: "invited" as TeamCalendarAttendanceStatus
+          }))
+        );
+
+        if (eventParticipantsResult.error) {
+          setSaving(false);
+          showError(eventParticipantsResult.error.message);
+          return;
+        }
       }
     }
 
@@ -318,10 +434,41 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
             <span className="text-sm font-semibold text-semear-green">Data</span>
             <input
               className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
-              onChange={(event) => updateField("action_date", event.target.value)}
+              onChange={(event) => updateActionDate(event.target.value)}
               required
               type="date"
               value={values.action_date}
+            />
+          </label>
+
+          <label className="rounded-2xl border border-semear-gray bg-semear-offwhite px-4 py-3 text-sm text-stone-700">
+            <span className="flex items-center gap-3">
+              <input checked={values.all_day} onChange={(event) => updateField("all_day", event.target.checked)} type="checkbox" />
+              Dia inteiro
+            </span>
+          </label>
+
+          <div className="rounded-2xl border border-semear-gray bg-semear-offwhite px-4 py-3 text-sm leading-6 text-stone-600">
+            Informe horário quando a atividade tiver período definido. Se ainda não souber, deixe como dia inteiro ou pendente.
+          </div>
+
+          <label>
+            <span className="text-sm font-semibold text-semear-green">Início da atividade</span>
+            <input
+              className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
+              onChange={(event) => updateField("starts_at", values.all_day ? `${event.target.value}T00:00` : event.target.value)}
+              type={values.all_day ? "date" : "datetime-local"}
+              value={values.all_day ? values.starts_at.slice(0, 10) : values.starts_at}
+            />
+          </label>
+
+          <label>
+            <span className="text-sm font-semibold text-semear-green">Fim da atividade</span>
+            <input
+              className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
+              onChange={(event) => updateField("ends_at", values.all_day ? `${event.target.value}T23:59` : event.target.value)}
+              type={values.all_day ? "date" : "datetime-local"}
+              value={values.all_day ? values.ends_at.slice(0, 10) : values.ends_at}
             />
           </label>
 
@@ -440,6 +587,47 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
             <span className="text-sm font-semibold text-semear-green">Observações</span>
             <textarea className="mt-2 min-h-28 w-full rounded-2xl border border-semear-gray bg-white px-4 py-3 text-sm outline-none focus:border-semear-green" onChange={(event) => updateField("notes", event.target.value)} value={values.notes} />
           </label>
+
+          <fieldset className="lg:col-span-2 rounded-2xl border border-semear-gray bg-semear-offwhite/60 p-4">
+            <legend className="px-1 text-sm font-semibold text-semear-green">Agenda da equipe</legend>
+            {mode === "create" && canManageCalendar ? (
+              <>
+                <label className="flex items-center gap-3 rounded-xl bg-white px-4 py-3 text-sm text-stone-700">
+                  <input checked={createCalendarEvent} onChange={(event) => setCreateCalendarEvent(event.target.checked)} type="checkbox" />
+                  Criar evento na agenda da equipe
+                </label>
+                {createCalendarEvent ? (
+                  <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                    <label className="rounded-xl border border-semear-gray bg-white px-4 py-3 text-sm text-stone-700">
+                      <span className="flex items-center gap-3">
+                        <input checked={calendarAllDay} onChange={(event) => setCalendarAllDay(event.target.checked)} type="checkbox" />
+                        Dia inteiro
+                      </span>
+                    </label>
+                    <div className="rounded-xl border border-semear-green/15 bg-white px-4 py-3 text-sm leading-6 text-stone-600">
+                      O evento usa título, território, ação vinculada, horário estruturado e equipe participante desta ação. Se a ação ainda não tiver horário definido, o sistema sugere um horário padrão editável. Nada será criado sem sua confirmação ao salvar.
+                    </div>
+                    <label>
+                      <span className="text-sm font-semibold text-semear-green">Início do evento</span>
+                      <input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" type={calendarAllDay ? "date" : "datetime-local"} value={calendarAllDay ? calendarStartsAt.slice(0, 10) : calendarStartsAt} onChange={(event) => setCalendarStartsAt(calendarAllDay ? `${event.target.value}T00:00` : event.target.value)} />
+                    </label>
+                    <label>
+                      <span className="text-sm font-semibold text-semear-green">Fim do evento</span>
+                      <input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" type={calendarAllDay ? "date" : "datetime-local"} value={calendarAllDay ? calendarEndsAt.slice(0, 10) : calendarEndsAt} onChange={(event) => setCalendarEndsAt(calendarAllDay ? `${event.target.value}T23:59` : event.target.value)} />
+                    </label>
+                  </div>
+                ) : null}
+              </>
+            ) : mode === "edit" ? (
+              <div className="rounded-xl border border-semear-gray bg-white px-4 py-3 text-sm leading-6 text-stone-600">
+                Para ações já cadastradas, use os atalhos da página da ação para criar evento, agendar devolutiva, dossiê ou revisão. A criação continua sendo opcional e sem automatismo.
+              </div>
+            ) : (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
+                A agenda é visível para toda a equipe, mas somente coordenação e admin podem criar eventos nela. A ação continua podendo ser cadastrada normalmente.
+              </div>
+            )}
+          </fieldset>
         </div>
 
         <div className="sticky bottom-20 z-20 mt-8 flex flex-wrap gap-3 rounded-[1.5rem] border border-semear-green/15 bg-white/95 p-4 shadow-soft backdrop-blur md:bottom-4">

@@ -27,6 +27,16 @@ export type PublicTransparencySnapshotStatus = "draft" | "reviewed" | "approved"
 export type SnapshotReviewCommentType = "privacidade" | "texto" | "metodologia" | "dados" | "aprovacao" | "publicacao" | "outro";
 export type TransparencyHomologationPackageStatus = "draft" | "ready_for_signature" | "signed" | "rejected" | "archived";
 export type TransparencyHomologationDecision = "aprovado_para_publicacao" | "revisar_antes_de_publicar" | "rejeitado" | "arquivado";
+export type WeeklyTeamReportStatus = "draft" | "submitted" | "in_review" | "approved" | "needs_changes" | "archived";
+export type ProjectMemoryType = "atividade" | "decisao" | "aprendizado" | "problema" | "encaminhamento" | "marco" | "outro";
+export type ProjectMemoryVisibility = "internal" | "public_candidate" | "public_approved";
+export type TeamCalendarEventType = "acao_campo" | "banca_escuta" | "reuniao" | "relatorio_semanal" | "devolutiva" | "dossie" | "memoria" | "prazo" | "outro";
+export type TeamCalendarEventStatus = "planned" | "confirmed" | "done" | "cancelled" | "postponed";
+export type TeamCalendarAttendanceStatus = "invited" | "confirmed" | "declined" | "attended" | "absent" | "unknown";
+export type GoogleCalendarSyncStatus = "not_synced" | "synced" | "sync_error" | "cancelled" | "unlinked";
+export type GoogleCalendarSyncAction = "create" | "update" | "cancel" | "unlink" | "error";
+export type GoogleCalendarSyncLogStatus = "success" | "failed" | "skipped";
+export type GoogleCalendarConnectionProvider = "google";
 
 export type NeighborhoodStatus = "oficial" | "provisorio" | "revisar" | "nao_usar";
 export type NeighborhoodSector = "SCN" | "SO" | "SN" | "SL" | "SS" | "SCS" | "SSO";
@@ -76,6 +86,9 @@ export type Action = TimestampedRow &
     title: string;
     action_type: ActionType;
     action_date: string;
+    starts_at: string | null;
+    ends_at: string | null;
+    all_day: boolean;
     neighborhood_id: string | null;
     location_reference: string | null;
     objective: string | null;
@@ -348,6 +361,123 @@ export type PublicTransparencyHomologationPackage = TimestampedRow &
     rejected_at: string | null;
   };
 
+export type WeeklyTeamReport = TimestampedRow &
+  CreatedByRow & {
+    id: string;
+    week_start: string;
+    week_end: string;
+    team_member_id: string;
+    profile_id: string | null;
+    title: string;
+    summary: string | null;
+    activities_done: string | null;
+    territories_involved: string | null;
+    problems_found: string | null;
+    learnings: string | null;
+    pending_items: string | null;
+    next_steps: string | null;
+    status: WeeklyTeamReportStatus;
+    team_calendar_event_id: string | null;
+    review_notes: string | null;
+    reviewed_by: string | null;
+    reviewed_at: string | null;
+  };
+
+export type WeeklyTeamReportAction = TimestampedRow &
+  CreatedByRow & {
+    id: string;
+    report_id: string;
+    action_id: string;
+  };
+
+export type WeeklyTeamReportNeighborhood = TimestampedRow &
+  CreatedByRow & {
+    id: string;
+    report_id: string;
+    neighborhood_id: string;
+  };
+
+export type WeeklyTeamReportAttachment = TimestampedRow & {
+  id: string;
+  report_id: string;
+  storage_path: string;
+  file_name: string;
+  file_type: string | null;
+  file_size: number | null;
+  uploaded_by: string | null;
+  uploaded_at: string;
+};
+
+export type ProjectMemoryEntry = TimestampedRow &
+  CreatedByRow & {
+    id: string;
+    source_report_id: string | null;
+    action_id: string | null;
+    entry_date: string;
+    title: string;
+    body: string;
+    memory_type: ProjectMemoryType;
+    visibility: ProjectMemoryVisibility;
+    team_calendar_event_id: string | null;
+    review_checklist: Json;
+    reviewed_by: string | null;
+    reviewed_at: string | null;
+  };
+
+export type TeamCalendarEvent = TimestampedRow &
+  CreatedByRow & {
+    id: string;
+    title: string;
+    description: string | null;
+    event_type: TeamCalendarEventType;
+    starts_at: string;
+    ends_at: string | null;
+    all_day: boolean;
+    status: TeamCalendarEventStatus;
+    action_id: string | null;
+    neighborhood_id: string | null;
+    google_calendar_event_id: string | null;
+    google_calendar_id: string | null;
+    google_sync_status: GoogleCalendarSyncStatus | null;
+    google_synced_at: string | null;
+  };
+
+export type GoogleCalendarSyncLog = {
+  id: string;
+  event_id: string;
+  action: GoogleCalendarSyncAction;
+  google_calendar_id: string | null;
+  google_calendar_event_id: string | null;
+  status: GoogleCalendarSyncLogStatus;
+  message: string | null;
+  payload_summary: Json | null;
+  synced_by: string | null;
+  synced_at: string;
+};
+
+export type GoogleCalendarUserConnection = {
+  id: string;
+  profile_id: string;
+  provider: GoogleCalendarConnectionProvider;
+  provider_user_email: string | null;
+  provider_user_id: string | null;
+  access_token: string | null;
+  refresh_token: string | null;
+  access_token_expires_at: string | null;
+  scopes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TeamCalendarEventMember = TimestampedRow & {
+  id: string;
+  event_id: string;
+  team_member_id: string;
+  responsibility: string | null;
+  attendance_status: TeamCalendarAttendanceStatus;
+  created_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -372,10 +502,13 @@ export type Database = {
       };
       actions: {
         Row: Action;
-        Insert: Omit<Action, "id" | "created_at" | "updated_at" | "action_type" | "status"> & {
+        Insert: Omit<Action, "id" | "created_at" | "updated_at" | "action_type" | "status" | "starts_at" | "ends_at" | "all_day"> & {
           id?: string;
           action_type?: ActionType;
           status?: ActionStatus;
+          starts_at?: string | null;
+          ends_at?: string | null;
+          all_day?: boolean;
         };
         Update: Partial<Omit<Action, "id" | "created_at" | "updated_at">>;
         Relationships: [
@@ -418,6 +551,216 @@ export type Database = {
           },
           {
             foreignKeyName: "action_team_members_team_member_id_fkey";
+            columns: ["team_member_id"];
+            referencedRelation: "team_members";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      weekly_team_reports: {
+        Row: WeeklyTeamReport;
+        Insert: Omit<WeeklyTeamReport, "id" | "created_at" | "updated_at" | "status" | "reviewed_by" | "reviewed_at" | "team_calendar_event_id"> & {
+          id?: string;
+          status?: WeeklyTeamReportStatus;
+          team_calendar_event_id?: string | null;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+        };
+        Update: Partial<Omit<WeeklyTeamReport, "id" | "created_at" | "updated_at">>;
+        Relationships: [
+          {
+            foreignKeyName: "weekly_team_reports_profile_id_fkey";
+            columns: ["profile_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "weekly_team_reports_reviewed_by_fkey";
+            columns: ["reviewed_by"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "weekly_team_reports_team_member_id_fkey";
+            columns: ["team_member_id"];
+            referencedRelation: "team_members";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "weekly_team_reports_team_calendar_event_id_fkey";
+            columns: ["team_calendar_event_id"];
+            referencedRelation: "team_calendar_events";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      weekly_team_report_actions: {
+        Row: WeeklyTeamReportAction;
+        Insert: Omit<WeeklyTeamReportAction, "id" | "created_at" | "updated_at"> & { id?: string };
+        Update: Partial<Omit<WeeklyTeamReportAction, "id" | "created_at" | "updated_at">>;
+        Relationships: [
+          {
+            foreignKeyName: "weekly_team_report_actions_action_id_fkey";
+            columns: ["action_id"];
+            referencedRelation: "actions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "weekly_team_report_actions_report_id_fkey";
+            columns: ["report_id"];
+            referencedRelation: "weekly_team_reports";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      weekly_team_report_neighborhoods: {
+        Row: WeeklyTeamReportNeighborhood;
+        Insert: Omit<WeeklyTeamReportNeighborhood, "id" | "created_at" | "updated_at"> & { id?: string };
+        Update: Partial<Omit<WeeklyTeamReportNeighborhood, "id" | "created_at" | "updated_at">>;
+        Relationships: [
+          {
+            foreignKeyName: "weekly_team_report_neighborhoods_neighborhood_id_fkey";
+            columns: ["neighborhood_id"];
+            referencedRelation: "neighborhoods";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "weekly_team_report_neighborhoods_report_id_fkey";
+            columns: ["report_id"];
+            referencedRelation: "weekly_team_reports";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      weekly_team_report_attachments: {
+        Row: WeeklyTeamReportAttachment;
+        Insert: Omit<WeeklyTeamReportAttachment, "id" | "created_at" | "updated_at" | "uploaded_at"> & {
+          id?: string;
+          uploaded_at?: string;
+        };
+        Update: Partial<Omit<WeeklyTeamReportAttachment, "id" | "created_at" | "updated_at">>;
+        Relationships: [
+          {
+            foreignKeyName: "weekly_team_report_attachments_report_id_fkey";
+            columns: ["report_id"];
+            referencedRelation: "weekly_team_reports";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      project_memory_entries: {
+        Row: ProjectMemoryEntry;
+        Insert: Omit<ProjectMemoryEntry, "id" | "created_at" | "updated_at" | "visibility" | "review_checklist" | "reviewed_by" | "reviewed_at" | "team_calendar_event_id"> & {
+          id?: string;
+          visibility?: ProjectMemoryVisibility;
+          team_calendar_event_id?: string | null;
+          review_checklist?: Json;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+        };
+        Update: Partial<Omit<ProjectMemoryEntry, "id" | "created_at" | "updated_at">>;
+        Relationships: [
+          {
+            foreignKeyName: "project_memory_entries_action_id_fkey";
+            columns: ["action_id"];
+            referencedRelation: "actions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "project_memory_entries_source_report_id_fkey";
+            columns: ["source_report_id"];
+            referencedRelation: "weekly_team_reports";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "project_memory_entries_team_calendar_event_id_fkey";
+            columns: ["team_calendar_event_id"];
+            referencedRelation: "team_calendar_events";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      team_calendar_events: {
+        Row: TeamCalendarEvent;
+        Insert: Omit<TeamCalendarEvent, "id" | "created_at" | "updated_at" | "all_day" | "status" | "google_calendar_event_id" | "google_calendar_id" | "google_sync_status" | "google_synced_at"> & {
+          id?: string;
+          all_day?: boolean;
+          status?: TeamCalendarEventStatus;
+          google_calendar_event_id?: string | null;
+          google_calendar_id?: string | null;
+          google_sync_status?: string | null;
+          google_synced_at?: string | null;
+        };
+        Update: Partial<Omit<TeamCalendarEvent, "id" | "created_at" | "updated_at">>;
+        Relationships: [
+          {
+            foreignKeyName: "team_calendar_events_action_id_fkey";
+            columns: ["action_id"];
+            referencedRelation: "actions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "team_calendar_events_neighborhood_id_fkey";
+            columns: ["neighborhood_id"];
+            referencedRelation: "neighborhoods";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      google_calendar_sync_logs: {
+        Row: GoogleCalendarSyncLog;
+        Insert: Omit<GoogleCalendarSyncLog, "id" | "synced_at"> & {
+          id?: string;
+          synced_at?: string;
+        };
+        Update: Partial<Omit<GoogleCalendarSyncLog, "id" | "synced_at">>;
+        Relationships: [
+          {
+            foreignKeyName: "google_calendar_sync_logs_event_id_fkey";
+            columns: ["event_id"];
+            referencedRelation: "team_calendar_events";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "google_calendar_sync_logs_synced_by_fkey";
+            columns: ["synced_by"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      google_calendar_user_connections: {
+        Row: GoogleCalendarUserConnection;
+        Insert: Omit<GoogleCalendarUserConnection, "id" | "created_at" | "updated_at" | "provider"> & {
+          id?: string;
+          provider?: GoogleCalendarConnectionProvider;
+        };
+        Update: Partial<Omit<GoogleCalendarUserConnection, "id" | "created_at" | "updated_at" | "profile_id">>;
+        Relationships: [
+          {
+            foreignKeyName: "google_calendar_user_connections_profile_id_fkey";
+            columns: ["profile_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      team_calendar_event_members: {
+        Row: TeamCalendarEventMember;
+        Insert: Omit<TeamCalendarEventMember, "id" | "created_at" | "updated_at" | "attendance_status"> & {
+          id?: string;
+          attendance_status?: TeamCalendarAttendanceStatus;
+        };
+        Update: Partial<Omit<TeamCalendarEventMember, "id" | "created_at" | "updated_at">>;
+        Relationships: [
+          {
+            foreignKeyName: "team_calendar_event_members_event_id_fkey";
+            columns: ["event_id"];
+            referencedRelation: "team_calendar_events";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "team_calendar_event_members_team_member_id_fkey";
             columns: ["team_member_id"];
             referencedRelation: "team_members";
             referencedColumns: ["id"];

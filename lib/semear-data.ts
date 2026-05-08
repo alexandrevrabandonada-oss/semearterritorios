@@ -1,5 +1,6 @@
 import {
   ClipboardList,
+  CalendarDays,
   FileText,
   HelpCircle,
   Home,
@@ -9,6 +10,7 @@ import {
   MapPinned,
   MessageSquareText,
   Tag,
+  LibraryBig,
   UsersRound,
 } from "lucide-react";
 import type { ComponentType } from "react";
@@ -37,8 +39,10 @@ export type EmptyModule = {
 export const navigationItems: NavigationItem[] = [
   { label: "Dashboard", href: "/", icon: Home },
   { label: "Ações", href: "/acoes", icon: ClipboardList },
+  { label: "Agenda", href: "/agenda", icon: CalendarDays },
   { label: "Escutas", href: "/escutas", icon: MessageSquareText },
   { label: "Equipe", href: "/equipe", icon: UsersRound },
+  { label: "Memória", href: "/memoria", icon: LibraryBig },
   { label: "Territórios", href: "/territorios", icon: MapPinned },
   { label: "Mapa", href: "/mapa", icon: Map },
   { label: "Relatórios", href: "/relatorios", icon: FileText },

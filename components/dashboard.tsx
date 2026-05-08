@@ -20,13 +20,16 @@ import {
   Sprout,
   Tag
 } from "lucide-react";
-import type { Action, ActionClosure, ActionDebrief, ActionType, ListeningRecord, Neighborhood, PublicTransparencySnapshot, Theme } from "@/lib/database.types";
+import type { Action, ActionClosure, ActionDebrief, ActionType, ListeningRecord, Neighborhood, PublicTransparencySnapshot, TeamCalendarEvent, TeamCalendarEventMember, TeamMember, Theme, WeeklyTeamReport } from "@/lib/database.types";
+import { InternalRemindersPanel } from "@/components/agenda/internal-reminders-panel";
 import { actionTypeOptions } from "@/lib/actions";
 import { getReviewStatusLabel } from "@/lib/listening-records";
+import { buildClosureReminderItems, buildDebriefReminderItems, buildEventsWithoutAgendaForActions, buildOverdueEvents, buildWeeklyReportReminderItems, getActionScheduleLabel, getEventDateLabel } from "@/lib/team-calendar";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { PageHeader } from "@/components/ui/page-header";
 import { MetricCard } from "@/components/ui/metric-card";
 import { FilterBar, FilterField, filterControlClassName } from "@/components/ui/filter-bar";
+import { getStartOfWeekIso } from "@/lib/project-memory";
 
 type RecordWithRelations = ListeningRecord & {
   actions: Pick<Action, "id" | "title" | "action_type"> | null;
@@ -65,6 +68,10 @@ export function Dashboard() {
   const [closures, setClosures] = useState<ActionClosure[]>([]);
   const [debriefs, setDebriefs] = useState<ActionDebrief[]>([]);
   const [snapshots, setSnapshots] = useState<PublicTransparencySnapshot[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<TeamCalendarEvent[]>([]);
+  const [calendarMembers, setCalendarMembers] = useState<TeamCalendarEventMember[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [weeklyReports, setWeeklyReports] = useState<WeeklyTeamReport[]>([]);
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [territorySearch, setTerritorySearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -80,19 +87,23 @@ export function Dashboard() {
         return;
       }
 
-      const [actionsResult, recordsResult, neighborhoodsResult, themesResult, closuresResult, debriefsResult, snapshotsResult] = await Promise.all([
+      const [actionsResult, recordsResult, neighborhoodsResult, themesResult, closuresResult, debriefsResult, snapshotsResult, calendarEventsResult, calendarMembersResult, teamMembersResult, weeklyReportsResult] = await Promise.all([
         supabase.from("actions").select("*, neighborhoods:neighborhood_id(id, name)").order("action_date", { ascending: false }),
         supabase.from("listening_records").select("*, actions:action_id(id, title, action_type), neighborhoods:neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name))").order("date", { ascending: false }),
         supabase.from("neighborhoods").select("*").order("name", { ascending: true }),
         supabase.from("themes").select("*").eq("is_active", true).order("name", { ascending: true }),
         supabase.from("action_closures").select("*"),
         supabase.from("action_debriefs").select("*"),
-        supabase.from("public_transparency_snapshots").select("*").in("status", ["approved", "published"]).order("updated_at", { ascending: false })
+        supabase.from("public_transparency_snapshots").select("*").in("status", ["approved", "published"]).order("updated_at", { ascending: false }),
+        supabase.from("team_calendar_events").select("*").order("starts_at", { ascending: true }),
+        supabase.from("team_calendar_event_members").select("*"),
+        supabase.from("team_members").select("*").eq("active", true).order("display_name", { ascending: true }),
+        supabase.from("weekly_team_reports").select("*").order("week_start", { ascending: false })
       ]);
 
       if (ignore) return;
 
-      if (actionsResult.error || recordsResult.error || neighborhoodsResult.error || themesResult.error || closuresResult.error || debriefsResult.error || snapshotsResult.error) {
+      if (actionsResult.error || recordsResult.error || neighborhoodsResult.error || themesResult.error || closuresResult.error || debriefsResult.error || snapshotsResult.error || calendarEventsResult.error || calendarMembersResult.error || teamMembersResult.error || weeklyReportsResult.error) {
         setError(
           actionsResult.error?.message ??
             recordsResult.error?.message ??
@@ -101,6 +112,10 @@ export function Dashboard() {
             closuresResult.error?.message ??
             debriefsResult.error?.message ??
             snapshotsResult.error?.message ??
+            calendarEventsResult.error?.message ??
+            calendarMembersResult.error?.message ??
+            teamMembersResult.error?.message ??
+            weeklyReportsResult.error?.message ??
             "Erro ao carregar dados do dashboard."
         );
         setLoading(false);
@@ -114,6 +129,10 @@ export function Dashboard() {
       setClosures((closuresResult.data ?? []) as ActionClosure[]);
       setDebriefs((debriefsResult.data ?? []) as ActionDebrief[]);
       setSnapshots((snapshotsResult.data ?? []) as PublicTransparencySnapshot[]);
+      setCalendarEvents((calendarEventsResult.data ?? []) as TeamCalendarEvent[]);
+      setCalendarMembers((calendarMembersResult.data ?? []) as TeamCalendarEventMember[]);
+      setTeamMembers((teamMembersResult.data ?? []) as TeamMember[]);
+      setWeeklyReports((weeklyReportsResult.data ?? []) as WeeklyTeamReport[]);
       setLoading(false);
     }
 
@@ -157,6 +176,22 @@ export function Dashboard() {
   const maxMonthCount = Math.max(...recordsByMonth.map((item) => item.count), 1);
   const latestSnapshot = snapshots[0] ?? null;
   const nextAction = filteredActions[0] ?? null;
+  const nextEvent = calendarEvents.find((event) => new Date(event.starts_at) >= new Date() && ["planned", "confirmed"].includes(event.status)) ?? null;
+  const nextEventAction = nextEvent ? actions.find((action) => action.id === nextEvent.action_id) ?? null : null;
+  const nextEventNeighborhood = nextEvent ? neighborhoods.find((neighborhood) => neighborhood.id === nextEvent.neighborhood_id) ?? null : null;
+  const nextEventTeam = nextEvent
+    ? calendarMembers
+        .filter((membership) => membership.event_id === nextEvent.id)
+        .map((membership) => teamMembers.find((member) => member.id === membership.team_member_id)?.display_name)
+        .filter(Boolean)
+    : [];
+  const pendingWeeklyReports = buildWeeklyReportReminderItems(weeklyReports, teamMembers, getStartOfWeekIso(new Date()));
+  const pendingDebriefs = buildDebriefReminderItems(actions, debriefs);
+  const pendingClosures = buildClosureReminderItems(actions, closures);
+  const overdueEvents = buildOverdueEvents(calendarEvents);
+  const debriefsWithoutAgenda = buildEventsWithoutAgendaForActions(actions, calendarEvents, { eventType: "devolutiva" });
+  const dossiersWithoutAgenda = buildEventsWithoutAgendaForActions(actions, calendarEvents, { eventType: "dossie" });
+  const actionsWithoutClosure = actions.filter((action) => action.status === "realizada" && !closures.some((closure) => closure.action_id === action.id && closure.status === "closed"));
   const topNeighborhoods = countBy(
     filteredRecords.filter((record) => Boolean(record.neighborhoods?.name)),
     (record) => record.neighborhoods?.name ?? ""
@@ -196,14 +231,16 @@ export function Dashboard() {
             <CalendarDays className="h-5 w-5" aria-hidden="true" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">Hoje / próxima operação</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">Hoje / próxima operação</p>
             <h3 className="mt-1 text-xl font-semibold text-semear-green">
-              {nextAction ? nextAction.title : "Nenhuma ação recente cadastrada"}
+              {nextEvent ? nextEvent.title : nextAction ? nextAction.title : "Nenhuma operação próxima cadastrada"}
             </h3>
             <p className="mt-1 text-sm leading-6 text-stone-600">
-              {nextAction
-                ? `${new Date(`${nextAction.action_date}T00:00:00`).toLocaleDateString("pt-BR")} · ${nextAction.neighborhoods?.name ?? "Sem bairro"}`
-                : "Cadastre uma ação para abrir uma sessão de digitação no celular."}
+              {nextEvent
+                ? `${getEventDateLabel(nextEvent)} · ${nextEventNeighborhood?.name ?? "Sem território"}`
+                : nextAction
+                    ? `${getActionScheduleLabel(nextAction)} · ${nextAction.neighborhoods?.name ?? "Sem bairro"}`
+                    : "Cadastre uma ação ou evento para abrir a próxima operação no painel."}
             </p>
           </div>
         </div>
@@ -211,7 +248,7 @@ export function Dashboard() {
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <SecondaryAction href="/escutas/lote" icon={<Keyboard className="h-4 w-4" />} label="Digitar fichas" strong />
           <SecondaryAction href="/escutas?status=draft" icon={<MessageSquareText className="h-4 w-4" />} label="Revisar escutas" strong />
-          <SecondaryAction href={nextAction ? `/acoes/${nextAction.id}` : "/acoes"} icon={<ClipboardList className="h-4 w-4" />} label="Abrir ação" />
+          <SecondaryAction href={nextEvent ? "/agenda" : nextAction ? `/acoes/${nextAction.id}` : "/acoes"} icon={<ClipboardList className="h-4 w-4" />} label={nextEvent ? "Abrir agenda" : "Abrir ação"} />
           <SecondaryAction href={actionsWithOpenDossier[0] ? `/acoes/${actionsWithOpenDossier[0].id}/dossie` : "/acoes"} icon={<FolderCheck className="h-4 w-4" />} label="Fechar dossiê" tone="yellow" />
         </div>
       </section>
@@ -249,21 +286,40 @@ export function Dashboard() {
             <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">Próxima operação</p>
-                <h3 className="mt-2 text-2xl font-semibold tracking-tight text-semear-green">Atalhos para homologação e primeira banca</h3>
-                <p className="mt-1 text-sm leading-6 text-stone-600">Acompanhe o andamento dos dossiês e acesse rapidamente suas próximas atividades.</p>
+                <h3 className="mt-2 text-2xl font-semibold tracking-tight text-semear-green">{nextEvent ? nextEvent.title : "Atalhos para homologação e primeira banca"}</h3>
+                <p className="mt-1 text-sm leading-6 text-stone-600">
+                  {nextEvent
+                    ? `${getEventDateLabel(nextEvent)} · ${nextEventNeighborhood?.name ?? "Sem território"} · ${nextEvent.status}`
+                    : "Acompanhe o andamento dos dossiês e acesse rapidamente suas próximas atividades."}
+                </p>
               </div>
               <div className="flex flex-wrap gap-2">
+                <SecondaryAction href="/agenda" icon={<CalendarDays className="h-4 w-4" />} label="Abrir agenda" strong />
+                <SecondaryAction href={nextEventAction ? `/acoes/${nextEventAction.id}` : "/acoes"} icon={<ClipboardList className="h-4 w-4" />} label="Abrir ação" />
                 <SecondaryAction href="/escutas/lote" icon={<Keyboard className="h-4 w-4" />} label="Digitar fichas" strong />
-                <SecondaryAction href="/escutas?status=draft" icon={<MessageSquareText className="h-4 w-4" />} label="Revisar escutas" strong />
                 <SecondaryAction href={actionsWithOpenDossier[0] ? `/acoes/${actionsWithOpenDossier[0].id}/dossie` : "/acoes"} icon={<FolderCheck className="h-4 w-4" />} label="Fechar dossiê" tone="yellow" />
               </div>
             </div>
             <div className="mt-4 grid gap-4 lg:grid-cols-3">
-              <OperationList count={filteredActions.slice(0, 2).length} title="Ações recentes" items={filteredActions.slice(0, 2).map((action) => action.title)} />
-              <OperationList count={actionsWithOpenDossier.slice(0, 2).length} title="Dossiê aberto" tone="yellow" items={actionsWithOpenDossier.slice(0, 2).map((action) => action.title)} />
-              <OperationList count={actionsWithPendingDebrief.slice(0, 2).length} title="Devolutiva pendente" tone="earth" items={actionsWithPendingDebrief.slice(0, 2).map((action) => action.title)} empty="Nenhuma devolutiva pendente. Tudo em dia." />
+              <OperationList count={nextEventTeam.length} title="Equipe escalada" items={nextEventTeam as string[]} empty="Nenhuma equipe vinculada ainda." />
+              <OperationList count={pendingClosures.length} title="Dossiê pendente" tone="yellow" items={pendingClosures.slice(0, 3).map((action) => action.title)} />
+              <OperationList count={pendingDebriefs.length + pendingWeeklyReports.length} title="Alertas internos" tone="earth" items={[...pendingDebriefs.slice(0, 2).map((action) => `Devolutiva: ${action.title}`), ...pendingWeeklyReports.slice(0, 2).map((member) => `Relatório: ${member}`)]} empty="Sem alertas internos imediatos." />
             </div>
           </section>
+
+          <div className="mt-4 hidden lg:block">
+            <InternalRemindersPanel
+              title="Lembretes internos"
+              description="Sem push ou e-mail. O painel sinaliza atrasos, pendências e lacunas de agenda."
+              items={[
+                { label: "Eventos atrasados", value: overdueEvents.length, text: overdueEvents.length > 0 ? overdueEvents.slice(0, 4).map((event) => event.title).join(" · ") : "Sem evento atrasado.", href: "/agenda", tone: overdueEvents.length > 0 ? "danger" : "default" },
+                { label: "Relatórios pendentes", value: pendingWeeklyReports.length, text: pendingWeeklyReports.length > 0 ? pendingWeeklyReports.slice(0, 4).join(" · ") : "Sem relatório pendente.", href: "/memoria", tone: pendingWeeklyReports.length > 0 ? "warning" : "default" },
+                { label: "Devolutivas sem agenda", value: debriefsWithoutAgenda.length, text: debriefsWithoutAgenda.length > 0 ? debriefsWithoutAgenda.slice(0, 4).map((action) => action.title).join(" · ") : "Sem devolutiva sem agenda.", href: "/acoes", tone: debriefsWithoutAgenda.length > 0 ? "warning" : "default" },
+                { label: "Dossiês sem agenda", value: dossiersWithoutAgenda.length, text: dossiersWithoutAgenda.length > 0 ? dossiersWithoutAgenda.slice(0, 4).map((action) => action.title).join(" · ") : "Sem dossiê sem agenda.", href: "/acoes", tone: dossiersWithoutAgenda.length > 0 ? "warning" : "default" },
+                { label: "Ações realizadas sem fechamento", value: actionsWithoutClosure.length, text: actionsWithoutClosure.length > 0 ? actionsWithoutClosure.slice(0, 4).map((action) => action.title).join(" · ") : "Sem ação realizada aguardando fechamento.", href: "/acoes", tone: actionsWithoutClosure.length > 0 ? "warning" : "default" },
+              ]}
+            />
+          </div>
 
           <section className="mt-4 grid gap-4 lg:hidden">
             <Panel title="Pendências do dia" icon={<Layers3 className="h-5 w-5" />}>
@@ -272,6 +328,18 @@ export function Dashboard() {
                 <OperationList count={actionsWithPendingDebrief.length} title="Devolutivas pendentes" items={actionsWithPendingDebrief.slice(0, 3).map((action) => action.title)} empty="Nenhuma devolutiva pendente." tone="earth" />
               </div>
             </Panel>
+
+            <InternalRemindersPanel
+              title="Lembretes internos"
+              description="Sem push ou e-mail. Use estes alertas para orientar a próxima operação."
+              items={[
+                { label: "Eventos atrasados", value: overdueEvents.length, text: overdueEvents.length > 0 ? overdueEvents.slice(0, 3).map((event) => event.title).join(" · ") : "Sem evento atrasado.", href: "/agenda", tone: overdueEvents.length > 0 ? "danger" : "default" },
+                { label: "Relatórios pendentes", value: pendingWeeklyReports.length, text: pendingWeeklyReports.length > 0 ? pendingWeeklyReports.slice(0, 3).join(" · ") : "Sem relatório pendente.", href: "/memoria", tone: pendingWeeklyReports.length > 0 ? "warning" : "default" },
+                { label: "Devolutivas sem agenda", value: debriefsWithoutAgenda.length, text: debriefsWithoutAgenda.length > 0 ? debriefsWithoutAgenda.slice(0, 3).map((action) => action.title).join(" · ") : "Sem devolutiva sem agenda.", href: "/acoes", tone: debriefsWithoutAgenda.length > 0 ? "warning" : "default" },
+                { label: "Dossiês sem agenda", value: dossiersWithoutAgenda.length, text: dossiersWithoutAgenda.length > 0 ? dossiersWithoutAgenda.slice(0, 3).map((action) => action.title).join(" · ") : "Sem dossiê sem agenda.", href: "/acoes", tone: dossiersWithoutAgenda.length > 0 ? "warning" : "default" },
+                { label: "Ações realizadas sem fechamento", value: actionsWithoutClosure.length, text: actionsWithoutClosure.length > 0 ? actionsWithoutClosure.slice(0, 3).map((action) => action.title).join(" · ") : "Sem ação realizada aguardando fechamento.", href: "/acoes", tone: actionsWithoutClosure.length > 0 ? "warning" : "default" },
+              ]}
+            />
 
             <Panel title="Padrões resumidos" icon={<BarChart3 className="h-5 w-5" />}>
               <div className="grid gap-4">
