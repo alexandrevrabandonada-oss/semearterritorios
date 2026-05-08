@@ -9,6 +9,7 @@ import {
   MapPinned,
   MessageSquareText,
   Tag,
+  UsersRound,
 } from "lucide-react";
 import type { ComponentType } from "react";
 
@@ -37,6 +38,7 @@ export const navigationItems: NavigationItem[] = [
   { label: "Dashboard", href: "/", icon: Home },
   { label: "Ações", href: "/acoes", icon: ClipboardList },
   { label: "Escutas", href: "/escutas", icon: MessageSquareText },
+  { label: "Equipe", href: "/equipe", icon: UsersRound },
   { label: "Territórios", href: "/territorios", icon: MapPinned },
   { label: "Mapa", href: "/mapa", icon: Map },
   { label: "Relatórios", href: "/relatorios", icon: FileText },
