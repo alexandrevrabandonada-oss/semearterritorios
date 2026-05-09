@@ -643,7 +643,7 @@ export type Database = {
       };
       weekly_team_reports: {
         Row: WeeklyTeamReport;
-        Insert: Omit<WeeklyTeamReport, "id" | "created_at" | "updated_at" | "status" | "reviewed_by" | "reviewed_at" | "team_calendar_event_id" | "import_source" | "imported_attachment_id" | "imported_raw_text" | "import_status"> & {
+        Insert: Omit<WeeklyTeamReport, "id" | "created_at" | "updated_at" | "status" | "reviewed_by" | "reviewed_at" | "team_calendar_event_id" | "import_source" | "imported_attachment_id" | "imported_raw_text" | "import_status" | "extraction_quality"> & {
           id?: string;
           status?: WeeklyTeamReportStatus;
           team_calendar_event_id?: string | null;
@@ -742,7 +742,7 @@ export type Database = {
       };
       weekly_team_report_attachments: {
         Row: WeeklyTeamReportAttachment;
-        Insert: Omit<WeeklyTeamReportAttachment, "id" | "created_at" | "updated_at" | "uploaded_at" | "extraction_status" | "extracted_text" | "extraction_error" | "extracted_at"> & {
+        Insert: Omit<WeeklyTeamReportAttachment, "id" | "created_at" | "updated_at" | "uploaded_at" | "extraction_status" | "extracted_text" | "extraction_error" | "extracted_at" | "extraction_quality" | "sections_detected_count"> & {
           id?: string;
           uploaded_at?: string;
           extraction_status?: "pending" | "extracted" | "failed" | "unsupported" | "needs_manual_transcription" | null;
