@@ -6,6 +6,7 @@ import { Archive, CheckCircle2, Eye, FilePenLine, FileText, Send, ShieldCheck, W
 import type { PublicTransparencySnapshot } from "@/lib/database.types";
 import { buildTransparencySnapshotDraft, getSnapshotStatusLabel, type SnapshotAction, type SnapshotRecord } from "@/lib/transparency-snapshots";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { NotificationsInlinePanel } from "@/components/notifications/notifications-inline-panel";
 
 export function TransparencySnapshotsPage() {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
@@ -129,6 +130,16 @@ export function TransparencySnapshotsPage() {
 
       {error ? <StateBox tone="error">{error}</StateBox> : null}
       {feedback ? <StateBox>{feedback}</StateBox> : null}
+
+      <div className="mt-5">
+        <NotificationsInlinePanel
+          title="Avisos de transparência"
+          categories={["transparencia"]}
+          href="/avisos?categoria=transparencia"
+          emptyText="Sem avisos de transparência pendentes."
+          limit={4}
+        />
+      </div>
 
       <div className="mt-6 grid gap-4">
         {snapshots.map((snapshot) => (

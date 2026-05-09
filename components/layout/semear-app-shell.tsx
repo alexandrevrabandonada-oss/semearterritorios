@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ChevronDown, Sprout, UsersRound } from "lucide-react";
 import { MobileAppShell } from "@/components/layout/mobile-app-shell";
+import { NotificationsBell } from "@/components/notifications/notifications-bell";
 import { navigationItems } from "@/lib/semear-data";
 
 type SemearAppShellProps = {
@@ -19,15 +20,18 @@ export function SemearAppShell({ activeHref, children }: SemearAppShellProps) {
       <div className="lg:grid lg:min-h-screen lg:grid-cols-[16rem_1fr]">
         <aside className="no-print hidden border-r border-white/10 bg-semear-green text-white shadow-[18px_0_45px_rgba(23,74,55,0.18)] lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col">
           <div className="p-6">
-            <Link className="flex items-center gap-4" href="/">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-semear-yellow text-semear-green shadow-sm">
-                <Sprout className="h-7 w-7" aria-hidden="true" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold leading-tight tracking-tight">SEMEAR<br />Territórios</h1>
-                <p className="mt-1 text-xs font-semibold uppercase tracking-[0.22em] text-semear-yellow">Sistema interno</p>
-              </div>
-            </Link>
+            <div className="flex items-start justify-between gap-3">
+              <Link className="flex items-center gap-4" href="/">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-semear-yellow text-semear-green shadow-sm">
+                  <Sprout className="h-7 w-7" aria-hidden="true" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-semibold leading-tight tracking-tight">SEMEAR<br />Territórios</h1>
+                  <p className="mt-1 text-xs font-semibold uppercase tracking-[0.22em] text-semear-yellow">Sistema interno</p>
+                </div>
+              </Link>
+              <NotificationsBell />
+            </div>
           </div>
 
           <nav aria-label="Navegação principal" className="flex-1 space-y-1 px-3">

@@ -1,5 +1,6 @@
 import { createSign } from "crypto";
 import type { GoogleCalendarUserConnection } from "@/lib/database.types";
+import { mapGoogleCalendarError } from "@/lib/google-calendar/google-calendar-errors";
 
 type GoogleCalendarConfig = {
   enabled: boolean;
@@ -66,6 +67,13 @@ export type GoogleCalendarOperationResult = {
   } | null;
 };
 
+export type GoogleCalendarSendUpdatesMode = "none" | "all" | "externalOnly";
+
+export type GoogleCalendarConnectionReadiness = {
+  config: ConfiguredGoogleCalendarConfig;
+  diagnostics: ReturnType<typeof getGoogleCalendarConnectionDiagnostics>;
+};
+
 export function getGoogleCalendarConfig(): GoogleCalendarConfig {
   return {
     enabled: process.env.GOOGLE_CALENDAR_SYNC_ENABLED === "true",
@@ -93,40 +101,6 @@ export function getGoogleCalendarConnectionDiagnostics(params: {
   } as const;
 }
 
-function normalizeGoogleCalendarError(params: {
-  prefix: string;
-  mode: GoogleCalendarAuthContext["mode"];
-  details?: string;
-}) {
-  const safeDetails = params.details?.toLowerCase() ?? "";
-
-  if (safeDetails.includes("not found")) {
-    return `${params.prefix} Calendario institucional ou evento externo nao encontrado.`;
-  }
-
-  if (safeDetails.includes("forbidden") || safeDetails.includes("insufficient permissions")) {
-    return params.mode === "service_account"
-      ? `${params.prefix} A service account nao possui permissao suficiente no calendario institucional.`
-      : `${params.prefix} A conexao Google atual nao possui permissao para editar o calendario institucional compartilhado.`;
-  }
-
-  if (safeDetails.includes("invalid_grant") || safeDetails.includes("invalid jwt")) {
-    return params.mode === "service_account"
-      ? `${params.prefix} Credenciais institucionais invalidas ou expiradas.`
-      : `${params.prefix} A conexao Google expirou ou perdeu autorizacao. Reconecte o Google Calendar.`;
-  }
-
-  if (safeDetails.includes("unauthorized") || safeDetails.includes("invalid credentials")) {
-    return `${params.prefix} A autenticacao Google nao esta valida. Reconecte e tente novamente.`;
-  }
-
-  if (safeDetails.includes("invalid")) {
-    return `${params.prefix} Configuracao invalida para Google Calendar.`;
-  }
-
-  return `${params.prefix} Verifique calendario institucional, conexao Google, envs e permissoes.`;
-}
-
 function base64UrlEncode(input: string | Buffer) {
   return Buffer.from(input)
     .toString("base64")
@@ -137,11 +111,47 @@ function base64UrlEncode(input: string | Buffer) {
 
 function assertGoogleCalendarEnabled() {
   const config = getGoogleCalendarConfig();
-  if (!config.enabled || !config.calendarId) {
+  if (!config.enabled) {
     throw new Error("Google Calendar nao esta habilitado neste ambiente.");
   }
 
+  if (!config.calendarId) {
+    throw new Error("Calendario institucional nao configurado neste ambiente.");
+  }
+
   return config as ConfiguredGoogleCalendarConfig;
+}
+
+export function getGoogleCalendarConnectionReadiness(params: {
+  connection: OAuthUserConnection | null;
+}): GoogleCalendarConnectionReadiness {
+  const config = assertGoogleCalendarEnabled();
+  const diagnostics = getGoogleCalendarConnectionDiagnostics({ connection: params.connection });
+
+  return {
+    config,
+    diagnostics,
+  };
+}
+
+export function assertGoogleCalendarSyncReady(params: {
+  connection: OAuthUserConnection | null;
+}) {
+  const readiness = getGoogleCalendarConnectionReadiness({ connection: params.connection });
+
+  if (readiness.diagnostics.serviceAccountAvailable) {
+    return readiness;
+  }
+
+  if (!params.connection?.access_token) {
+    throw new Error("Conecte o Google Calendar da coordenacao ou admin para sincronizar manualmente com o calendario institucional.");
+  }
+
+  if (!params.connection.refresh_token && !params.connection.access_token) {
+    throw new Error("A conexao Google nao possui token valido. Reconecte o Google Calendar.");
+  }
+
+  return readiness;
 }
 
 async function getServiceAccountAccessToken(config: ConfiguredGoogleCalendarConfig) {
@@ -177,11 +187,13 @@ async function getServiceAccountAccessToken(config: ConfiguredGoogleCalendarConf
 
   if (!tokenResponse.ok) {
     const responseText = await tokenResponse.text();
-    throw new Error(normalizeGoogleCalendarError({
-      prefix: "Falha ao autenticar no Google Calendar.",
-      mode: "service_account",
-      details: responseText,
-    }));
+    throw new Error(
+      mapGoogleCalendarError({
+        error: responseText,
+        mode: "service_account",
+        operation: "auth",
+      }).safeMessage
+    );
   }
 
   const tokenJson = (await tokenResponse.json()) as { access_token?: string };
@@ -215,11 +227,13 @@ async function refreshOAuthUserAccessToken(config: ConfiguredGoogleCalendarConfi
 
   if (!tokenResponse.ok) {
     const responseText = await tokenResponse.text();
-    throw new Error(normalizeGoogleCalendarError({
-      prefix: "Falha ao renovar a conexao Google Calendar.",
-      mode: "oauth_user",
-      details: responseText,
-    }));
+    throw new Error(
+      mapGoogleCalendarError({
+        error: responseText,
+        mode: "oauth_user",
+        operation: "refresh",
+      }).safeMessage
+    );
   }
 
   const tokenJson = (await tokenResponse.json()) as {
@@ -246,7 +260,7 @@ async function refreshOAuthUserAccessToken(config: ConfiguredGoogleCalendarConfi
 export async function resolveGoogleCalendarAuthContext(params: {
   connection: OAuthUserConnection | null;
 }) {
-  const config = assertGoogleCalendarEnabled();
+  const { config } = assertGoogleCalendarSyncReady({ connection: params.connection });
 
   if (config.clientEmail && config.privateKey) {
     return {
@@ -325,25 +339,37 @@ async function callGoogleCalendar<T>(
 
   if (!response.ok) {
     const responseText = await response.text();
-    throw new Error(normalizeGoogleCalendarError({
-      prefix: "Falha ao sincronizar com Google Calendar.",
-      mode: authContext.mode,
-      details: responseText,
-    }));
+    throw new Error(
+      mapGoogleCalendarError({
+        error: responseText,
+        mode: authContext.mode,
+        operation:
+          options.method === "POST"
+            ? "create"
+            : options.method === "PUT"
+              ? "update"
+              : "cancel",
+      }).safeMessage
+    );
   }
 
   const json = (await response.json()) as T;
   return json;
 }
 
+export function getGoogleCalendarSendUpdatesMode(_googleSendInvites: boolean): GoogleCalendarSendUpdatesMode {
+  return "none";
+}
+
 export async function createGoogleCalendarEvent(
   authContext: GoogleCalendarAuthContext,
   payload: GoogleCalendarWritableEvent,
+  sendUpdates: GoogleCalendarSendUpdatesMode,
   connectionUpdate?: GoogleCalendarOperationResult["connectionUpdate"]
 ): Promise<GoogleCalendarOperationResult> {
   const json = await callGoogleCalendar<{ id: string; htmlLink?: string | null; status?: string | null }>(
     authContext,
-    "/events?sendUpdates=none",
+    `/events?sendUpdates=${sendUpdates}`,
     { method: "POST", body: payload }
   );
 
@@ -361,11 +387,12 @@ export async function updateGoogleCalendarEvent(
   authContext: GoogleCalendarAuthContext,
   googleEventId: string,
   payload: GoogleCalendarWritableEvent,
+  sendUpdates: GoogleCalendarSendUpdatesMode,
   connectionUpdate?: GoogleCalendarOperationResult["connectionUpdate"]
 ): Promise<GoogleCalendarOperationResult> {
   const json = await callGoogleCalendar<{ id: string; htmlLink?: string | null; status?: string | null }>(
     authContext,
-    `/events/${encodeURIComponent(googleEventId)}?sendUpdates=none`,
+    `/events/${encodeURIComponent(googleEventId)}?sendUpdates=${sendUpdates}`,
     { method: "PUT", body: payload }
   );
 
@@ -382,11 +409,12 @@ export async function updateGoogleCalendarEvent(
 export async function cancelGoogleCalendarEvent(
   authContext: GoogleCalendarAuthContext,
   googleEventId: string,
+  sendUpdates: GoogleCalendarSendUpdatesMode,
   connectionUpdate?: GoogleCalendarOperationResult["connectionUpdate"]
 ): Promise<GoogleCalendarOperationResult> {
   const json = await callGoogleCalendar<{ id: string; htmlLink?: string | null; status?: string | null }>(
     authContext,
-    `/events/${encodeURIComponent(googleEventId)}?sendUpdates=none`,
+    `/events/${encodeURIComponent(googleEventId)}?sendUpdates=${sendUpdates}`,
     { method: "PATCH", body: { status: "cancelled" } }
   );
 

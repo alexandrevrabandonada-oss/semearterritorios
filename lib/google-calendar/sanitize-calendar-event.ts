@@ -4,6 +4,7 @@ import { getTeamCalendarEventStatusLabel, getTeamCalendarEventTypeLabel } from "
 type SanitizedParticipant = {
   display_name: string;
   email: string | null;
+  active: boolean;
 };
 
 const operationalEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
@@ -17,6 +18,7 @@ export type SanitizedGoogleCalendarInput = {
   ends_at: string | null;
   all_day: boolean;
   neighborhood_name?: string | null;
+  googleSendInvites: boolean;
   participants: SanitizedParticipant[];
   internalEventUrl: string;
 };
@@ -27,7 +29,7 @@ export type SanitizedGoogleCalendarPayload = {
   location?: string;
   start: { date?: string; dateTime?: string; timeZone?: string };
   end: { date?: string; dateTime?: string; timeZone?: string };
-  attendees: Array<{ email: string; displayName?: string }>;
+  attendees?: Array<{ email: string; displayName?: string }>;
   status: "confirmed" | "cancelled";
 };
 
@@ -35,7 +37,9 @@ export type SanitizedGoogleCalendarSummary = {
   summary: string;
   location: string | null;
   attendees_count: number;
+  google_send_invites: boolean;
   members_without_email: string[];
+  inactive_members: string[];
   all_day: boolean;
   starts_at: string;
   ends_at: string | null;
@@ -50,10 +54,11 @@ function addOneDay(dateText: string) {
   return date.toISOString().slice(0, 10);
 }
 
-function uniqueAttendees(participants: SanitizedParticipant[]) {
+export function buildEligibleGoogleCalendarAttendees(participants: SanitizedParticipant[]) {
   const seen = new Set<string>();
 
   return participants
+    .filter((participant) => participant.active)
     .filter((participant) => participant.email && operationalEmailPattern.test(participant.email.trim()))
     .map((participant) => ({
       email: participant.email!.trim().toLowerCase(),
@@ -66,15 +71,30 @@ function uniqueAttendees(participants: SanitizedParticipant[]) {
     });
 }
 
+export function buildGoogleCalendarAudienceSummary(participants: SanitizedParticipant[]) {
+  const attendees = buildEligibleGoogleCalendarAttendees(participants);
+  const membersWithoutEmail = participants
+    .filter((participant) => participant.active)
+    .filter((participant) => !participant.email?.trim() || !operationalEmailPattern.test(participant.email.trim()))
+    .map((participant) => participant.display_name);
+  const inactiveMembers = participants
+    .filter((participant) => !participant.active)
+    .map((participant) => participant.display_name);
+
+  return {
+    attendees,
+    membersWithoutEmail,
+    inactiveMembers,
+  };
+}
+
 export function sanitizeCalendarEvent(input: SanitizedGoogleCalendarInput): {
   payload: SanitizedGoogleCalendarPayload;
   payloadSummary: SanitizedGoogleCalendarSummary;
 } {
   const summary = `[SEMEAR] ${input.title}`;
-  const attendees = uniqueAttendees(input.participants);
-  const membersWithoutEmail = input.participants
-    .filter((participant) => !participant.email?.trim() || !operationalEmailPattern.test(participant.email.trim()))
-    .map((participant) => participant.display_name);
+  const audience = buildGoogleCalendarAudienceSummary(input.participants);
+  const attendees = input.googleSendInvites ? audience.attendees : [];
   const participantNames = input.participants.map((participant) => participant.display_name).filter(Boolean).slice(0, 8);
 
   const descriptionLines = [
@@ -102,14 +122,16 @@ export function sanitizeCalendarEvent(input: SanitizedGoogleCalendarInput): {
       location: input.neighborhood_name?.trim() || undefined,
       start,
       end,
-      attendees,
+      attendees: attendees.length > 0 ? attendees : undefined,
       status: input.status === "cancelled" ? "cancelled" : "confirmed",
     },
     payloadSummary: {
       summary,
       location: input.neighborhood_name?.trim() || null,
       attendees_count: attendees.length,
-      members_without_email: membersWithoutEmail,
+      google_send_invites: input.googleSendInvites,
+      members_without_email: audience.membersWithoutEmail,
+      inactive_members: audience.inactiveMembers,
       all_day: input.all_day,
       starts_at: input.starts_at,
       ends_at: input.ends_at,

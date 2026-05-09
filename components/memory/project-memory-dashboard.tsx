@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Clock3, FileText, FolderClock, LibraryBig, MapPinned, Plus, UsersRound } from "lucide-react";
+import { CheckCircle2, Clock3, FileSearch, FileText, FolderClock, LibraryBig, MapPinned, Plus, UsersRound } from "lucide-react";
 import type { Action, Neighborhood, Profile, ProjectMemoryEntry, TeamMember, WeeklyTeamReport, WeeklyTeamReportStatus } from "@/lib/database.types";
 import { FilterBar, FilterField, filterControlClassName } from "@/components/ui/filter-bar";
 import { MetricCard } from "@/components/ui/metric-card";
@@ -20,6 +20,7 @@ import {
 } from "@/lib/project-memory";
 import { formatWeekTitle } from "@/lib/team-calendar";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { NotificationsInlinePanel } from "@/components/notifications/notifications-inline-panel";
 
 type ReportActionRow = {
   report_id: string;
@@ -228,12 +229,21 @@ export function ProjectMemoryDashboard() {
             <h4 className="font-semibold text-semear-earth">Painel de Curadoria</h4>
             <p className="text-xs text-stone-500">Transforme relatórios em memória institucional curada.</p>
           </div>
-          <Link 
-            href="/memoria/curadoria" 
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-semear-earth px-5 text-sm font-bold text-white shadow-soft hover:bg-semear-earth/90"
-          >
-            Acessar Curadoria
-          </Link>
+          <div className="flex gap-2">
+            <Link 
+              href="/memoria/curadoria" 
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-semear-earth px-5 text-sm font-bold text-white shadow-soft hover:bg-semear-earth/90"
+            >
+              Acessar Curadoria
+            </Link>
+            <Link 
+              href="/memoria/importacoes" 
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-semear-earth/20 bg-white px-5 text-sm font-bold text-semear-earth shadow-soft hover:bg-semear-earth/5"
+            >
+              <FileSearch className="h-4 w-4" />
+              Qualidade das Importações
+            </Link>
+          </div>
         </div>
       )}
 
@@ -367,6 +377,14 @@ export function ProjectMemoryDashboard() {
         </section>
 
         <section className="space-y-5">
+          <NotificationsInlinePanel
+            title="Avisos de memória e relatórios"
+            categories={["memoria", "relatorios"]}
+            href="/avisos"
+            emptyText="Sem avisos de memória no momento."
+            limit={4}
+          />
+
           <section className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-full bg-semear-green-soft text-semear-green">

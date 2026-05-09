@@ -8,6 +8,7 @@ import { extractHighlights } from "@/lib/project-memory";
 import { formatWeekTitle } from "@/lib/team-calendar";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { collectAvailableMonths, formatMonthLabel, getMonthValue } from "@/lib/monthly-reports";
+import { NotificationsInlinePanel } from "@/components/notifications/notifications-inline-panel";
 
 type ActionWithNeighborhood = Action & {
   neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
@@ -113,6 +114,18 @@ export function MonthlyReportsHub() {
       </div>
 
       {!loading && !error ? (
+        <div className="mt-5">
+          <NotificationsInlinePanel
+            title="Avisos de relatórios semanais"
+            categories={["relatorios", "memoria"]}
+            href="/avisos?categoria=relatorios"
+            emptyText="Sem avisos de relatórios pendentes no recorte."
+            limit={4}
+          />
+        </div>
+      ) : null}
+
+      {!loading && !error ? (
         <section className="mt-5 rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft sm:p-6">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
@@ -140,10 +153,17 @@ export function MonthlyReportsHub() {
           </div>
 
           <div className="mt-6 border-t border-semear-gray pt-6">
-            <h4 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-semear-green">
-              <LibraryBig className="h-4 w-4" />
-              Memória curada no período
-            </h4>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <h4 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-semear-green">
+                  <LibraryBig className="h-4 w-4" />
+                  Memória curada no período
+                </h4>
+              </div>
+              <Link className="inline-flex items-center gap-2 rounded-full bg-semear-green-soft px-4 py-2 text-xs font-bold text-semear-green hover:bg-semear-green/10 transition-all" href="/leituras">
+                Ver leitura coletiva completa
+              </Link>
+            </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-4">
               <StatChip icon={<LibraryBig className="h-4 w-4" />} label="Entradas totais" value={memoryStats.total} />
               <StatChip icon={<ShieldCheck className="h-4 w-4" />} label="Aprovadas públicas" value={memoryStats.public} />

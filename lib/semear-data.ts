@@ -1,4 +1,5 @@
 import {
+  Bell,
   ClipboardList,
   CalendarDays,
   FileText,
@@ -38,6 +39,7 @@ export type EmptyModule = {
 
 export const navigationItems: NavigationItem[] = [
   { label: "Dashboard", href: "/", icon: Home },
+  { label: "Avisos", href: "/avisos", icon: Bell },
   { label: "Ações", href: "/acoes", icon: ClipboardList },
   { label: "Agenda", href: "/agenda", icon: CalendarDays },
   { label: "Escutas", href: "/escutas", icon: MessageSquareText },

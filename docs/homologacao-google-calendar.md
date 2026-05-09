@@ -4,125 +4,119 @@
 
 Validar a sincronização manual e auditável da agenda interna do SEMEAR com Google Calendar sem expor dados sensíveis.
 
-## Pré-requisitos
+## Pré-condições
 
-- migration do Tijolo 056 aplicada;
-- calendário institucional compartilhado criado;
-- autenticação disponível por um destes caminhos:
-  - service account com permissão de edição nesse calendário;
-  - ou conexão OAuth de `admin/coordenacao` com acesso ao mesmo calendário;
-- variáveis de ambiente preenchidas;
-- ao menos um usuário com papel `admin` ou `coordenacao`;
-- ao menos um evento interno criado em `/agenda`.
+1. Evento interno criado em `/agenda/[id]`.
+2. Perfil com papel `admin` ou `coordenacao`.
+3. `GOOGLE_CALENDAR_SYNC_ENABLED=true`.
+4. `GOOGLE_CALENDAR_ID` preenchido.
+5. `GOOGLE_OAUTH_CLIENT_ID` e `GOOGLE_OAUTH_CLIENT_SECRET` preenchidos.
+6. Google Calendar API habilitada no projeto OAuth.
+7. Calendário institucional compartilhado com a conta que fará a conexão, com permissão de edição.
 
-## Checklist de configuração real
+## Fluxo de homologação
 
-1. Criar calendário institucional
+### 1. Conexão
 
-- nome sugerido: `Agenda SEMEAR — Equipe`.
+1. Abrir `/agenda/[id]`.
+2. Clicar em `Conectar Google Calendar`.
+3. Concluir o consentimento Google.
+4. Confirmar que a conexão foi salva sem exibir token no frontend.
 
-2. Compartilhar o calendário com o autenticador
+### 2. Create
 
-- usar o e-mail configurado em `GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL`, se houver service account;
-- ou garantir que a conta Google da coordenação/admin tenha permissão de editar esse calendário compartilhado.
+1. Usar `Sincronizar com Google`.
+2. Confirmar criação do evento no calendário institucional.
+3. Confirmar `google_calendar_event_id`, `google_calendar_id`, `google_sync_status = synced` e log `create success`.
 
-3. Permissão mínima
+### 3. Update
 
-- `fazer alterações em eventos`.
+1. Alterar título, descrição operacional segura, data ou horário no SEMEAR.
+2. Usar `Atualizar evento Google`.
+3. Confirmar atualização no Google.
+4. Confirmar log `update success`.
 
-4. Configurar envs no ambiente
+### 4. Cancel
 
-- `GOOGLE_CALENDAR_SYNC_ENABLED=true`
-- `GOOGLE_CALENDAR_ID`
-- `GOOGLE_OAUTH_CLIENT_ID`
-- `GOOGLE_OAUTH_CLIENT_SECRET`
+1. Usar `Cancelar evento Google`.
+2. Confirmar que o evento foi cancelado no Google.
+3. Confirmar que o evento interno permanece no SEMEAR.
+4. Confirmar log `cancel success`.
 
-Se o modo service account estiver ativo:
+### 5. Unlink
 
-- `GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL`
-- `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`
+1. Usar `Desvincular do Google`.
+2. Confirmar limpeza do vínculo externo no SEMEAR.
+3. Confirmar log `unlink success`.
 
-5. Redeploy
+## Teste de erro controlado
 
-- após salvar envs, fazer novo deploy ou reiniciar o ambiente.
+Provocar pelo menos um cenário seguro:
 
-6. Regra de segurança
+- conexão revogada;
+- calendário sem permissão de edição;
+- API desabilitada;
+- sync desabilitado no ambiente.
 
-- nunca salvar private key em relatório, print, chat, issue ou commit.
+Confirmar:
 
-## Roteiro de testes
+- `google_sync_status = sync_error`;
+- mensagem segura na UI;
+- recomendação de ação;
+- nenhum token ou segredo em log.
 
-1. Conectar calendário
+## Teste de refresh
 
-- preencher `GOOGLE_CALENDAR_SYNC_ENABLED=true`;
-- preencher `GOOGLE_CALENDAR_ID`;
-- preencher `GOOGLE_OAUTH_CLIENT_ID`;
-- preencher `GOOGLE_OAUTH_CLIENT_SECRET`;
-- se houver service account, preencher `GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL` e `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`;
-- fazer redeploy ou reiniciar a aplicação;
-- abrir um evento em `/agenda/[id]`;
-- se a service account nao estiver ativa, usar `Conectar Google Calendar` no bloco do evento.
+Seguir `docs/teste-refresh-google-calendar.md` e `docs/smoke-assistido-refresh-google-calendar.md` para validar:
 
-2. Sincronizar evento simples
+- uso do token atual;
+- renovação com refresh token quando necessário;
+- preservação ou rotação segura do refresh token;
+- ausência de segredo em log, relatório e frontend.
 
-- clicar em `Sincronizar com Google`;
-- confirmar status `Sincronizado`;
-- confirmar preenchimento de `google_calendar_id`, `google_calendar_event_id` e `google_synced_at`;
-- confirmar criação de log com ação `create`.
+## Teste de papéis
 
-3. Atualizar data/hora
+Confirmar, por fluxo real ou smoke manual:
 
-- editar o evento interno;
-- clicar em `Atualizar evento Google`;
-- confirmar ajuste no calendário externo;
-- confirmar novo log com ação `update`.
+- `admin` sincroniza;
+- `coordenacao` sincroniza;
+- `admin` e `coordenacao` podem ativar ou desativar `google_send_invites` por evento;
+- `equipe` não sincroniza;
+- `anon` sem acesso;
+- equipe pode visualizar status e histórico sem executar sync.
 
-4. Cancelar evento
+## Convites por evento
 
-- clicar em `Cancelar evento Google`;
-- confirmar status `cancelled` no SEMEAR;
-- confirmar que o evento aparece cancelado no Google;
-- confirmar log com ação `cancel`.
+- `google_send_invites` inicia em `false`;
+- apenas membros de `team_calendar_event_members` entram na elegibilidade;
+- só entram em `attendees` participantes `active = true` com e-mail válido;
+- entrevistados nunca entram em attendees;
+- a política atual mantém `sendUpdates=none`, mesmo com a flag ativada.
 
-5. Desvincular
+## Teste de privacidade
 
-- clicar em `Desvincular do Google`;
-- confirmar que os campos `google_calendar_id` e `google_calendar_event_id` foram limpos;
-- confirmar status `unlinked`;
-- confirmar log com ação `unlink`.
+Conferir `reports/google-calendar-payload-privacy-check.md`.
 
-6. Confirmar descrição segura
+O payload e os logs não devem conter:
 
-- abrir o evento no Google Calendar;
-- validar que a descrição tem apenas resumo operacional;
-- confirmar ausência de fala original, CPF, telefone, endereço pessoal, anexo e relatório semanal completo.
+- fala original;
+- escutas;
+- dados de entrevistados;
+- anexos;
+- relatório semanal completo;
+- CPF;
+- telefone;
+- endereço pessoal;
+- dado de saúde individual;
+- access token;
+- refresh token;
+- private key;
+- client secret.
 
-7. Confirmar logs
+## Limites mantidos
 
-- abrir o histórico em `/agenda/[id]`;
-- validar data, ação, status, mensagem e quem sincronizou;
-- confirmar ausência de token e ausência de payload sensível completo.
-
-8. Confirmar bloqueio de permissão
-
-- acessar o mesmo evento com perfil `equipe`;
-- validar que os botões de sincronização não aparecem;
-- tentar chamar a API sem papel autorizado;
-- confirmar resposta `403`.
-
-9. Confirmar UX de reprocessamento
-
-- provocar `sync_error` com ambiente inválido ou sync desabilitado;
-- validar mensagem segura;
-- validar botão `Tentar novamente`;
-- validar orientação para conferir calendário institucional, conexão Google, envs e permissões.
-
-## Resultado esperado
-
-- sincronização manual funcional quando o ambiente estiver configurado;
-- nenhuma sincronização automática;
-- nenhum push;
-- nenhum e-mail próprio;
-- nenhum webhook;
-- logs auditáveis preservados;
-- SEMEAR continua como fonte principal.
+- sem webhook de retorno;
+- sem push notification;
+- sem e-mail próprio;
+- sem sincronização automática em massa;
+- sem retorno automático de alterações feitas diretamente no Google.

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Menu, Plus, Sprout, X } from "lucide-react";
 import type { NavigationItem } from "@/lib/semear-data";
+import { NotificationsBell } from "@/components/notifications/notifications-bell";
 
 type MobileAction = {
   href: string;
@@ -52,6 +53,8 @@ export function MobileHeader({ activeHref, items, primaryAction }: MobileHeaderP
               </div>
             </div>
           </Link>
+
+          <NotificationsBell />
 
           {primaryAction ? (
             <Link

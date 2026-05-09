@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { AlertTriangle, CalendarDays, ClipboardList, FileText, Keyboard, MapPinned, ShieldCheck, UsersRound } from "lucide-react";
+import { AlertTriangle, BarChart3, CalendarDays, ClipboardList, FileText, Keyboard, MapPinned, ShieldCheck, UsersRound, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 
 const steps = [
@@ -153,6 +153,7 @@ export default function AjudaPage() {
           <QuickLink href="/memoria" icon={<FileText className="h-5 w-5" />} title="Memória do Projeto" text="Enviar relatórios semanais, anexar documentos e consolidar memória interna." />
           <QuickLink href="/pos-banca" icon={<FileText className="h-5 w-5" />} title="Pós-banca" text="Consolidar resultados, ver decisão e copiar relatório pós-banca." />
           <QuickLink href="/relatorios" icon={<FileText className="h-5 w-5" />} title="Relatórios" text="Conferir leitura mensal e alertas de dossiê." />
+          <QuickLink href="/avisos?onboarding=true" icon={<AlertTriangle className="h-5 w-5" />} title="Central de Avisos" text="Acompanhar pendências internas, lembretes e onboarding operacional." />
           <QuickLink href="/territorios/lugares" icon={<MapPinned className="h-5 w-5" />} title="Normalizar lugares" text="Padronizar lugares citados e marcar visibilidade antes do mapa." />
           <QuickLink href="/territorios/qualidade" icon={<ShieldCheck className="h-5 w-5" />} title="Qualidade territorial" text="Conferir bairros prontos, em revisão ou bloqueados por sensível." />
           <QuickLink href="/escutas/revisao-territorial" icon={<MapPinned className="h-5 w-5" />} title="Revisão territorial" text="Revisar lugares livres, estruturados e status territorial por escuta." />
@@ -161,6 +162,41 @@ export default function AjudaPage() {
           <QuickLink href="/transparencia/snapshots" icon={<ShieldCheck className="h-5 w-5" />} title="Transparência Viva" text="Gerar snapshots agregados para futura camada pública." />
           <QuickLink href="/transparencia/homologacao" icon={<ShieldCheck className="h-5 w-5" />} title="Homologação institucional" text="Congelar versão, assinar internamente e preparar integração pública segura." />
         </div>
+
+        <Panel className="mt-6" icon={<Sparkles className="h-5 w-5" />} title="Primeiros passos no SEMEAR">
+          <div className="space-y-4 text-sm leading-6 text-stone-700">
+            <p>Se você acabou de chegar na equipe operacional, siga este roteiro básico para se orientar no sistema:</p>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <OnboardingStep 
+                title="1. Completar Perfil" 
+                text="Acesse o sistema com seu e-mail Google e aguarde a coordenação definir seu papel (equipe, coordenação ou admin)." 
+              />
+              <OnboardingStep 
+                title="2. Conhecer a Equipe" 
+                text="Verifique se você está cadastrado em /equipe para que suas atividades sejam rastreadas corretamente." 
+              />
+              <OnboardingStep 
+                title="3. Abrir a Agenda" 
+                text="Veja as ações de campo e reuniões previstas em /agenda. Você pode ser convidado para eventos específicos." 
+              />
+              <OnboardingStep 
+                title="4. Entender Avisos" 
+                text="A Central de Avisos (/avisos) é sua rotina diária. Ela mostra o que você precisa fazer hoje e o que está atrasado." 
+              />
+              <OnboardingStep 
+                title="5. Privacidade Primeiro" 
+                text="Leia as orientações de privacidade. Nunca colete dados pessoais como CPF, telefone ou endereço nas escutas." 
+              />
+              <OnboardingStep 
+                title="6. Registro de Atividade" 
+                text="Ao fim da semana, envie seu relatório em /memoria para manter a história do projeto viva e transparente." 
+              />
+            </div>
+            <p className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-blue-900 text-xs italic">
+              <strong>Dica:</strong> No Dashboard, novos membros visualizam um checklist interativo. Você pode reabri-lo a qualquer momento em /avisos?onboarding=true.
+            </p>
+          </div>
+        </Panel>
 
         <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_0.9fr]">
           <Panel icon={<ClipboardList className="h-5 w-5" />} title="Checklist resumido da primeira banca">
@@ -243,6 +279,7 @@ export default function AjudaPage() {
             <p><strong>Geração assistida:</strong> em `/acoes/[id]` é possível sugerir agenda para devolutiva, fechamento do dossiê e revisão das escutas. Em `/memoria` e `/relatorios`, também é possível sugerir prazo para entrega dos relatórios semanais.</p>
             <p><strong>Google Calendar:</strong> nesta versão a sincronização é manual, auditável e restrita a coordenação/admin. O SEMEAR segue como fonte principal e o Google funciona apenas como espelho operacional.</p>
             <p><strong>Autenticação:</strong> o evento pode ser sincronizado por service account institucional ou por conexão OAuth manual da coordenação/admin, sempre sem expor token no frontend.</p>
+            <p><strong>Drift:</strong> se alguém alterar o evento direto no Google, essa mudança não volta automaticamente para o SEMEAR nesta versão.</p>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link className="inline-flex min-h-11 items-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/agenda">Abrir agenda</Link>
@@ -251,14 +288,39 @@ export default function AjudaPage() {
         </Panel>
 
         <Panel className="mt-6" icon={<CalendarDays className="h-5 w-5" />} title="Google Calendar">
+          <div id="google-calendar-manual" />
           <div className="space-y-3 text-sm leading-6 text-stone-700">
             <p><strong>Fonte principal:</strong> o SEMEAR continua sendo a referência oficial do evento. Google Calendar é apenas espelho operacional.</p>
             <p><strong>Quem sincroniza:</strong> apenas perfis `admin` e `coordenacao`, a partir de `/agenda/[id]`.</p>
+            <p><strong>Quando usar sync:</strong> depois de revisar o evento no SEMEAR e confirmar que ele está pronto para virar lembrete operacional externo.</p>
             <p><strong>O que vai:</strong> resumo operacional, data, horário, território agregado e equipe quando houver e-mail cadastrado.</p>
             <p><strong>O que não vai:</strong> escutas, relatórios completos, anexos, fala original e qualquer dado sensível.</p>
-            <p><strong>Em caso de sync_error:</strong> conferir calendário institucional, conexão Google ativa, envs e permissões de compartilhamento, depois usar `Tentar novamente`.</p>
+            <p><strong>Status possíveis:</strong> Não sincronizado, Sincronizado, Erro de sincronização, Cancelado no Google e Desvinculado.</p>
+            <p><strong>Convites:</strong> são opcionais, começam desativados e só podem ser ativados por `admin` ou `coordenacao` em um evento específico.</p>
+            <p><strong>Quem pode ser convidado:</strong> apenas membros da equipe vinculados ao evento, ativos e com e-mail cadastrado. Entrevistados nunca entram em attendees.</p>
+            <p><strong>Reconexão:</strong> se a conexão expirar ou for revogada, use `Reconectar Google Calendar` no próprio evento.</p>
+            <p><strong>Em caso de sync_error:</strong> confira calendário institucional, conexão Google ativa, envs, API Google Calendar e permissões de compartilhamento; depois use `Tentar novamente`, `Reconectar` ou `Desvincular`, conforme a orientação da tela.</p>
+            <p><strong>Permissão:</strong> a conta conectada precisa ter permissão de edição no calendário institucional compartilhado.</p>
             <p><strong>Importante:</strong> se alguém alterar o evento diretamente no Google, essa mudança não volta automaticamente para o SEMEAR nesta versão.</p>
+            <p><strong>Painel de saúde:</strong> `/agenda/google/status` concentra conexão ativa, últimos erros, eventos com sync_error e itens com alterações locais pendentes.</p>
+            <p><strong>Política atual:</strong> mesmo com `google_send_invites = true`, o SEMEAR mantém `sendUpdates=none`, sem envio de e-mail próprio.</p>
             <p><strong>Privacidade:</strong> nunca colocar dados sensíveis no evento interno pensando que eles serão filtrados depois. O cuidado começa no cadastro do evento.</p>
+          </div>
+        </Panel>
+
+        <Panel className="mt-6" icon={<AlertTriangle className="h-5 w-5" />} title="Central de Avisos">
+          <div className="space-y-3 text-sm leading-6 text-stone-700">
+            <p><strong>O que é:</strong> painel interno em <strong>/avisos</strong> para priorizar pendências operacionais sem usar push, e-mail ou webhook externo.</p>
+            <p><strong>O que aparece:</strong> agenda hoje/amanhã/atrasada, sync_error e drift do Google, relatórios pendentes, devolutiva/dossiê pendentes, revisão de escutas e pendências de transparência.</p>
+            <p><strong>Ações:</strong> marcar como lido, dispensar, arquivar e abrir origem da pendência.</p>
+            <p><strong>Atualização manual:</strong> use o botão <strong>Atualizar avisos</strong> para recalcular sob demanda no servidor, sem cron externo.</p>
+            <p><strong>Preferências:</strong> em <strong>/avisos/preferencias</strong> cada pessoa pode ligar/desligar categorias e ativar modo silencioso.</p>
+            <p><strong>Modo silencioso:</strong> badges globais mostram só urgentes, mas os avisos continuam visíveis na central.</p>
+            <p><strong>Privacidade:</strong> avisos nunca exibem fala original, CPF, telefone, endereço, anexos ou tokens.</p>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link className="inline-flex min-h-11 items-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/avisos">Abrir Central de Avisos</Link>
+            <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/avisos/preferencias">Abrir preferências</Link>
           </div>
         </Panel>
 
@@ -542,6 +604,35 @@ export default function AjudaPage() {
           </div>
         </Panel>
 
+        <Panel className="mt-6" icon={<BarChart3 className="h-5 w-5" />} title="Leituras coletivas">
+          <div className="grid gap-4 md:grid-cols-2 text-sm leading-6 text-stone-600">
+            <div className="space-y-3">
+              <p>
+                O painel de <strong>Leituras Coletivas</strong> (/leituras) oferece uma visão agregada e territorial das escutas cadastradas.
+                Ele é fundamental para entender o &quot;espírito do território&quot; sem expor indivíduos.
+              </p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li><strong>Território da Ação:</strong> Onde a banca aconteceu.</li>
+                <li><strong>Território de Referência:</strong> Bairro que o entrevistado representa ou fala sobre.</li>
+                <li><strong>Temas x Território:</strong> Matriz de intensidade de demandas.</li>
+              </ul>
+            </div>
+            <div className="space-y-3">
+              <p>
+                <strong>Por que não há mapa com pontos?</strong> Para proteger a privacidade dos moradores. Trabalhamos com 
+                manchas de calor e intensidades agregadas por bairro oficial.
+              </p>
+              <p>
+                <strong>Silêncios:</strong> Áreas brancas no painel indicam que precisamos de mais ações de campo nesses locais. 
+                Não ignore o silêncio; ele é um guia operacional.
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link className="inline-flex min-h-11 items-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/leituras">Abrir Leituras Coletivas</Link>
+          </div>
+        </Panel>
+
         <Panel className="mt-6" icon={<ClipboardList className="h-5 w-5" />} title="Primeira ação real">
           <div className="grid gap-3 md:grid-cols-3">
             {firstRealActionChecklist.map((item) => (
@@ -601,6 +692,15 @@ function Role({ title, text }: { title: string; text: string }) {
     <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4">
       <p className="font-semibold text-semear-green">{title}</p>
       <p className="mt-2 text-sm leading-6 text-stone-600">{text}</p>
+    </div>
+  );
+}
+
+function OnboardingStep({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="rounded-2xl border border-stone-100 bg-stone-50/50 p-4">
+      <p className="font-bold text-stone-900 text-sm">{title}</p>
+      <p className="mt-2 text-xs leading-5 text-stone-600">{text}</p>
     </div>
   );
 }

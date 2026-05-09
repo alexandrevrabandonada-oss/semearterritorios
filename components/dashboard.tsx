@@ -20,8 +20,11 @@ import {
   Sprout,
   Tag
 } from "lucide-react";
-import type { Action, ActionClosure, ActionDebrief, ActionType, ListeningRecord, Neighborhood, PublicTransparencySnapshot, TeamCalendarEvent, TeamCalendarEventMember, TeamMember, Theme, WeeklyTeamReport } from "@/lib/database.types";
+import type { Action, ActionClosure, ActionDebrief, ActionType, InAppNotification, ListeningRecord, Neighborhood, NotificationPreference, Profile, PublicTransparencySnapshot, TeamCalendarEvent, TeamCalendarEventMember, TeamMember, Theme, WeeklyTeamReport } from "@/lib/database.types";
 import { InternalRemindersPanel } from "@/components/agenda/internal-reminders-panel";
+import { NotificationsInlinePanel } from "@/components/notifications/notifications-inline-panel";
+import { DailyBriefingPanel } from "@/components/notifications/daily-briefing-panel";
+import { OperationalOnboardingCard } from "@/components/onboarding/operational-onboarding-card";
 import { actionTypeOptions } from "@/lib/actions";
 import { getReviewStatusLabel } from "@/lib/listening-records";
 import { buildClosureReminderItems, buildDebriefReminderItems, buildEventsWithoutAgendaForActions, buildOverdueEvents, buildWeeklyReportReminderItems, getActionScheduleLabel, getEventDateLabel } from "@/lib/team-calendar";
@@ -72,6 +75,10 @@ export function Dashboard() {
   const [calendarMembers, setCalendarMembers] = useState<TeamCalendarEventMember[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [weeklyReports, setWeeklyReports] = useState<WeeklyTeamReport[]>([]);
+  const [notifications, setNotifications] = useState<InAppNotification[]>([]);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [preferences, setPreferences] = useState<NotificationPreference | null>(null);
+  const [onboarding, setOnboarding] = useState<any | null>(null);
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [territorySearch, setTerritorySearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -87,7 +94,7 @@ export function Dashboard() {
         return;
       }
 
-      const [actionsResult, recordsResult, neighborhoodsResult, themesResult, closuresResult, debriefsResult, snapshotsResult, calendarEventsResult, calendarMembersResult, teamMembersResult, weeklyReportsResult] = await Promise.all([
+      const [actionsResult, recordsResult, neighborhoodsResult, themesResult, closuresResult, debriefsResult, snapshotsResult, calendarEventsResult, calendarMembersResult, teamMembersResult, weeklyReportsResult, notificationsResult, userResult] = await Promise.all([
         supabase.from("actions").select("*, neighborhoods:neighborhood_id(id, name)").order("action_date", { ascending: false }),
         supabase.from("listening_records").select("*, actions:action_id(id, title, action_type), neighborhoods:neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name))").order("date", { ascending: false }),
         supabase.from("neighborhoods").select("*").order("name", { ascending: true }),
@@ -98,10 +105,26 @@ export function Dashboard() {
         supabase.from("team_calendar_events").select("*").order("starts_at", { ascending: true }),
         supabase.from("team_calendar_event_members").select("*"),
         supabase.from("team_members").select("*").eq("active", true).order("display_name", { ascending: true }),
-        supabase.from("weekly_team_reports").select("*").order("week_start", { ascending: false })
+        supabase.from("weekly_team_reports").select("*").order("week_start", { ascending: false }),
+        supabase.from("in_app_notifications").select("*").order("priority", { ascending: false }).order("created_at", { ascending: false }),
+        supabase.auth.getUser()
       ]);
 
       if (ignore) return;
+
+      const user = userResult.data.user;
+      if (user) {
+        const [prof, pref, onb] = await Promise.all([
+          supabase.from("profiles").select("*").eq("id", user.id).single(),
+          supabase.from("notification_preferences").select("*").eq("profile_id", user.id).maybeSingle(),
+          supabase.from("user_onboarding_state").select("*").eq("profile_id", user.id).maybeSingle()
+        ]);
+        if (!ignore) {
+          setProfile(prof.data as Profile | null);
+          setPreferences(pref.data as NotificationPreference | null);
+          setOnboarding(onb.data ?? null);
+        }
+      }
 
       if (actionsResult.error || recordsResult.error || neighborhoodsResult.error || themesResult.error || closuresResult.error || debriefsResult.error || snapshotsResult.error || calendarEventsResult.error || calendarMembersResult.error || teamMembersResult.error || weeklyReportsResult.error) {
         setError(
@@ -133,6 +156,7 @@ export function Dashboard() {
       setCalendarMembers((calendarMembersResult.data ?? []) as TeamCalendarEventMember[]);
       setTeamMembers((teamMembersResult.data ?? []) as TeamMember[]);
       setWeeklyReports((weeklyReportsResult.data ?? []) as WeeklyTeamReport[]);
+      setNotifications((notificationsResult.data ?? []) as InAppNotification[]);
       setLoading(false);
     }
 
@@ -253,6 +277,33 @@ export function Dashboard() {
         </div>
       </section>
 
+      <section className="mt-5 lg:hidden">
+        <NotificationsInlinePanel 
+          title="Avisos Urgentes" 
+          categories={["agenda", "google", "relatorios", "escutas", "transparencia", "memoria"]} 
+          href="/avisos" 
+          emptyText="Sem avisos urgentes no momento." 
+          limit={3}
+        />
+      </section>
+
+      {onboarding && !onboarding.dismissed_onboarding && (
+        <div className="mt-6">
+          <OperationalOnboardingCard state={onboarding} onUpdate={(s) => setOnboarding(s)} />
+        </div>
+      )}
+
+      {!loading && !error && (
+        <div className="mt-4">
+          <DailyBriefingPanel 
+            notifications={notifications} 
+            role={profile?.role ?? "equipe"} 
+            preferences={preferences} 
+            onboardingState={onboarding}
+          />
+        </div>
+      )}
+
       <section className="hidden overflow-hidden rounded-2xl border border-semear-gray/80 bg-white shadow-[0_12px_32px_rgba(23,74,55,0.06)] lg:block">
         <div className="grid gap-5 p-5 lg:grid-cols-[1fr_25rem] lg:items-center">
           <div className="flex items-start gap-4">
@@ -318,6 +369,16 @@ export function Dashboard() {
                 { label: "Dossiês sem agenda", value: dossiersWithoutAgenda.length, text: dossiersWithoutAgenda.length > 0 ? dossiersWithoutAgenda.slice(0, 4).map((action) => action.title).join(" · ") : "Sem dossiê sem agenda.", href: "/acoes", tone: dossiersWithoutAgenda.length > 0 ? "warning" : "default" },
                 { label: "Ações realizadas sem fechamento", value: actionsWithoutClosure.length, text: actionsWithoutClosure.length > 0 ? actionsWithoutClosure.slice(0, 4).map((action) => action.title).join(" · ") : "Sem ação realizada aguardando fechamento.", href: "/acoes", tone: actionsWithoutClosure.length > 0 ? "warning" : "default" },
               ]}
+            />
+          </div>
+
+          <div className="mt-4">
+            <NotificationsInlinePanel
+              title="Pendências e avisos"
+              categories={["agenda", "google", "relatorios", "debrief_dossie", "escutas", "transparencia", "memoria"]}
+              href="/avisos"
+              emptyText="Sem avisos urgentes neste momento."
+              limit={3}
             />
           </div>
 

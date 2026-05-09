@@ -3,5 +3,8 @@ node_modules
 out
 .env
 .env*.local
+.env.vercel*
 *.log
 supabase/.temp/
+
+.vercel

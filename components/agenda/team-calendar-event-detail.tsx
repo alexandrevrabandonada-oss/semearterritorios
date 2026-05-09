@@ -31,7 +31,9 @@ import {
   GOOGLE_CALENDAR_CONNECT_RESULT_KEY,
   GOOGLE_CALENDAR_OAUTH_SCOPE,
 } from "@/lib/google-calendar/browser";
+import { buildGoogleCalendarAudienceSummary, sanitizeCalendarEvent } from "@/lib/google-calendar/sanitize-calendar-event";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { GoogleCalendarRetryPanel } from "@/components/agenda/google-calendar-retry-panel";
 
 type EventDetailProps = {
   eventId: string;
@@ -48,6 +50,7 @@ type WeeklyReportWithMember = WeeklyTeamReport & {
 
 type SyncAction = "create" | "update" | "cancel" | "unlink";
 type ConnectionAction = "connect" | "disconnect";
+type InvitePolicyAction = "toggle_invites";
 type GoogleConnectionStatus = {
   enabled: boolean;
   calendar_id: string | null;
@@ -64,6 +67,17 @@ type GoogleConnectionStatus = {
   } | null;
 };
 
+type SyncFeedback = {
+  tone: "success" | "error" | "info";
+  text: string;
+  hint?: string;
+  hasExternalEvent?: boolean;
+  errorCode?: string;
+  suggestReconnect?: boolean;
+  suggestCheckPermissions?: boolean;
+  suggestCheckGoogleSetup?: boolean;
+};
+
 export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const [event, setEvent] = useState<EventWithRelations | null>(null);
@@ -75,9 +89,10 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
   const [syncAuthors, setSyncAuthors] = useState<Record<string, string>>({});
   const [currentProfile, setCurrentProfile] = useState<Pick<Profile, "id" | "role"> | null>(null);
   const [googleConnection, setGoogleConnection] = useState<GoogleConnectionStatus | null>(null);
-  const [syncMessage, setSyncMessage] = useState<{ tone: "success" | "error" | "info"; text: string; hint?: string; hasExternalEvent?: boolean } | null>(null);
+  const [syncMessage, setSyncMessage] = useState<SyncFeedback | null>(null);
   const [syncActionLoading, setSyncActionLoading] = useState<SyncAction | null>(null);
   const [connectionActionLoading, setConnectionActionLoading] = useState<ConnectionAction | null>(null);
+  const [invitePolicyLoading, setInvitePolicyLoading] = useState<InvitePolicyAction | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -88,8 +103,35 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
   const participantMembers = memberships
     .map((membership) => teamMembers.find((member) => member.id === membership.team_member_id))
     .filter(Boolean) as TeamMember[];
-  const membersWithoutEmail = participantMembers.filter((member) => !member.email?.trim()).map((member) => member.display_name);
-  const membersWithEmailCount = participantMembers.filter((member) => member.email?.trim()).length;
+  const inviteAudience = buildGoogleCalendarAudienceSummary(
+    participantMembers.map((member) => ({
+      display_name: member.display_name,
+      email: member.email,
+      active: member.active,
+    }))
+  );
+  const membersWithoutEmail = inviteAudience.membersWithoutEmail;
+  const inactiveParticipants = inviteAudience.inactiveMembers;
+  const membersWithEmailCount = inviteAudience.attendees.length;
+  const payloadPreview = event
+    ? sanitizeCalendarEvent({
+        id: event.id,
+        title: event.title,
+        event_type: event.event_type,
+        status: event.status,
+        starts_at: event.starts_at,
+        ends_at: event.ends_at,
+        all_day: event.all_day,
+        neighborhood_name: event.neighborhoods?.name ?? null,
+        googleSendInvites: event.google_send_invites,
+        participants: participantMembers.map((member) => ({
+          display_name: member.display_name,
+          email: member.email,
+          active: member.active,
+        })),
+        internalEventUrl: typeof window !== "undefined" ? `${window.location.origin}/agenda/${event.id}` : `/agenda/${event.id}`,
+      })
+    : null;
   const hasPendingLocalChanges =
     Boolean(event?.google_synced_at) &&
     Boolean(event?.updated_at) &&
@@ -98,9 +140,12 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
   const syncUnavailable = googleConnection ? !googleConnection.enabled || googleConnection.auth_mode === "not_configured" : false;
   const shouldOfferReconnect = Boolean(
     googleConnection?.requires_reconnect ||
+      syncMessage?.suggestReconnect ||
       syncMessage?.text?.toLowerCase().includes("reconecte") ||
       syncMessage?.text?.toLowerCase().includes("autenticacao")
   );
+  const shouldShowPermissionGuide = Boolean(syncMessage?.suggestCheckPermissions);
+  const shouldShowGoogleSetupGuide = Boolean(syncMessage?.suggestCheckGoogleSetup);
   const connectionLabel =
     googleConnection?.auth_mode === "service_account"
       ? "Service account institucional ativa"
@@ -164,7 +209,7 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
         userId ? supabase.from("profiles").select("id, role").eq("id", userId).maybeSingle() : Promise.resolve({ data: null, error: null }),
         supabase.from("team_calendar_events").select("*, actions:action_id(id, title, action_date), neighborhoods:neighborhood_id(id, name)").eq("id", eventId).single(),
         supabase.from("team_calendar_event_members").select("*").eq("event_id", eventId),
-        supabase.from("team_members").select("*").eq("active", true).order("display_name", { ascending: true }),
+        supabase.from("team_members").select("*").order("display_name", { ascending: true }),
         supabase.from("weekly_team_reports").select("*, team_members:team_member_id(id, display_name)").eq("team_calendar_event_id", eventId).order("week_start", { ascending: false }),
         supabase.from("project_memory_entries").select("*").eq("team_calendar_event_id", eventId).order("entry_date", { ascending: false }),
         supabase.from("google_calendar_sync_logs").select("*").eq("event_id", eventId).order("synced_at", { ascending: false }),
@@ -250,13 +295,27 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
         body: JSON.stringify({ event_id: eventId, action }),
       });
 
-      const payload = (await response.json().catch(() => null)) as { error?: string; message?: string; skipped?: boolean; reprocess_hint?: string; has_external_event?: boolean } | null;
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+        error_code?: string;
+        message?: string;
+        skipped?: boolean;
+        reprocess_hint?: string;
+        has_external_event?: boolean;
+        suggest_reconnect?: boolean;
+        suggest_check_permissions?: boolean;
+        suggest_check_google_setup?: boolean;
+      } | null;
       if (!response.ok || payload?.error) {
         setSyncMessage({
           tone: "error",
           text: payload?.error ?? "Não foi possível sincronizar o evento com Google Calendar.",
           hint: payload?.reprocess_hint,
           hasExternalEvent: payload?.has_external_event,
+          errorCode: payload?.error_code,
+          suggestReconnect: payload?.suggest_reconnect,
+          suggestCheckPermissions: payload?.suggest_check_permissions,
+          suggestCheckGoogleSetup: payload?.suggest_check_google_setup,
         });
       } else {
         setSyncMessage({
@@ -368,6 +427,46 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
       });
     } finally {
       setConnectionActionLoading(null);
+      setReloadToken((current) => current + 1);
+    }
+  }
+
+  async function handleInvitePolicyToggle(nextValue: boolean) {
+    setInvitePolicyLoading("toggle_invites");
+    setSyncMessage(null);
+
+    try {
+      const response = await fetch("/api/google-calendar/event-invite-policy", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          event_id: eventId,
+          google_send_invites: nextValue,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as { error?: string; message?: string; google_send_invites?: boolean } | null;
+      if (!response.ok || payload?.error) {
+        setSyncMessage({
+          tone: "error",
+          text: payload?.error ?? "Não foi possível atualizar a política de convites deste evento.",
+        });
+      } else {
+        setSyncMessage({
+          tone: "success",
+          text: payload?.message ?? "Política de convites atualizada.",
+        });
+        setEvent((current) => (current ? { ...current, google_send_invites: Boolean(payload?.google_send_invites) } : current));
+      }
+    } catch (inviteError) {
+      setSyncMessage({
+        tone: "error",
+        text: inviteError instanceof Error ? inviteError.message : "Falha inesperada ao atualizar convites do Google Calendar.",
+      });
+    } finally {
+      setInvitePolicyLoading(null);
       setReloadToken((current) => current + 1);
     }
   }
@@ -496,6 +595,9 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
                 {membersWithEmailCount} participante(s) com e-mail para convite operacional
               </span>
               <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-700">
+                Convites por e-mail: {event.google_send_invites ? "ativados para este evento" : "desativados para este evento"}
+              </span>
+              <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-700">
                 {connectionLabel}
               </span>
               {hasPendingLocalChanges ? (
@@ -511,6 +613,12 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
               </div>
             ) : null}
 
+            {inactiveParticipants.length > 0 ? (
+              <div className="mt-4 rounded-2xl border border-stone-300 bg-stone-100 p-4 text-sm leading-6 text-stone-700">
+                Participantes inativos no cadastro da equipe não entram em attendees: {inactiveParticipants.join(", ")}.
+              </div>
+            ) : null}
+
             <div className="mt-4 rounded-2xl border border-semear-gray bg-semear-offwhite p-4 text-sm leading-6 text-stone-700">
               O SEMEAR continua como fonte principal. O Google Calendar recebe apenas resumo operacional sanitizado, sem escutas, relatórios completos, anexos ou dados sensíveis.
             </div>
@@ -518,6 +626,76 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
             <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
               O SEMEAR é a fonte principal deste evento. Alterações feitas diretamente no Google Calendar não voltam automaticamente para o SEMEAR nesta versão.
             </div>
+
+            <div className="mt-4 rounded-2xl border border-semear-gray bg-white p-4 text-sm leading-6 text-stone-700">
+              <p><strong>Status operacional:</strong> {getGoogleCalendarSyncStatusDescription(event.google_sync_status, hasPendingLocalChanges)}</p>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-white/80 bg-semear-offwhite p-4 text-sm leading-6 text-stone-700">
+              <p className="font-semibold text-semear-green">Convites por e-mail</p>
+              <p className="mt-2">
+                Status atual: <strong>{event.google_send_invites ? "ativados para este evento" : "desativados"}</strong>.
+              </p>
+              <p className="mt-2">
+                Convites são opcionais e só devem ser usados para membros da equipe com e-mail cadastrado. Nunca convide entrevistados.
+              </p>
+              <p className="mt-2 text-xs text-stone-500">
+                Mesmo com convites ativados, o Google receberá apenas resumo operacional sanitizado.
+              </p>
+              <p className="mt-2 text-xs text-stone-500">
+                Política atual de `sendUpdates`: <strong>none</strong>. O evento pode levar attendees válidos, mas o SEMEAR não dispara e-mail automático nesta versão.
+              </p>
+              {canManage ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    className="inline-flex min-h-10 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={invitePolicyLoading !== null || syncActionLoading !== null || connectionActionLoading !== null}
+                    onClick={() => void handleInvitePolicyToggle(!event.google_send_invites)}
+                    type="button"
+                  >
+                    {invitePolicyLoading === "toggle_invites"
+                      ? "Salvando..."
+                      : event.google_send_invites
+                        ? "Desativar convites deste evento"
+                        : "Ativar convites deste evento"}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+
+            {payloadPreview ? (
+              <div className="mt-4 rounded-2xl border border-white/80 bg-white p-4 text-sm leading-6 text-stone-700">
+                <p className="font-semibold text-semear-green">Prévia do que será enviado ao Google</p>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <InfoCard icon={<CalendarCheck2 className="h-5 w-5" />} label="Título" value={payloadPreview.payload.summary} />
+                  <InfoCard icon={<CalendarCheck2 className="h-5 w-5" />} label="Data e hora" value={getEventDateLabel(event)} />
+                  <InfoCard icon={<MapPin className="h-5 w-5" />} label="Local coletivo" value={payloadPreview.payload.location ?? event.neighborhoods?.name ?? "Sem local coletivo"} />
+                  <InfoCard icon={<UsersRound className="h-5 w-5" />} label="Convidados preparados" value={event.google_send_invites ? String(payloadPreview.payload.attendees?.length ?? 0) : "Convites desativados"} />
+                </div>
+                <div className="mt-3 rounded-2xl border border-semear-gray bg-semear-offwhite p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-semear-earth">Descrição sanitizada</p>
+                  <pre className="mt-2 whitespace-pre-wrap font-sans text-sm leading-6 text-stone-700">{payloadPreview.payload.description}</pre>
+                </div>
+                {event.google_send_invites ? (
+                  <div className="mt-3 rounded-2xl border border-semear-gray bg-semear-offwhite p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-semear-earth">Convidados que entrarão em attendees</p>
+                    <p className="mt-2 text-sm text-stone-700">
+                      {payloadPreview.payload.attendees && payloadPreview.payload.attendees.length > 0
+                        ? payloadPreview.payload.attendees.map((attendee) => attendee.displayName ?? attendee.email).join(", ")
+                        : "Nenhum participante elegível com e-mail válido."}
+                    </p>
+                  </div>
+                ) : null}
+                {membersWithoutEmail.length > 0 ? (
+                  <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                    Sem e-mail cadastrado: {membersWithoutEmail.join(", ")}.
+                  </div>
+                ) : null}
+                <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                  Prévia segura: sem token, sem escutas, sem fala original, sem anexos e sem relatório interno.
+                </div>
+              </div>
+            ) : null}
 
             {canManage && !googleConnection?.service_account_available ? (
               <div className="mt-4 rounded-2xl border border-semear-gray bg-white p-4 text-sm leading-6 text-stone-700">
@@ -537,6 +715,16 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
               <div className={`mt-4 rounded-2xl border p-4 text-sm ${syncMessage.tone === "success" ? "border-green-200 bg-green-50 text-green-800" : syncMessage.tone === "info" ? "border-stone-200 bg-stone-50 text-stone-700" : "border-red-200 bg-red-50 text-red-800"}`}>
                 <p>{syncMessage.text}</p>
                 {syncMessage.hint ? <p className="mt-2">{syncMessage.hint}</p> : null}
+                {shouldShowPermissionGuide ? (
+                  <p className="mt-2">
+                    Confira o compartilhamento do calendário institucional e garanta permissão de edição para a conta conectada.
+                  </p>
+                ) : null}
+                {shouldShowGoogleSetupGuide ? (
+                  <p className="mt-2">
+                    Revise a configuração do projeto Google Cloud, da API Google Calendar e das envs do ambiente.
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
@@ -583,14 +771,22 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
                 </div>
 
                 {shouldOfferReconnect ? (
-                  <button
-                    className="inline-flex min-h-11 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={connectionActionLoading !== null || syncActionLoading !== null}
-                    onClick={() => void handleConnectGoogleCalendar()}
-                    type="button"
-                  >
-                    {connectionActionLoading === "connect" ? "Reconectando..." : "Reconectar Google Calendar"}
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      className="inline-flex min-h-11 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={connectionActionLoading !== null || syncActionLoading !== null}
+                      onClick={() => void handleConnectGoogleCalendar()}
+                      type="button"
+                    >
+                      {connectionActionLoading === "connect" ? "Reconectando..." : "Reconectar Google Calendar"}
+                    </button>
+                    <Link
+                      className="inline-flex min-h-11 items-center justify-center rounded-full border border-stone-300 bg-stone-100 px-4 text-sm font-semibold text-stone-700"
+                      href="/ajuda#google-calendar-manual"
+                    >
+                      Ver configuração
+                    </Link>
+                  </div>
                 ) : null}
               </div>
             ) : (
@@ -600,30 +796,19 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
             )}
 
             {canManage && event.google_sync_status === "sync_error" ? (
-              <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800">
-                <p className="font-semibold">Erro de sincronização detectado</p>
-                <p className="mt-2">Confira calendário institucional, conexão Google, envs e permissões do compartilhamento.</p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <button className="inline-flex min-h-10 items-center justify-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" disabled={syncActionLoading !== null || connectionActionLoading !== null || syncUnavailable} onClick={() => void handleGoogleSync(event.google_calendar_event_id ? "update" : "create")} type="button">
-                    {syncActionLoading === "create" || syncActionLoading === "update" ? "Tentando..." : "Tentar novamente"}
-                  </button>
-                  {event.google_calendar_event_id ? (
-                    <button className="inline-flex min-h-10 items-center justify-center rounded-full border border-stone-300 bg-white px-4 text-sm font-semibold text-stone-700 disabled:cursor-not-allowed disabled:opacity-60" disabled={syncActionLoading !== null || connectionActionLoading !== null} onClick={() => void handleGoogleSync("unlink")} type="button">
-                      Desvincular
-                    </button>
-                  ) : null}
-                  {shouldOfferReconnect ? (
-                    <button
-                      className="inline-flex min-h-10 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green disabled:cursor-not-allowed disabled:opacity-60"
-                      disabled={syncActionLoading !== null || connectionActionLoading !== null}
-                      onClick={() => void handleConnectGoogleCalendar()}
-                      type="button"
-                    >
-                      {connectionActionLoading === "connect" ? "Reconectando..." : "Reconectar"}
-                    </button>
-                  ) : null}
-                </div>
-              </div>
+              <GoogleCalendarRetryPanel
+                canRetry={!syncUnavailable}
+                connectionActionLoading={connectionActionLoading}
+                hasExternalEvent={Boolean(event.google_calendar_event_id)}
+                hint={syncMessage?.hint}
+                onReconnect={() => void handleConnectGoogleCalendar()}
+                onRetry={() => void handleGoogleSync(event.google_calendar_event_id ? "update" : "create")}
+                onUnlink={() => void handleGoogleSync("unlink")}
+                showDocsLink={shouldShowPermissionGuide || shouldShowGoogleSetupGuide}
+                showReconnect={shouldOfferReconnect}
+                syncActionLoading={syncActionLoading}
+                syncErrorCode={syncMessage?.errorCode}
+              />
             ) : null}
           </section>
 
@@ -713,6 +898,16 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
                     <Badge tone={log.status === "success" ? "green" : log.status === "failed" ? "red" : "yellow"} label={log.status === "success" ? "Sucesso" : log.status === "failed" ? "Falha" : "Ignorado"} />
                   </div>
                   {log.message ? <p className="mt-3 text-sm leading-6 text-stone-700">{log.message}</p> : null}
+                  {log.payload_summary ? (
+                    <dl className="mt-3 grid gap-2 text-xs leading-5 text-stone-600 sm:grid-cols-2">
+                      {buildPayloadSummaryEntries(log.payload_summary).map((entry) => (
+                        <div className="rounded-xl border border-white/80 bg-white/70 px-3 py-2" key={`${log.id}-${entry.label}`}>
+                          <dt className="font-semibold uppercase tracking-[0.08em] text-stone-500">{entry.label}</dt>
+                          <dd className="mt-1 text-stone-700">{entry.value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  ) : null}
                 </article>
               ))}
               {syncLogs.length === 0 ? <EmptyBox text="Nenhuma sincronização com Google Calendar foi registrada para este evento." /> : null}
@@ -755,4 +950,65 @@ function EmptyBox({ text }: { text: string }) {
 
 function StateBox({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "error" }) {
   return <div className={`rounded-[1.5rem] p-6 text-sm shadow-soft ${tone === "error" ? "border border-red-200 bg-red-50 text-red-800" : "border border-white/80 bg-white/72 text-stone-600"}`}>{children}</div>;
+}
+
+function getGoogleCalendarSyncStatusDescription(status: TeamCalendarEvent["google_sync_status"], hasPendingLocalChanges: boolean) {
+  if (hasPendingLocalChanges) {
+    return "Há alterações locais no SEMEAR aguardando nova sincronização manual.";
+  }
+
+  switch (status) {
+    case "synced":
+      return "O espelho operacional no Google Calendar está alinhado com a versão atual do SEMEAR.";
+    case "sync_error":
+      return "A última tentativa falhou. Revise a conexão Google, as permissões e a configuração do calendário antes de tentar novamente.";
+    case "cancelled":
+      return "O evento foi cancelado no Google Calendar, mas continua preservado no SEMEAR como registro interno.";
+    case "unlinked":
+      return "O vínculo externo foi removido. O evento segue apenas no SEMEAR até nova sincronização manual.";
+    default:
+      return "O evento ainda não foi enviado ao Google Calendar nesta versão.";
+  }
+}
+
+function buildPayloadSummaryEntries(payloadSummary: GoogleCalendarSyncLog["payload_summary"]) {
+  if (!payloadSummary || typeof payloadSummary !== "object" || Array.isArray(payloadSummary)) {
+    return [];
+  }
+
+  const summary = payloadSummary as Record<string, unknown>;
+  const entries = [
+    { label: "Resumo", value: normalizeSummaryValue(summary.summary) },
+    { label: "Tipo", value: normalizeSummaryValue(summary.event_type) },
+    { label: "Status", value: normalizeSummaryValue(summary.event_status) },
+    { label: "Território", value: normalizeSummaryValue(summary.neighborhood_name) },
+    { label: "Início", value: normalizeSummaryValue(summary.starts_at) },
+    { label: "Fim", value: normalizeSummaryValue(summary.ends_at) },
+    { label: "Convidados enviados", value: normalizeSummaryValue(summary.attendees_count) },
+    { label: "Convites ativados", value: normalizeSummaryValue(summary.google_send_invites) },
+    { label: "Sem e-mail", value: normalizeSummaryValue(summary.members_without_email) },
+    { label: "Inativos fora do convite", value: normalizeSummaryValue(summary.inactive_members) },
+  ];
+
+  return entries.filter((entry) => entry.value !== "—");
+}
+
+function normalizeSummaryValue(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.length > 0 ? value.join(", ") : "—";
+  }
+
+  if (typeof value === "string") {
+    return value.trim() || "—";
+  }
+
+  if (typeof value === "number") {
+    return String(value);
+  }
+
+  if (typeof value === "boolean") {
+    return value ? "Sim" : "Não";
+  }
+
+  return "—";
 }

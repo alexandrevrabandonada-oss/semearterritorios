@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import type { Action, GoogleCalendarUserConnection, Json, Neighborhood, Profile, TeamCalendarEvent, TeamMember } from "@/lib/database.types";
 import {
+  assertGoogleCalendarSyncReady,
   cancelGoogleCalendarEvent,
   createGoogleCalendarEvent,
+  getGoogleCalendarSendUpdatesMode,
   resolveGoogleCalendarAuthContext,
   updateGoogleCalendarEvent,
 } from "@/lib/google-calendar/google-calendar-api";
+import { mapGoogleCalendarError } from "@/lib/google-calendar/google-calendar-errors";
 import { sanitizeCalendarEvent } from "@/lib/google-calendar/sanitize-calendar-event";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -16,7 +19,7 @@ type EventWithRelations = TeamCalendarEvent & {
   actions: Pick<Action, "id" | "title"> | null;
 };
 
-type SyncableMember = Pick<TeamMember, "id" | "display_name" | "email">;
+type SyncableMember = Pick<TeamMember, "id" | "display_name" | "email" | "active">;
 type SyncConnection = Pick<
   GoogleCalendarUserConnection,
   "id" | "access_token" | "refresh_token" | "access_token_expires_at" | "provider_user_email" | "updated_at"
@@ -95,7 +98,7 @@ export async function POST(request: Request) {
   const teamMemberIds = membershipRows.map((membership) => membership.team_member_id);
 
   const teamMembersResult = teamMemberIds.length > 0
-    ? await supabase.from("team_members").select("id, display_name, email").in("id", teamMemberIds)
+    ? await supabase.from("team_members").select("id, display_name, email, active").in("id", teamMemberIds)
     : { data: [], error: null };
 
   if (teamMembersResult.error) {
@@ -113,13 +116,19 @@ export async function POST(request: Request) {
     ends_at: event.ends_at,
     all_day: event.all_day,
     neighborhood_name: event.neighborhoods?.name ?? null,
+    googleSendInvites: event.google_send_invites,
     participants,
     internalEventUrl,
   });
+  const sendUpdates = getGoogleCalendarSendUpdatesMode(event.google_send_invites);
 
   const connection = (connectionResult.data ?? null) as SyncConnection | null;
 
   try {
+    if (action !== "unlink") {
+      assertGoogleCalendarSyncReady({ connection });
+    }
+
     if (action === "create") {
       if (event.google_calendar_event_id) {
         await insertLog({
@@ -138,7 +147,7 @@ export async function POST(request: Request) {
       }
 
       const authResolution = await resolveGoogleCalendarAuthContext({ connection });
-      const googleResult = await createGoogleCalendarEvent(authResolution.authContext, payload, authResolution.connectionUpdate);
+      const googleResult = await createGoogleCalendarEvent(authResolution.authContext, payload, sendUpdates, authResolution.connectionUpdate);
       if (authResolution.connectionUpdate && connection?.id) {
         await supabase
           .from("google_calendar_user_connections")
@@ -198,6 +207,7 @@ export async function POST(request: Request) {
         authResolution.authContext,
         event.google_calendar_event_id,
         payload,
+        sendUpdates,
         authResolution.connectionUpdate
       );
       if (authResolution.connectionUpdate && connection?.id) {
@@ -257,6 +267,7 @@ export async function POST(request: Request) {
       const googleResult = await cancelGoogleCalendarEvent(
         authResolution.authContext,
         event.google_calendar_event_id,
+        sendUpdates,
         authResolution.connectionUpdate
       );
       if (authResolution.connectionUpdate && connection?.id) {
@@ -318,7 +329,11 @@ export async function POST(request: Request) {
       reprocess_hint: "Se precisar sincronizar novamente, confirme os dados do evento interno, a conexão Google e o calendário institucional.",
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Erro inesperado ao sincronizar com Google Calendar.";
+    const mappedError = mapGoogleCalendarError({
+      error,
+      mode: connection ? "oauth_user" : "unknown",
+      operation: action,
+    });
 
     await supabase
       .from("team_calendar_events")
@@ -331,16 +346,20 @@ export async function POST(request: Request) {
       userId: user.id,
       action: "error",
       status: "failed",
-      message,
+      message: mappedError.safeMessage,
       googleCalendarId: event.google_calendar_id,
       googleCalendarEventId: event.google_calendar_event_id,
       payloadSummary,
     });
 
     return NextResponse.json({
-      error: message,
-      reprocess_hint: "Confira calendário institucional, conexão Google, envs e permissões antes de tentar novamente.",
+      error: mappedError.safeMessage,
+      error_code: mappedError.code,
+      reprocess_hint: mappedError.recommendation,
       has_external_event: Boolean(event.google_calendar_event_id),
+      suggest_reconnect: mappedError.shouldReconnect,
+      suggest_check_permissions: mappedError.shouldCheckPermissions,
+      suggest_check_google_setup: mappedError.shouldCheckGoogleSetup,
     }, { status: 500 });
   }
 }

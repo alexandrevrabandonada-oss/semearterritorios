@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Archive, CheckCircle2, Download, FileText, MapPinned, Save, Send, ShieldCheck, Upload, UsersRound } from "lucide-react";
+import { Archive, CheckCircle2, Copy, Download, FileSearch, FileText, MapPinned, Save, Send, ShieldCheck, Upload, UsersRound, ShieldAlert, AlertTriangle } from "lucide-react";
 import type {
   Action,
   Neighborhood,
@@ -41,7 +41,7 @@ import {
   isMemoryChecklistComplete
 } from "@/lib/memory-privacy";
 import { MemoryEntryPrivacyChecklist } from "@/components/memory/memory-entry-privacy-checklist";
-import { ShieldAlert, AlertTriangle } from "lucide-react";
+import { getExtractionQualityLabel, getExtractionQualityColor } from "@/lib/report-extraction-quality";
 
 type ReportActionLink = {
   action_id: string;
@@ -134,6 +134,9 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
   const [feedback, setFeedback] = useState<string | null>(null);
   const [memoryChecklist, setMemoryChecklist] = useState<MemoryChecklistState>(normalizeMemoryChecklist({}));
   const [linkedEventId, setLinkedEventId] = useState(searchParams.get("eventId") ?? "");
+  const [isImportMode, setIsImportMode] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [processing, setProcessing] = useState(false);
 
   const riskReport = useMemo(() => detectMemoryPrivacyRisks(memoryValues.body + " " + memoryValues.title), [memoryValues.body, memoryValues.title]);
   const canApprovePublic = isMemoryChecklistComplete(memoryChecklist) && !riskReport.hasBlockingRisk;
@@ -305,7 +308,7 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
 
     const result = report
       ? await supabase.from("weekly_team_reports").update(payload).eq("id", report.id).select("*").single()
-      : await supabase.from("weekly_team_reports").insert({ ...payload, status: "draft", created_by: currentProfile.id }).select("*").single();
+      : await supabase.from("weekly_team_reports").insert({ ...payload, status: "draft", created_by: currentProfile.id } as any).select("*").single();
 
     if (result.error) {
       setError(result.error.message);
@@ -335,6 +338,112 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
     if (!report) {
       router.push(`/memoria/${savedReport.id}`);
       router.refresh();
+    }
+  }
+
+  async function importReport() {
+    if (!supabase || !currentProfile?.id || !importFile) return;
+
+    setProcessing(true);
+    setError(null);
+    setFeedback(null);
+
+    if (!formValues.team_member_id) {
+      setError("Selecione o membro da equipe antes de importar.");
+      setProcessing(false);
+      return;
+    }
+
+    const selectedMember = teamMembers.find((member) => member.id === formValues.team_member_id);
+    const profileId = currentProfile.role === "equipe" ? currentProfile.id : selectedMember?.profile_id ?? null;
+    
+    const extension = importFile.name.split(".").pop()?.toLowerCase();
+    const source: "uploaded_doc" | "uploaded_pdf" = extension === "pdf" ? "uploaded_pdf" : "uploaded_doc";
+
+    // 1. Criar relatório base como rascunho
+    const reportPayload = {
+      week_start: formValues.week_start,
+      week_end: formValues.week_end,
+      team_member_id: formValues.team_member_id,
+      profile_id: profileId,
+      title: `Relatório importado: ${importFile.name}`,
+      status: "draft" as const,
+      import_source: source,
+      import_status: "pending_extraction" as const,
+      created_by: currentProfile.id,
+      team_calendar_event_id: linkedEventId || null,
+    };
+
+    const reportResult = await supabase.from("weekly_team_reports").insert(reportPayload as any).select("*").single();
+
+    if (reportResult.error) {
+      setError(reportResult.error.message);
+      setProcessing(false);
+      return;
+    }
+
+    const newReport = reportResult.data as WeeklyTeamReport;
+    if (!newReport) return;
+
+    // 2. Upload do arquivo
+    const safeFileName = `${Date.now()}-${sanitizeUploadFileName(importFile.name)}`;
+    const storagePath = `${newReport.id}/${safeFileName}`;
+    const uploadResult = await supabase.storage.from("project-memory-documents").upload(storagePath, importFile, { upsert: false, contentType: importFile.type || undefined });
+
+    if (uploadResult.error) {
+      setError(`Erro no upload: ${uploadResult.error.message}`);
+      setProcessing(false);
+      return;
+    }
+
+    // 3. Criar anexo
+    const attachmentResult = await supabase.from("weekly_team_report_attachments").insert({
+      report_id: newReport.id,
+      storage_path: storagePath,
+      file_name: importFile.name,
+      file_type: importFile.type || null,
+      file_size: importFile.size,
+      uploaded_by: currentProfile.id,
+      extraction_status: "pending",
+    }).select("*").single();
+
+    if (attachmentResult.error) {
+      setError(`Erro ao registrar anexo: ${attachmentResult.error.message}`);
+      setProcessing(false);
+      return;
+    }
+
+    const attachment = attachmentResult.data as WeeklyTeamReportAttachment;
+
+    // 4. Atualizar relatório com o ID do anexo importado
+    await supabase.from("weekly_team_reports").update({ imported_attachment_id: attachment.id }).eq("id", newReport.id);
+
+    // 5. Vincular ações e territórios, se houver
+    await syncLinks(newReport.id);
+
+    // 6. Chamar API de processamento
+    try {
+      const response = await fetch("/api/memoria/process-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attachmentId: attachment.id }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Erro ao processar arquivo.");
+      }
+
+      setFeedback("Relatório importado e processado como rascunho. Redirecionando para revisão...");
+      
+      setTimeout(() => {
+        router.push(`/memoria/${newReport.id}`);
+        router.refresh();
+      }, 1500);
+    } catch (err: any) {
+      setError(`Extração falhou: ${err.message}. Você ainda pode preencher manualmente.`);
+      setProcessing(false);
+      router.push(`/memoria/${newReport.id}`);
     }
   }
 
@@ -575,329 +684,554 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
         </p>
       </header>
 
+      {!report && (
+        <div className="mt-5 flex gap-2 rounded-full border border-white/60 bg-white/40 p-1 shadow-sm w-fit">
+          <button 
+            onClick={() => setIsImportMode(false)}
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${!isImportMode ? "bg-semear-green text-white shadow-md" : "text-semear-green hover:bg-white/50"}`}
+          >
+            Preencher manualmente
+          </button>
+          <button 
+            onClick={() => setIsImportMode(true)}
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${isImportMode ? "bg-semear-green text-white shadow-md" : "text-semear-green hover:bg-white/50"}`}
+          >
+            Importar Word/PDF
+          </button>
+        </div>
+      )}
+
       {error ? <StateBox tone="error">{error}</StateBox> : null}
       {feedback ? <StateBox>{feedback}</StateBox> : null}
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-        <section className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
+      {isImportMode && !report ? (
+        <div className="mt-5 rounded-[2rem] border border-white/80 bg-white p-6 shadow-soft sm:p-8">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-semear-green-soft text-semear-green">
-              <FileText className="h-5 w-5" aria-hidden="true" />
+              <Upload className="h-5 w-5" aria-hidden="true" />
             </div>
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Conteúdo do relatório</p>
-              <h3 className="text-2xl font-semibold text-semear-green">Semana de referência e registro interno</h3>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Importação</p>
+              <h3 className="text-2xl font-semibold text-semear-green">Carregar arquivo Word ou PDF</h3>
             </div>
           </div>
+          
+          <p className="mt-4 text-sm leading-6 text-stone-600">
+            O sistema tentará extrair o texto do documento e criar um rascunho estruturado. A coordenação deve revisar e corrigir os campos antes de aprovar.
+          </p>
 
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button 
+              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-semear-green/15 bg-semear-green-soft px-4 text-xs font-bold text-semear-green shadow-sm"
+              onClick={() => {
+                const template = `# Modelo de Relatório Semanal\n\n1. Atividades realizadas\n2. Ações e territórios acompanhados\n3. Percepções do território\n4. Problemas encontrados\n5. Aprendizados\n6. Pendências\n7. Próximos passos\n8. Observações para coordenação`;
+                navigator.clipboard.writeText(template);
+                setFeedback("Modelo copiado para a área de transferência!");
+              }}
+            >
+              <Copy className="h-3.5 w-3.5" />
+              Copiar modelo padrão (Markdown)
+            </button>
+            <Link 
+              href="/docs/modelo-relatorio-semanal-equipe" 
+              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-stone-200 bg-white px-4 text-xs font-bold text-stone-600 shadow-sm"
+            >
+              <FileSearch className="h-3.5 w-3.5" />
+              Ver instruções do modelo
+            </Link>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
             <Field label="Início da semana">
-              <input className={inputClassName} type="date" value={formValues.week_start} onChange={(event) => setFormValues((current) => ({ ...current, week_start: event.target.value, week_end: getEndOfWeekIso(event.target.value) }))} disabled={!canEditReport} />
+              <input className={inputClassName} type="date" value={formValues.week_start} onChange={(event) => setFormValues((current) => ({ ...current, week_start: event.target.value, week_end: getEndOfWeekIso(event.target.value) }))} />
             </Field>
-            <Field label="Fim da semana">
-              <input className={inputClassName} type="date" value={formValues.week_end} onChange={(event) => setFormValues((current) => ({ ...current, week_end: event.target.value }))} disabled={!canEditReport} />
+            <Field label="Membro da equipe">
+              <select className={inputClassName} value={formValues.team_member_id} onChange={(event) => setFormValues((current) => ({ ...current, team_member_id: event.target.value }))} disabled={currentProfile?.role === "equipe"}>
+                <option value="">Selecione</option>
+                {teamMembers.map((member) => (
+                  <option key={member.id} value={member.id}>{member.display_name}</option>
+                ))}
+              </select>
             </Field>
           </div>
 
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <Field label="Membro da equipe">
-              <select className={inputClassName} value={formValues.team_member_id} onChange={(event) => setFormValues((current) => ({ ...current, team_member_id: event.target.value }))} disabled={!canEditReport || currentProfile?.role === "equipe"}>
-                <option value="">Selecione</option>
-                {teamMembers.map((member) => (
-                  <option key={member.id} value={member.id}>{member.display_name}{member.role_label ? ` · ${member.role_label}` : ""}</option>
+          <div className="mt-6 rounded-2xl border border-dashed border-semear-green/25 bg-semear-offwhite p-8 text-center">
+            {importFile ? (
+              <div className="flex flex-col items-center">
+                <FileText className="h-12 w-12 text-semear-green mb-2" />
+                <p className="font-semibold text-semear-green">{importFile.name}</p>
+                <p className="text-xs text-stone-500">{formatFileSize(importFile.size)}</p>
+                <button 
+                  onClick={() => setImportFile(null)}
+                  className="mt-4 text-xs text-stone-500 underline"
+                >
+                  Trocar arquivo
+                </button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center cursor-pointer">
+                <Upload className="h-12 w-12 text-stone-300 mb-2" />
+                <span className="text-sm font-semibold text-semear-green">Clique para selecionar</span>
+                <span className="text-xs text-stone-500">DOCX ou PDF com texto selecionável</span>
+                <input 
+                  type="file" 
+                  className="hidden" 
+                  accept=".docx,.pdf,.txt" 
+                  onChange={(e) => setImportFile(e.target.files?.[0] || null)} 
+                />
+              </label>
+            )}
+          </div>
+
+          <div className="mt-6 flex justify-end">
+            <button 
+              className="inline-flex min-h-12 items-center gap-2 rounded-full bg-semear-green px-6 text-sm font-semibold text-white disabled:opacity-60 shadow-lg"
+              onClick={() => void importReport()}
+              disabled={!importFile || processing}
+            >
+              {processing ? "Processando..." : "Importar e criar rascunho"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-5 grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
+          <section className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-semear-green-soft text-semear-green">
+                <FileText className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Conteúdo do relatório</p>
+                <h3 className="text-2xl font-semibold text-semear-green">Semana de referência e registro interno</h3>
+              </div>
+            </div>
+
+            {report?.import_source && report.status !== "approved" ? (
+              <div className="mt-5 space-y-4">
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+                  <div className="flex items-center gap-2 text-amber-800">
+                    <AlertTriangle className="h-5 w-5" />
+                    <h4 className="font-semibold">Relatório Importado - Revisão Obrigatória</h4>
+                  </div>
+                  <p className="mt-2 text-sm text-amber-900/80 leading-5">
+                    Este conteúdo foi extraído automaticamente de um arquivo <strong>{report.import_source === "uploaded_pdf" ? "PDF" : "Word"}</strong>. 
+                    Verifique se o texto está correto e se não há dados sensíveis expostos antes de aprovar.
+                  </p>
+                  
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getExtractionQualityColor(report.extraction_quality)}`}>
+                      Qualidade da Extração: {getExtractionQualityLabel(report.extraction_quality)}
+                    </span>
+                    {report.import_status === "needs_review" && (
+                      <span className="px-3 py-1 rounded-full bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider">
+                        Atenção: Possíveis Dados Sensíveis
+                      </span>
+                    )}
+                  </div>
+
+                  {report.imported_raw_text ? (
+                    <details className="mt-4">
+                      <summary className="text-xs font-bold text-amber-800 cursor-pointer hover:underline">Ver texto bruto extraído</summary>
+                      <div className="mt-2 p-4 bg-white/60 rounded-xl text-xs font-mono text-stone-700 whitespace-pre-wrap border border-amber-100 max-h-60 overflow-y-auto shadow-inner">
+                        {report.imported_raw_text}
+                      </div>
+                    </details>
+                  ) : null}
+                </div>
+
+                <div className="rounded-2xl border border-semear-green/20 bg-semear-green-soft/30 p-5">
+                  <h4 className="text-sm font-bold text-semear-green flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4" />
+                    Próximos Passos Recomendados
+                  </h4>
+                  <ul className="mt-3 space-y-2 text-xs text-semear-green/80 list-disc pl-4">
+                    {report.extraction_quality === "high" && <li>Extração de alta confiança. Revise apenas detalhes e aprove.</li>}
+                    {report.extraction_quality === "medium" && <li>Algumas seções podem não ter sido identificadas perfeitamente. Confira o mapeamento.</li>}
+                    {report.extraction_quality === "low" && <li>Qualidade de extração baixa. Recomenda-se comparar com o texto bruto e completar manualmente.</li>}
+                    {report.import_status === "needs_review" && <li><strong>Risco de Privacidade:</strong> Remova CPFs, telefones ou endereços detectados antes de prosseguir.</li>}
+                  </ul>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <Field label="Início da semana">
+                <input className={inputClassName} type="date" value={formValues.week_start} onChange={(event) => setFormValues((current) => ({ ...current, week_start: event.target.value, week_end: getEndOfWeekIso(event.target.value) }))} disabled={!canEditReport} />
+              </Field>
+              <Field label="Fim da semana">
+                <input className={inputClassName} type="date" value={formValues.week_end} onChange={(event) => setFormValues((current) => ({ ...current, week_end: event.target.value }))} disabled={!canEditReport} />
+              </Field>
+            </div>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <Field label="Membro da equipe">
+                <select className={inputClassName} value={formValues.team_member_id} onChange={(event) => setFormValues((current) => ({ ...current, team_member_id: event.target.value }))} disabled={!canEditReport || currentProfile?.role === "equipe"}>
+                  <option value="">Selecione</option>
+                  {teamMembers.map((member) => (
+                    <option key={member.id} value={member.id}>{member.display_name}{member.role_label ? ` · ${member.role_label}` : ""}</option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field label="Título">
+                <input className={inputClassName} value={formValues.title} onChange={(event) => setFormValues((current) => ({ ...current, title: event.target.value }))} disabled={!canEditReport} placeholder="Ex.: Semana de preparação da banca" />
+              </Field>
+            </div>
+
+            <Field className="mt-4" label="Resumo">
+              <textarea className={textareaClassName} value={formValues.summary} onChange={(event) => setFormValues((current) => ({ ...current, summary: event.target.value }))} disabled={!canEditReport} />
+            </Field>
+
+            <Field className="mt-4" label="Atividades realizadas">
+              <textarea className={textareaClassName} value={formValues.activities_done} onChange={(event) => setFormValues((current) => ({ ...current, activities_done: event.target.value }))} disabled={!canEditReport} />
+            </Field>
+
+            <Field className="mt-4" label="Territórios envolvidos (texto livre complementar)">
+              <textarea className={textareaClassName} value={formValues.territories_involved} onChange={(event) => setFormValues((current) => ({ ...current, territories_involved: event.target.value }))} disabled={!canEditReport} />
+            </Field>
+
+            <Field className="mt-4" label="Problemas encontrados">
+              <textarea className={textareaClassName} value={formValues.problems_found} onChange={(event) => setFormValues((current) => ({ ...current, problems_found: event.target.value }))} disabled={!canEditReport} />
+            </Field>
+
+            <Field className="mt-4" label="Aprendizados">
+              <textarea className={textareaClassName} value={formValues.learnings} onChange={(event) => setFormValues((current) => ({ ...current, learnings: event.target.value }))} disabled={!canEditReport} />
+            </Field>
+
+            <Field className="mt-4" label="Pendências">
+              <textarea className={textareaClassName} value={formValues.pending_items} onChange={(event) => setFormValues((current) => ({ ...current, pending_items: event.target.value }))} disabled={!canEditReport} />
+            </Field>
+
+            <Field className="mt-4" label="Próximos passos">
+              <textarea className={textareaClassName} value={formValues.next_steps} onChange={(event) => setFormValues((current) => ({ ...current, next_steps: event.target.value }))} disabled={!canEditReport} />
+            </Field>
+
+            {report?.import_source && (report.extraction_quality === "low" || report.extraction_quality === "fail") && (
+              <div className="mt-6 rounded-2xl border border-orange-200 bg-orange-50 p-5 shadow-sm">
+                <div className="flex items-center gap-2 text-orange-800">
+                  <AlertTriangle className="h-5 w-5" />
+                  <h4 className="font-bold">Baixa Qualidade de Extração</h4>
+                </div>
+                <p className="mt-2 text-sm text-orange-900/80 leading-5">
+                  Este relatório exigirá revisão mais cuidadosa. Para melhorar nas próximas semanas, use o modelo padrão do projeto.
+                </p>
+                <button 
+                  className="mt-4 inline-flex items-center gap-2 rounded-full bg-orange-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-orange-700 transition"
+                  onClick={() => {
+                    const template = `# Modelo de Relatório Semanal\n\n1. Atividades realizadas\n2. Ações e territórios acompanhados\n3. Percepções do território\n4. Problemas encontrados\n5. Aprendizados\n6. Pendências\n7. Próximos passos\n8. Observações para coordenação`;
+                    navigator.clipboard.writeText(template);
+                    setFeedback("Modelo copiado para a área de transferência!");
+                  }}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  Copiar modelo recomendado
+                </button>
+              </div>
+            )}
+
+            <div className="mt-5 grid gap-5 lg:grid-cols-2">
+              <SelectionPanel
+                title="Ações relacionadas"
+                emptyText="Nenhuma ação cadastrada ainda."
+                items={actions.map((action) => ({ id: action.id, title: action.title, subtitle: formatDateLabel(action.action_date) }))}
+                selectedIds={selectedActionIds}
+                onToggle={(value) => toggleSelection(selectedActionIds, value, setSelectedActionIds)}
+                disabled={!canEditReport}
+              />
+              <SelectionPanel
+                title="Territórios vinculados"
+                emptyText="Nenhum território disponível."
+                items={neighborhoods.map((neighborhood) => ({ id: neighborhood.id, title: neighborhood.name }))}
+                selectedIds={selectedNeighborhoodIds}
+                onToggle={(value) => toggleSelection(selectedNeighborhoodIds, value, setSelectedNeighborhoodIds)}
+                disabled={!canEditReport}
+              />
+            </div>
+
+            <Field className="mt-5" label="Evento da agenda (opcional)">
+              <select className={inputClassName} value={linkedEventId} onChange={(event) => setLinkedEventId(event.target.value)} disabled={!canEditReport}>
+                <option value="">Sem evento vinculado</option>
+                {calendarEvents.map((calendarEvent) => (
+                  <option key={calendarEvent.id} value={calendarEvent.id}>{calendarEvent.title}</option>
                 ))}
               </select>
             </Field>
 
-            <Field label="Título">
-              <input className={inputClassName} value={formValues.title} onChange={(event) => setFormValues((current) => ({ ...current, title: event.target.value }))} disabled={!canEditReport} placeholder="Ex.: Semana de preparação da banca" />
-            </Field>
-          </div>
-
-          <Field className="mt-4" label="Resumo">
-            <textarea className={textareaClassName} value={formValues.summary} onChange={(event) => setFormValues((current) => ({ ...current, summary: event.target.value }))} disabled={!canEditReport} />
-          </Field>
-
-          <Field className="mt-4" label="Atividades realizadas">
-            <textarea className={textareaClassName} value={formValues.activities_done} onChange={(event) => setFormValues((current) => ({ ...current, activities_done: event.target.value }))} disabled={!canEditReport} />
-          </Field>
-
-          <Field className="mt-4" label="Territórios envolvidos (texto livre complementar)">
-            <textarea className={textareaClassName} value={formValues.territories_involved} onChange={(event) => setFormValues((current) => ({ ...current, territories_involved: event.target.value }))} disabled={!canEditReport} />
-          </Field>
-
-          <Field className="mt-4" label="Problemas encontrados">
-            <textarea className={textareaClassName} value={formValues.problems_found} onChange={(event) => setFormValues((current) => ({ ...current, problems_found: event.target.value }))} disabled={!canEditReport} />
-          </Field>
-
-          <Field className="mt-4" label="Aprendizados">
-            <textarea className={textareaClassName} value={formValues.learnings} onChange={(event) => setFormValues((current) => ({ ...current, learnings: event.target.value }))} disabled={!canEditReport} />
-          </Field>
-
-          <Field className="mt-4" label="Pendências">
-            <textarea className={textareaClassName} value={formValues.pending_items} onChange={(event) => setFormValues((current) => ({ ...current, pending_items: event.target.value }))} disabled={!canEditReport} />
-          </Field>
-
-          <Field className="mt-4" label="Próximos passos">
-            <textarea className={textareaClassName} value={formValues.next_steps} onChange={(event) => setFormValues((current) => ({ ...current, next_steps: event.target.value }))} disabled={!canEditReport} />
-          </Field>
-
-          <div className="mt-5 grid gap-5 lg:grid-cols-2">
-            <SelectionPanel
-              title="Ações relacionadas"
-              emptyText="Nenhuma ação cadastrada ainda."
-              items={actions.map((action) => ({ id: action.id, title: action.title, subtitle: formatDateLabel(action.action_date) }))}
-              selectedIds={selectedActionIds}
-              onToggle={(value) => toggleSelection(selectedActionIds, value, setSelectedActionIds)}
-              disabled={!canEditReport}
-            />
-            <SelectionPanel
-              title="Territórios vinculados"
-              emptyText="Nenhum território disponível."
-              items={neighborhoods.map((neighborhood) => ({ id: neighborhood.id, title: neighborhood.name }))}
-              selectedIds={selectedNeighborhoodIds}
-              onToggle={(value) => toggleSelection(selectedNeighborhoodIds, value, setSelectedNeighborhoodIds)}
-              disabled={!canEditReport}
-            />
-          </div>
-
-          <Field className="mt-5" label="Evento da agenda (opcional)">
-            <select className={inputClassName} value={linkedEventId} onChange={(event) => setLinkedEventId(event.target.value)} disabled={!canEditReport}>
-              <option value="">Sem evento vinculado</option>
-              {calendarEvents.map((calendarEvent) => (
-                <option key={calendarEvent.id} value={calendarEvent.id}>{calendarEvent.title}</option>
-              ))}
-            </select>
-          </Field>
-
-          <div className="mt-5 flex flex-wrap gap-3">
-            {canEditReport ? (
-              <button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-semear-green px-4 text-sm font-semibold text-white disabled:opacity-60" onClick={() => void saveReport()} type="button" disabled={saving || uploading || submitting}>
-                <Save className="h-4 w-4" aria-hidden="true" />
-                {saving ? "Salvando..." : report ? "Salvar alterações" : "Criar relatório"}
-              </button>
-            ) : null}
-            {report && !canReview && isOwner && ["draft", "needs_changes"].includes(report.status) ? (
-              <button className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green disabled:opacity-60" onClick={() => void changeStatus("submitted")} type="button" disabled={saving || uploading || submitting}>
-                <Send className="h-4 w-4" aria-hidden="true" />
-                Enviar para revisão
-              </button>
-            ) : null}
-          </div>
-        </section>
-
-        <section className="space-y-5">
-          <section className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-semear-green-soft text-semear-green">
-                <Upload className="h-5 w-5" aria-hidden="true" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Anexos privados</p>
-                <h3 className="text-xl font-semibold text-semear-green">Documentos de apoio</h3>
-              </div>
-            </div>
-            <p className="mt-3 text-sm leading-6 text-stone-600">Permitidos: {projectMemoryAcceptedExtensions.join(", ").toUpperCase()}. Limite padrão: {formatFileSize(projectMemoryMaxFileSizeBytes)}. Os arquivos ficam no bucket privado <strong>project-memory-documents</strong>.</p>
-
-            {report && canEditReport ? (
-              <div className="mt-4 rounded-2xl border border-dashed border-semear-green/25 bg-semear-offwhite p-4">
-                <label className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green">
-                  <input className="hidden" type="file" multiple onChange={handleFileSelection} />
-                  Selecionar arquivos
-                </label>
-                {pendingFiles.length > 0 ? (
-                  <div className="mt-3 space-y-2 text-sm text-stone-700">
-                    {pendingFiles.map((file) => (
-                      <div className="rounded-xl bg-white px-3 py-2" key={`${file.name}-${file.size}`}>{file.name} · {formatFileSize(file.size)}</div>
-                    ))}
-                    <button className="inline-flex min-h-10 items-center gap-2 rounded-full bg-semear-green px-4 text-sm font-semibold text-white disabled:opacity-60" type="button" onClick={() => void uploadFiles(report.id, pendingFiles)} disabled={uploading}>
-                      <Upload className="h-4 w-4" aria-hidden="true" />
-                      {uploading ? "Enviando..." : "Enviar anexos"}
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-
-            <div className="mt-4 space-y-3">
-              {attachments.map((attachment) => (
-                <article className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4" key={attachment.id}>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <h4 className="font-semibold text-semear-green">{attachment.file_name}</h4>
-                      <p className="mt-1 text-xs text-stone-500">{attachment.file_type ?? "tipo não informado"} · {attachment.file_size ? formatFileSize(attachment.file_size) : "tamanho não informado"} · enviado em {new Date(attachment.uploaded_at).toLocaleString("pt-BR")}</p>
-                    </div>
-                    <button className="inline-flex min-h-10 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" onClick={() => void downloadAttachment(attachment)} type="button">
-                      <Download className="h-4 w-4" aria-hidden="true" />
-                      Link temporário
-                    </button>
-                  </div>
-                </article>
-              ))}
-              {attachments.length === 0 ? <EmptyBox text="Nenhum anexo enviado ainda." /> : null}
+            <div className="mt-5 flex flex-wrap gap-3">
+              {canEditReport ? (
+                <button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-semear-green px-4 text-sm font-semibold text-white disabled:opacity-60" onClick={() => void saveReport()} type="button" disabled={saving || uploading || submitting}>
+                  <Save className="h-4 w-4" aria-hidden="true" />
+                  {saving ? "Salvando..." : report ? "Salvar alterações" : "Criar relatório"}
+                </button>
+              ) : null}
+              {report && !canReview && isOwner && ["draft", "needs_changes"].includes(report.status) ? (
+                <button className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green disabled:opacity-60" onClick={() => void changeStatus("submitted")} type="button" disabled={saving || uploading || submitting}>
+                  <Send className="h-4 w-4" aria-hidden="true" />
+                  Enviar para revisão
+                </button>
+              ) : null}
             </div>
           </section>
 
-          <section className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-semear-green-soft text-semear-green">
-                <ShieldCheck className="h-5 w-5" aria-hidden="true" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Revisão interna</p>
-                <h3 className="text-xl font-semibold text-semear-green">Status, notas e histórico simples</h3>
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-2xl border border-semear-gray bg-semear-offwhite p-4 text-sm text-stone-700">
-              <p><strong>Semana:</strong> {formatWeekLabel(formValues.week_start, formValues.week_end)}</p>
-              {report ? <p className="mt-2"><strong>Criado em:</strong> {new Date(report.created_at).toLocaleString("pt-BR")}</p> : null}
-              {report ? <p className="mt-2"><strong>Última atualização:</strong> {new Date(report.updated_at).toLocaleString("pt-BR")}</p> : null}
-              {report?.reviewed_at ? <p className="mt-2"><strong>Última revisão:</strong> {new Date(report.reviewed_at).toLocaleString("pt-BR")}</p> : null}
-            </div>
-
-            <Field className="mt-4" label="Notas de revisão">
-              <textarea className={textareaClassName} value={formValues.review_notes} onChange={(event) => setFormValues((current) => ({ ...current, review_notes: event.target.value }))} disabled={!canReview} placeholder="Use este campo para orientar ajustes, registrar aprovação ou justificar arquivamento." />
-            </Field>
-
-            {report && canReview ? (
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                {report.status === "submitted" ? (
-                  <ActionButton label="Marcar em revisão" icon={<FileText className="h-4 w-4" />} onClick={() => void changeStatus("in_review")} disabled={submitting} />
-                ) : null}
-                {report.status !== "approved" ? (
-                  <ActionButton label="Aprovar" icon={<CheckCircle2 className="h-4 w-4" />} onClick={() => void changeStatus("approved")} disabled={submitting} />
-                ) : null}
-                {report.status !== "needs_changes" ? (
-                  <ActionButton label="Pedir ajustes" icon={<Send className="h-4 w-4" />} onClick={() => void changeStatus("needs_changes")} disabled={submitting} tone="secondary" />
-                ) : null}
-                {report.status !== "archived" ? (
-                  <ActionButton label="Arquivar" icon={<Archive className="h-4 w-4" />} onClick={() => void changeStatus("archived")} disabled={submitting} tone="secondary" />
-                ) : null}
-              </div>
-            ) : null}
-          </section>
-
-          {report?.status === "approved" ? (
+          <section className="space-y-5">
             <section className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-full bg-semear-green-soft text-semear-green">
-                  <MapPinned className="h-5 w-5" aria-hidden="true" />
+                  <Upload className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Memória do projeto</p>
-                  <h3 className="text-xl font-semibold text-semear-green">Gerar entradas de memória a partir do relatório aprovado</h3>
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Anexos privados</p>
+                  <h3 className="text-xl font-semibold text-semear-green">Documentos de apoio</h3>
                 </div>
               </div>
+              <p className="mt-3 text-sm leading-6 text-stone-600">Permitidos: {projectMemoryAcceptedExtensions.join(", ").toUpperCase()}. Limite padrão: {formatFileSize(projectMemoryMaxFileSizeBytes)}. Os arquivos ficam no bucket privado <strong>project-memory-documents</strong>.</p>
 
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <Field label="Data da entrada">
-                  <input className={inputClassName} type="date" value={memoryValues.entry_date} onChange={(event) => setMemoryValues((current) => ({ ...current, entry_date: event.target.value }))} />
-                </Field>
-                <Field label="Tipo">
-                  <select className={inputClassName} value={memoryValues.memory_type} onChange={(event) => setMemoryValues((current) => ({ ...current, memory_type: event.target.value as ProjectMemoryType }))}>
-                    {projectMemoryTypeOptions.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                </Field>
-              </div>
-
-              <Field className="mt-4" label="Título da entrada">
-                <input className={inputClassName} value={memoryValues.title} onChange={(event) => setMemoryValues((current) => ({ ...current, title: event.target.value }))} placeholder="Ex.: Primeira banca na Vila Santa Cecília" />
-              </Field>
-
-              <Field className="mt-4" label="Corpo">
-                <textarea className={textareaClassName} value={memoryValues.body} onChange={(event) => setMemoryValues((current) => ({ ...current, body: event.target.value }))} placeholder="Descreva a atividade, decisão, problema ou aprendizado que merece entrar na linha do tempo do projeto." />
-              </Field>
-
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <Field label="Ação vinculada (opcional)">
-                  <select className={inputClassName} value={memoryValues.action_id} onChange={(event) => setMemoryValues((current) => ({ ...current, action_id: event.target.value }))}>
-                    <option value="">Sem ação vinculada</option>
-                    {reportActions.map((actionLink) => (
-                      <option key={actionLink.action_id} value={actionLink.action_id}>{actionLink.actions?.title ?? actionLink.action_id}</option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Visibilidade">
-                  <select className={inputClassName} value={memoryValues.visibility} onChange={(event) => setMemoryValues((current) => ({ ...current, visibility: event.target.value as ProjectMemoryVisibility }))} disabled={!canReview}>
-                    {projectMemoryVisibilityOptions
-                      .filter((option) => canReview || option.value === "internal")
-                      .map((option) => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
+              {report && canEditReport ? (
+                <div className="mt-4 rounded-2xl border border-dashed border-semear-green/25 bg-semear-offwhite p-4">
+                  <label className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green">
+                    <input className="hidden" type="file" multiple onChange={handleFileSelection} />
+                    Selecionar arquivos
+                  </label>
+                  {pendingFiles.length > 0 ? (
+                    <div className="mt-3 space-y-2 text-sm text-stone-700">
+                      {pendingFiles.map((file) => (
+                        <div className="rounded-xl bg-white px-3 py-2" key={`${file.name}-${file.size}`}>{file.name} · {formatFileSize(file.size)}</div>
                       ))}
-                  </select>
-                </Field>
-              </div>
-
-              <div className="mt-6 grid gap-6 lg:grid-cols-2">
-                <div className="space-y-4">
-                  <section className="rounded-2xl border border-white/80 bg-stone-50 p-5 shadow-sm">
-                    <h4 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-semear-green">
-                      <ShieldAlert className="h-4 w-4" />
-                      Análise de Privacidade
-                    </h4>
-                    <div className="mt-4 space-y-3">
-                      {riskReport.blockers.length === 0 && riskReport.warnings.length === 0 && (
-                        <div className="text-xs text-stone-500 italic">Nenhum risco detectado no texto atual.</div>
-                      )}
-                      {riskReport.blockers.map((risk, idx) => (
-                        <div key={idx} className="rounded-xl bg-red-50 p-3 text-[11px] font-medium text-red-800">
-                          <strong>{risk.key.toUpperCase()}:</strong> {risk.message}
-                        </div>
-                      ))}
-                      {riskReport.warnings.map((risk, idx) => (
-                        <div key={idx} className="rounded-xl bg-amber-50 p-3 text-[11px] font-medium text-amber-800">
-                          <strong>{risk.key.toUpperCase()}:</strong> {risk.message}
-                        </div>
-                      ))}
+                      <button className="inline-flex min-h-10 items-center gap-2 rounded-full bg-semear-green px-4 text-sm font-semibold text-white disabled:opacity-60" type="button" onClick={() => void uploadFiles(report.id, pendingFiles)} disabled={uploading}>
+                        <Upload className="h-4 w-4" aria-hidden="true" />
+                        {uploading ? "Enviando..." : "Enviar anexos"}
+                      </button>
                     </div>
-                  </section>
-
-                  <button 
-                    className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-semear-green px-6 text-sm font-bold text-white shadow-soft transition hover:bg-semear-green/90 disabled:opacity-50" 
-                    type="button" 
-                    onClick={() => void createMemoryEntry()} 
-                    disabled={submitting || (memoryValues.visibility === "public_approved" && !canApprovePublic)}
-                  >
-                    <Save className="h-4 w-4" aria-hidden="true" />
-                    {submitting ? "Criando..." : "Criar entrada de memória"}
-                  </button>
-                  
-                  {memoryValues.visibility === "public_approved" && !canApprovePublic && (
-                    <div className="flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] leading-4 text-amber-900">
-                      <AlertTriangle className="h-4 w-4 shrink-0" />
-                      Aprovação pública bloqueada. Verifique riscos e complete o checklist.
-                    </div>
-                  )}
+                  ) : null}
                 </div>
+              ) : null}
 
-                <MemoryEntryPrivacyChecklist 
-                  checklist={memoryChecklist}
-                  onChange={(key, val) => setMemoryChecklist(c => ({ ...c, [key]: val }))}
-                />
-              </div>
-
-              <div className="mt-5 space-y-3">
-                {memoryEntries.map((entry) => (
-                  <article className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4" key={entry.id}>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-stone-500">
-                      <span className="rounded-full bg-white px-3 py-1 font-semibold uppercase tracking-[0.12em] text-semear-earth">{getProjectMemoryTypeLabel(entry.memory_type)}</span>
-                      <span>{formatDateLabel(entry.entry_date)}</span>
-                      <span>{getProjectMemoryVisibilityLabel(entry.visibility)}</span>
+              <div className="mt-4 space-y-3">
+                {attachments.map((attachment) => (
+                  <article className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4" key={attachment.id}>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <h4 className="font-semibold text-semear-green">{attachment.file_name}</h4>
+                        <p className="mt-1 text-xs text-stone-500">
+                          {attachment.file_type ?? "tipo não informado"} · {attachment.file_size ? formatFileSize(attachment.file_size) : "tamanho não informado"} · enviado em {new Date(attachment.uploaded_at).toLocaleString("pt-BR")}
+                          {attachment.extraction_status && attachment.extraction_status !== "pending" && (
+                            <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${attachment.extraction_status === "extracted" ? "bg-semear-green-soft text-semear-green" : "bg-red-50 text-red-600"}`}>
+                              Extração: {attachment.extraction_status}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <button className="inline-flex min-h-10 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" onClick={() => void downloadAttachment(attachment)} type="button">
+                        <Download className="h-4 w-4" aria-hidden="true" />
+                        Link temporário
+                      </button>
                     </div>
-                    <h4 className="mt-3 font-semibold text-semear-green">{entry.title}</h4>
-                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-stone-700">{entry.body}</p>
-                    {entry.actions ? <p className="mt-2 text-xs text-stone-500">Ação vinculada: {entry.actions.title}</p> : null}
                   </article>
                 ))}
-                {memoryEntries.length === 0 ? <EmptyBox text="Nenhuma entrada de memória gerada a partir deste relatório ainda." /> : null}
+                {attachments.length === 0 ? <EmptyBox text="Nenhum anexo enviado ainda." /> : null}
               </div>
             </section>
-          ) : null}
-        </section>
-      </div>
+
+            <section className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-semear-green-soft text-semear-green">
+                  <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Revisão interna</p>
+                  <h3 className="text-xl font-semibold text-semear-green">Status, notas e histórico simples</h3>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-semear-gray bg-semear-offwhite p-4 text-sm text-stone-700">
+                <p><strong>Semana:</strong> {formatWeekLabel(formValues.week_start, formValues.week_end)}</p>
+                {report ? <p className="mt-2"><strong>Criado em:</strong> {new Date(report.created_at).toLocaleString("pt-BR")}</p> : null}
+                {report ? <p className="mt-2"><strong>Última atualização:</strong> {new Date(report.updated_at).toLocaleString("pt-BR")}</p> : null}
+                {report?.reviewed_at ? <p className="mt-2"><strong>Última revisão:</strong> {new Date(report.reviewed_at).toLocaleString("pt-BR")}</p> : null}
+              </div>
+
+              <Field className="mt-4" label="Notas de revisão">
+                <textarea className={textareaClassName} value={formValues.review_notes} onChange={(event) => setFormValues((current) => ({ ...current, review_notes: event.target.value }))} disabled={!canReview} placeholder="Use este campo para orientar ajustes, registrar aprovação ou justificar arquivamento." />
+              </Field>
+
+              {report && canReview ? (
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {report.status === "submitted" ? (
+                    <ActionButton label="Marcar em revisão" icon={<FileText className="h-4 w-4" />} onClick={() => void changeStatus("in_review")} disabled={submitting} />
+                  ) : null}
+                  {report.status !== "approved" ? (
+                    <ActionButton label="Aprovar" icon={<CheckCircle2 className="h-4 w-4" />} onClick={() => void changeStatus("approved")} disabled={submitting} />
+                  ) : null}
+                  {report.status !== "needs_changes" ? (
+                    <ActionButton label="Pedir ajustes" icon={<Send className="h-4 w-4" />} onClick={() => void changeStatus("needs_changes")} disabled={submitting} tone="secondary" />
+                  ) : null}
+                  {report.status !== "archived" ? (
+                    <ActionButton label="Arquivar" icon={<Archive className="h-4 w-4" />} onClick={() => void changeStatus("archived")} disabled={submitting} tone="secondary" />
+                  ) : null}
+                </div>
+              ) : null}
+
+              {report?.import_source && canReview && (
+                <div className="mt-8 border-t border-semear-gray pt-6">
+                  <h4 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-semear-earth">
+                    <FileSearch className="h-4 w-4" />
+                    Avaliação do Piloto (Feedback Técnico)
+                  </h4>
+                  <p className="mt-2 text-xs text-stone-500">
+                    Registre os problemas encontrados para consolidar o lote piloto e orientar a equipe.
+                  </p>
+                  
+                  <div className="mt-4 space-y-4">
+                    <Field label="Categoria de Problema (Feedback Equipe)">
+                      <select 
+                        className={inputClassName}
+                        onChange={(e) => {
+                          // Aqui poderíamos salvar em uma tabela separada ou no review_notes
+                          // Por enquanto, vamos sugerir a inclusão nas notas de revisão
+                        }}
+                      >
+                        <option value="">Selecione uma categoria se houver erro</option>
+                        <option value="estrutura_ruim">Estrutura de tópicos ruim</option>
+                        <option value="pdf_escaneado">PDF Escaneado (Imagem)</option>
+                        <option value="ausencia_secoes">Ausência de seções obrigatórias</option>
+                        <option value="dado_sensivel">Presença de dado sensível (CPF/Tel)</option>
+                        <option value="texto_curto">Texto muito curto/vago</option>
+                        <option value="arquivo_ilegivel">Arquivo corrompido ou ilegível</option>
+                      </select>
+                    </Field>
+
+                    <div className="rounded-xl bg-semear-earth/5 p-4 border border-semear-earth/10">
+                      <p className="text-xs font-semibold text-semear-earth mb-2">Instrução para o Piloto:</p>
+                      <p className="text-[11px] text-stone-600 leading-4">
+                        Os dados técnicos desta importação (qualidade {report.extraction_quality}) já estão sendo contabilizados no <Link href="/memoria/importacoes" className="underline font-bold">Painel do Piloto</Link>. Use as Notas de Revisão acima para dar o feedback direto ao membro da equipe.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {report?.status === "approved" ? (
+              <section className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-semear-green-soft text-semear-green">
+                    <MapPinned className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Memória do projeto</p>
+                    <h3 className="text-xl font-semibold text-semear-green">Gerar entradas de memória a partir do relatório aprovado</h3>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <Field label="Data da entrada">
+                    <input className={inputClassName} type="date" value={memoryValues.entry_date} onChange={(event) => setMemoryValues((current) => ({ ...current, entry_date: event.target.value }))} />
+                  </Field>
+                  <Field label="Tipo">
+                    <select className={inputClassName} value={memoryValues.memory_type} onChange={(event) => setMemoryValues((current) => ({ ...current, memory_type: event.target.value as ProjectMemoryType }))}>
+                      {projectMemoryTypeOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
+
+                <Field className="mt-4" label="Título da entrada">
+                  <input className={inputClassName} value={memoryValues.title} onChange={(event) => setMemoryValues((current) => ({ ...current, title: event.target.value }))} placeholder="Ex.: Primeira banca na Vila Santa Cecília" />
+                </Field>
+
+                <Field className="mt-4" label="Corpo">
+                  <textarea className={textareaClassName} value={memoryValues.body} onChange={(event) => setMemoryValues((current) => ({ ...current, body: event.target.value }))} placeholder="Descreva a atividade, decisão, problema ou aprendizado que merece entrar na linha do tempo do projeto." />
+                </Field>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <Field label="Ação vinculada (opcional)">
+                    <select className={inputClassName} value={memoryValues.action_id} onChange={(event) => setMemoryValues((current) => ({ ...current, action_id: event.target.value }))}>
+                      <option value="">Sem ação vinculada</option>
+                      {reportActions.map((actionLink) => (
+                        <option key={actionLink.action_id} value={actionLink.action_id}>{actionLink.actions?.title ?? actionLink.action_id}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Visibilidade">
+                    <select className={inputClassName} value={memoryValues.visibility} onChange={(event) => setMemoryValues((current) => ({ ...current, visibility: event.target.value as ProjectMemoryVisibility }))} disabled={!canReview}>
+                      {projectMemoryVisibilityOptions
+                        .filter((option) => canReview || option.value === "internal")
+                        .map((option) => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                    </select>
+                  </Field>
+                </div>
+
+                <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                  <div className="space-y-4">
+                    <section className="rounded-2xl border border-white/80 bg-stone-50 p-5 shadow-sm">
+                      <h4 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-semear-green">
+                        <ShieldAlert className="h-4 w-4" />
+                        Análise de Privacidade
+                      </h4>
+                      <div className="mt-4 space-y-3">
+                        {riskReport.blockers.length === 0 && riskReport.warnings.length === 0 && (
+                          <div className="text-xs text-stone-500 italic">Nenhum risco detectado no texto atual.</div>
+                        )}
+                        {riskReport.blockers.map((risk, idx) => (
+                          <div key={idx} className="rounded-xl bg-red-50 p-3 text-[11px] font-medium text-red-800">
+                            <strong>{risk.key.toUpperCase()}:</strong> {risk.message}
+                          </div>
+                        ))}
+                        {riskReport.warnings.map((risk, idx) => (
+                          <div key={idx} className="rounded-xl bg-amber-50 p-3 text-[11px] font-medium text-amber-800">
+                            <strong>{risk.key.toUpperCase()}:</strong> {risk.message}
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+
+                    <button 
+                      className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-semear-green px-6 text-sm font-bold text-white shadow-soft transition hover:bg-semear-green/90 disabled:opacity-50" 
+                      type="button" 
+                      onClick={() => void createMemoryEntry()} 
+                      disabled={submitting || (memoryValues.visibility === "public_approved" && !canApprovePublic)}
+                    >
+                      <Save className="h-4 w-4" aria-hidden="true" />
+                      {submitting ? "Criando..." : "Criar entrada de memória"}
+                    </button>
+                    
+                    {memoryValues.visibility === "public_approved" && !canApprovePublic && (
+                      <div className="flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] leading-4 text-amber-900">
+                        <AlertTriangle className="h-4 w-4 shrink-0" />
+                        Aprovação pública bloqueada. Verifique riscos e complete o checklist.
+                      </div>
+                    )}
+                  </div>
+
+                  <MemoryEntryPrivacyChecklist 
+                    checklist={memoryChecklist}
+                    onChange={(key, val) => setMemoryChecklist(c => ({ ...c, [key]: val }))}
+                  />
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  {memoryEntries.map((entry) => (
+                    <article className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4" key={entry.id}>
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-stone-500">
+                        <span className="rounded-full bg-white px-3 py-1 font-semibold uppercase tracking-[0.12em] text-semear-earth">{getProjectMemoryTypeLabel(entry.memory_type)}</span>
+                        <span>{formatDateLabel(entry.entry_date)}</span>
+                        <span>{getProjectMemoryVisibilityLabel(entry.visibility)}</span>
+                      </div>
+                      <h4 className="mt-3 font-semibold text-semear-green">{entry.title}</h4>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-stone-700">{entry.body}</p>
+                      {entry.actions ? <p className="mt-2 text-xs text-stone-500">Ação vinculada: {entry.actions.title}</p> : null}
+                    </article>
+                  ))}
+                  {memoryEntries.length === 0 ? <EmptyBox text="Nenhuma entrada de memória gerada a partir deste relatório ainda." /> : null}
+                </div>
+              </section>
+            ) : null}
+          </section>
+        </div>
+      )}
     </section>
   );
 }

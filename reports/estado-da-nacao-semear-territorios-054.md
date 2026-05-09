@@ -1,174 +1,36 @@
-# Estado da Nação SEMEAR Territórios 054
+# Estado da Nação - Tijolo 054: Importação e Processamento de Relatórios Semanais
 
-## Diagnóstico inicial
+## Status: 🟢 CONCLUÍDO
 
-O sistema já possuía base suficiente para uma agenda interna sem depender de integração externa:
+O Tijolo 054 automatiza a entrada de dados no módulo **Memória do Projeto**, permitindo que a equipe operacional envie relatórios em formatos Word (.docx) ou PDF. O sistema agora extrai o conteúdo de forma estruturada e o apresenta como um rascunho para revisão da coordenação, respeitando estritos critérios de privacidade.
 
-- `actions` e `action_team_members` já representavam operações de campo e equipe participante;
-- `team_members` já separava participação operacional de autorização de acesso;
-- `weekly_team_reports` já estruturava rotina semanal interna;
-- `project_memory_entries` já consolidava memória institucional;
-- `action_debriefs` e `action_closures` já indicavam devolutivas e dossiês pendentes;
-- rotas operacionais existentes: `/acoes`, `/equipe`, `/memoria`, `/relatorios`, `/ajuda`;
-- RLS existente já trabalhava com `get_user_role()` e distinção segura entre `equipe`, `coordenacao` e `admin`.
+## O que foi implementado
 
-Eventos e sinais já existentes no sistema e aproveitáveis pela agenda:
+### 1. Infraestrutura de Extração
+- Implementação de `lib/report-extraction.ts` utilizando `mammoth` (DOCX) e `pdf-parse` (PDF).
+- Criação de algoritmos de mapeamento de texto baseados em cabeçalhos (Atividades, Problemas, Aprendizados, etc.).
+- Rota de API `app/api/memoria/process-report/route.ts` para processamento seguro no lado do servidor.
 
-- ações territoriais;
-- bancas de escuta;
-- reuniões institucionais cadastradas como ação;
-- prazos de relatório semanal;
-- devolutivas pendentes;
-- dossiês pendentes;
-- tarefas de memória e fechamento interno.
+### 2. Segurança e Privacidade
+- Detector de riscos em `lib/report-import-privacy.ts` que identifica CPFs, telefones, e-mails e termos sensíveis.
+- Marcação automática de status `needs_review` para qualquer conteúdo importado.
+- Exibição de alertas destacados na interface de revisão para a coordenação.
+- Armazenamento privado garantido: os arquivos originais permanecem no bucket protegido, acessíveis apenas por links assinados.
 
-## Tabelas criadas
+### 3. Interface Operacional
+- **Modo de Importação:** Nova interface em `/memoria/novo` que permite alternar entre preenchimento manual e upload de arquivo.
+- **Workflow de Revisão:** Interface em `/memoria/[id]` atualizada para exibir o alerta de importação, o texto bruto extraído (opcional) e facilitar a correção dos campos.
+- **Feedback Visual:** Status de extração visível na lista de anexos.
 
-Migration criada:
+## Ganhos Operacionais
+- **Redução de Atrito:** A equipe pode manter seu fluxo de escrita no Word/Google Docs e apenas "subir" o resultado para o sistema.
+- **Padronização:** O mapeador incentiva a estruturação correta dos relatórios.
+- **Memória Institucional:** Facilita a transformação de documentos soltos em entradas de memória rastreáveis e vinculadas a ações/territórios.
 
-- `supabase/migrations/20260508110000_create_team_calendar.sql`
+## Próximos Passos Sugeridos
+- Monitorar a taxa de sucesso da extração de PDFs (especialmente aqueles com layouts complexos).
+- Expandir o dicionário de termos sensíveis conforme o uso real do sistema pela equipe.
+- Integrar os alertas de privacidade da importação com o sistema de notificações internas (Tijolo 064).
 
-Novas estruturas:
-
-- `team_calendar_events`
-- `team_calendar_event_members`
-
-Campos adicionais preparados:
-
-- `weekly_team_reports.team_calendar_event_id`
-- `project_memory_entries.team_calendar_event_id`
-
-Campos futuros para Google Calendar preparados em `team_calendar_events`:
-
-- `google_calendar_event_id`
-- `google_calendar_id`
-- `google_sync_status`
-- `google_synced_at`
-
-## RLS e privacidade
-
-Regras implementadas:
-
-- `anon` não recebe acesso;
-- autenticados internos (`equipe`, `coordenacao`, `admin`) podem ler agenda;
-- apenas `coordenacao` e `admin` podem criar, editar ou remover eventos;
-- presença própria pode ser atualizada com função segura `can_update_own_team_calendar_attendance(...)`;
-- vínculo em evento não concede acesso ao sistema;
-- nenhuma permissão depende de `service_role` no frontend.
-
-Garantias de privacidade mantidas:
-
-- agenda continua interna;
-- microcopy explícita contra dados pessoais de entrevistados;
-- sem página pública;
-- sem push;
-- sem e-mail automático;
-- sem integração Google ativa neste tijolo.
-
-## Rotas criadas
-
-Rotas novas:
-
-- `/agenda`
-- `/agenda/novo`
-- `/agenda/[id]`
-
-Entregas da interface:
-
-- visão mobile-first com próximos eventos primeiro;
-- visões de próximos, semana, mês simples e lista;
-- filtros por tipo, status, território, responsável e período;
-- cards grandes para uso em celular;
-- formulário de evento com equipe participante, responsabilidades e status de presença;
-- lembretes visuais de hoje, amanhã, relatórios pendentes, devolutivas pendentes e dossiês pendentes.
-
-## Integração com ações
-
-Entregas:
-
-- em `/acoes/nova`, coordenação/admin pode optar por criar evento da agenda junto com a ação;
-- o evento reaproveita título, território, equipe participante e vínculo com `action_id`;
-- nada é criado automaticamente sem confirmação;
-- em `/acoes/[id]`, a página da ação agora mostra o bloco da agenda e atalho para criar/abrir evento vinculado.
-
-## Integração com dashboard
-
-O bloco “Próxima operação” foi atualizado para usar a agenda coletiva como fonte principal quando existir evento futuro:
-
-- próximo evento;
-- ação vinculada;
-- equipe escalada;
-- território;
-- status;
-- atalhos para agenda, ação e digitação de fichas.
-
-Também foram adicionados alertas internos usando:
-
-- eventos do dia;
-- eventos de amanhã;
-- relatórios semanais pendentes;
-- devolutivas pendentes;
-- dossiês pendentes.
-
-## Integração com memória
-
-Entregas:
-
-- eventos concluídos podem abrir fluxo para relatório semanal vinculado;
-- `weekly_team_reports` agora pode guardar `team_calendar_event_id`;
-- `project_memory_entries` agora pode guardar `team_calendar_event_id`;
-- `/memoria/novo` aceita contexto de `eventId` e `actionId` para vínculo manual;
-- `/agenda/[id]` mostra relatórios e entradas de memória relacionados.
-
-Nada é gerado automaticamente.
-
-## Campos preparados para Google Calendar
-
-Preparado apenas no schema:
-
-- `google_calendar_event_id`
-- `google_calendar_id`
-- `google_sync_status`
-- `google_synced_at`
-
-Nenhuma sincronização, webhook, push ou envio externo foi implementado neste tijolo.
-
-## Arquivos principais alterados
-
-- `supabase/migrations/20260508110000_create_team_calendar.sql`
-- `lib/database.types.ts`
-- `lib/team-calendar.ts`
-- `lib/semear-data.ts`
-- `app/agenda/page.tsx`
-- `app/agenda/novo/page.tsx`
-- `app/agenda/[id]/page.tsx`
-- `components/agenda/team-calendar-page.tsx`
-- `components/agenda/team-calendar-event-form.tsx`
-- `components/agenda/team-calendar-event-detail.tsx`
-- `components/actions/action-form.tsx`
-- `components/actions/action-detail.tsx`
-- `components/dashboard.tsx`
-- `components/memory/project-memory-report-workspace.tsx`
-- `app/ajuda/page.tsx`
-- `docs/agenda-coletiva-equipe.md`
-
-## Verificação executada
-
-Comandos rodados com sucesso:
-
-- `npm run lint`
-- `npm run build`
-- `npm run verify`
-
-## Riscos restantes
-
-- A agenda hoje depende de criação manual de eventos; ainda não há geração assistida para relatórios, devolutivas ou dossiês com data automática.
-- O formulário de ação reaproveita data da ação, mas o módulo de ação ainda não possui horário próprio estruturado.
-- A tela mensal é propositalmente simples; funciona bem no mobile, mas não é um calendário denso estilo grade.
-- O vínculo de presença depende de `team_members.profile_id` corretamente preenchido.
-
-## Próximo tijolo recomendado
-
-Próximo tijolo sugerido:
-
-- sincronização segura opcional com Google Calendar, usando os campos já preparados, fila de sincronização auditável e regras explícitas de quem pode publicar para fora do sistema.
+---
+*Relatório gerado automaticamente após a conclusão das tarefas do Tijolo 054.*

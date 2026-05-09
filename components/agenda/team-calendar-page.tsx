@@ -28,6 +28,7 @@ import type {
   WeeklyTeamReport,
 } from "@/lib/database.types";
 import { InternalRemindersPanel } from "@/components/agenda/internal-reminders-panel";
+import { NotificationsInlinePanel } from "@/components/notifications/notifications-inline-panel";
 import { FilterBar, FilterField, filterControlClassName } from "@/components/ui/filter-bar";
 import { MetricCard } from "@/components/ui/metric-card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -267,6 +268,10 @@ export function TeamCalendarPage() {
               <CalendarClock className="h-4 w-4" aria-hidden="true" />
               Esta semana
             </Link>
+            <Link className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/agenda/google/status">
+              <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+              Saúde Google
+            </Link>
             <Link className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/agenda/novo">
               <Plus className="h-4 w-4" aria-hidden="true" />
               Novo evento
@@ -334,6 +339,14 @@ export function TeamCalendarPage() {
             ]}
           />
 
+          <NotificationsInlinePanel
+            title="Avisos da agenda"
+            categories={["agenda", "google"]}
+            href="/avisos"
+            emptyText="Sem avisos de agenda pendentes."
+            limit={4}
+          />
+
           <DiagnosticPanel
             totalActions={actions.length}
             totalReports={weeklyReports.length}
@@ -355,7 +368,7 @@ export function TeamCalendarPage() {
               <p>Não registrar CPF, telefone, endereço pessoal, e-mail ou nome de entrevistado.</p>
               <p>Presença na agenda não é folha de ponto.</p>
               <p>Participação em evento não concede acesso ao sistema.</p>
-              <p>Integração com Google Calendar ficará para um tijolo futuro, sem sincronização ativa agora.</p>
+              <p>Google Calendar já funciona como espelho operacional manual e auditável, sem webhook, push ou envio de e-mail próprio.</p>
             </div>
           </section>
         </section>

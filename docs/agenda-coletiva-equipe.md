@@ -117,13 +117,14 @@ Agenda interna:
 - fica dentro do SEMEAR Territórios;
 - respeita `profiles`, `team_members` e RLS do projeto;
 - guarda vínculos com ações, memória e presença;
-- não sincroniza com serviços externos neste tijolo.
+- é a fonte principal dos dados operacionais.
 
 Google Agenda:
 
-- ainda não foi integrado;
-- será tratado em um tijolo futuro;
-- exigirá regras específicas de sincronização e auditoria.
+- funciona como espelho operacional de lembrete;
+- recebe apenas resumo sanitizado;
+- não devolve alterações automaticamente para o SEMEAR nesta versão;
+- exige sincronização manual e auditável.
 
 ## Integração futura
 
@@ -157,6 +158,73 @@ Antes de pensar em sincronização externa, a base interna precisa estar consist
 - o payload externo é sanitizado antes de sair do sistema;
 - não há webhook, push ou e-mail próprio neste fluxo;
 - cada operação gera rastro em `google_calendar_sync_logs`.
+
+## Estados de sincronização
+
+- `nao sincronizado`: evento ainda não foi enviado ao Google;
+- `sincronizado`: espelho externo está alinhado com a versão atual do SEMEAR;
+- `erro de sincronizacao`: a última tentativa falhou e exige revisão;
+- `cancelado no Google`: o evento foi cancelado no Google, mas continua no SEMEAR;
+- `desvinculado`: o vínculo externo foi removido e o evento segue apenas no SEMEAR.
+
+Quando houver edição local depois do último sync bem-sucedido, a tela pode mostrar `Alterações locais pendentes de sincronização`.
+
+## Reconectar Google Calendar
+
+Use `Reconectar Google Calendar` quando:
+
+- a conta remover o consentimento;
+- o refresh token estiver ausente;
+- a conexão expirar;
+- a UI indicar erro de autenticação ou refresh.
+
+## Permissões de escrita no calendário
+
+Antes de sincronizar:
+
+- a conta conectada precisa ter permissão de edição no calendário institucional;
+- `GOOGLE_CALENDAR_ID` precisa apontar para a agenda correta;
+- a API Google Calendar precisa estar habilitada no projeto OAuth.
+
+Se a conta não tiver permissão de edição, a UI deve orientar:
+
+- compartilhar o calendário institucional com a conta conectada;
+- conferir a documentação operacional;
+- tentar novamente apenas depois do ajuste.
+
+## Política de drift
+
+- alterações feitas diretamente no Google Calendar não retornam automaticamente ao SEMEAR;
+- se o evento mudar no SEMEAR, a equipe deve usar `Atualizar evento Google`;
+- nunca usar o Google como fonte primária de edição do evento.
+
+## Política de convites
+
+- convites por e-mail ficam desativados por padrão;
+- `google_send_invites` agora pode ser ativado ou desativado por evento;
+- apenas `admin` e `coordenacao` podem alterar essa decisão;
+- a política atual mantém `sendUpdates=none`, mesmo quando a flag estiver ativa;
+- só `team_members.email` válidos e `active = true` podem entrar em `attendees`;
+- entrevistados nunca devem ser convidados.
+
+## Reprocessamento assistido
+
+Quando houver `sync_error`, o evento passa a oferecer:
+
+- botão `Tentar novamente`;
+- botão `Reconectar Google Calendar`, quando necessário;
+- botão `Desvincular do Google`, se o vínculo externo estiver inconsistente;
+- link para a ajuda operacional.
+
+## Painel de saúde
+
+Existe um painel operacional em `/agenda/google/status` para coordenação/admin acompanhar:
+
+- conexão ativa;
+- refresh token presente;
+- últimos erros;
+- eventos com `sync_error`;
+- eventos com alterações locais pendentes de sincronização.
 
 ## O que vai para o Google
 

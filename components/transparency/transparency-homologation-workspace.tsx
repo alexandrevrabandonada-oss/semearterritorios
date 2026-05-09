@@ -39,6 +39,7 @@ import {
 } from "@/lib/transparency-homologation";
 import { TransparencyHomologationChecklist } from "@/components/transparency/transparency-homologation-checklist";
 import { getSnapshotStatusLabel } from "@/lib/transparency-snapshots";
+import { NotificationsInlinePanel } from "@/components/notifications/notifications-inline-panel";
 
 type PackageFormState = {
   title: string;
@@ -154,6 +155,16 @@ export function TransparencyHomologationListPage() {
 
       {error ? <StateBox tone="error">{error}</StateBox> : null}
       {feedback ? <StateBox>{feedback}</StateBox> : null}
+
+      <div className="mt-5">
+        <NotificationsInlinePanel
+          title="Avisos de homologação"
+          categories={["transparencia"]}
+          href="/avisos?categoria=transparencia"
+          emptyText="Sem avisos de homologação pendentes."
+          limit={4}
+        />
+      </div>
 
       <section className="mt-6 rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
         <div className="mb-4 flex items-center gap-3 text-semear-green">

@@ -30,6 +30,24 @@ export type TransparencyHomologationDecision = "aprovado_para_publicacao" | "rev
 export type WeeklyTeamReportStatus = "draft" | "submitted" | "in_review" | "approved" | "needs_changes" | "archived";
 export type ProjectMemoryType = "atividade" | "decisao" | "aprendizado" | "problema" | "encaminhamento" | "marco" | "outro";
 export type ProjectMemoryVisibility = "internal" | "public_candidate" | "public_approved";
+export type InAppNotificationType =
+  | "agenda_event_today"
+  | "agenda_event_tomorrow"
+  | "agenda_event_overdue"
+  | "google_sync_error"
+  | "google_drift_pending"
+  | "weekly_report_due"
+  | "weekly_report_needs_changes"
+  | "debrief_pending"
+  | "dossier_pending"
+  | "listening_review_pending"
+  | "transparency_review_pending"
+  | "memory_review_pending"
+  | "system_notice"
+  | "onboarding_welcome"
+  | "outro";
+export type InAppNotificationPriority = "low" | "normal" | "high" | "urgent";
+export type InAppNotificationStatus = "unread" | "read" | "archived" | "dismissed";
 export type TeamCalendarEventType = "acao_campo" | "banca_escuta" | "reuniao" | "relatorio_semanal" | "devolutiva" | "dossie" | "memoria" | "prazo" | "outro";
 export type TeamCalendarEventStatus = "planned" | "confirmed" | "done" | "cancelled" | "postponed";
 export type TeamCalendarAttendanceStatus = "invited" | "confirmed" | "declined" | "attended" | "absent" | "unknown";
@@ -381,7 +399,49 @@ export type WeeklyTeamReport = TimestampedRow &
     review_notes: string | null;
     reviewed_by: string | null;
     reviewed_at: string | null;
+    import_source: "manual" | "uploaded_doc" | "uploaded_pdf" | null;
+    imported_attachment_id: string | null;
+    imported_raw_text: string | null;
+    import_status: "manual" | "pending_extraction" | "extracted_draft" | "needs_review" | "extraction_failed" | "approved" | null;
+    extraction_quality: "high" | "medium" | "low" | "fail" | null;
   };
+
+export type InAppNotification = {
+  id: string;
+  profile_id: string | null;
+  team_member_id: string | null;
+  audience_role: "equipe" | "coordenacao" | "admin" | null;
+  title: string;
+  body: string | null;
+  notification_type: InAppNotificationType;
+  priority: InAppNotificationPriority;
+  status: InAppNotificationStatus;
+  source_type: string | null;
+  source_id: string | null;
+  action_url: string | null;
+  due_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  read_at: string | null;
+  dismissed_at: string | null;
+  resolved_at: string | null;
+  resolution_reason: string | null;
+  resolution_source: string | null;
+  auto_resolution_suggested: boolean;
+};
+
+export type NotificationPreference = TimestampedRow & {
+  id: string;
+  profile_id: string;
+  agenda_reminders: boolean;
+  google_calendar_alerts: boolean;
+  weekly_report_alerts: boolean;
+  debrief_dossier_alerts: boolean;
+  listening_review_alerts: boolean;
+  transparency_alerts: boolean;
+  memory_alerts: boolean;
+  quiet_mode: boolean;
+};
 
 export type WeeklyTeamReportAction = TimestampedRow &
   CreatedByRow & {
@@ -406,6 +466,29 @@ export type WeeklyTeamReportAttachment = TimestampedRow & {
   file_size: number | null;
   uploaded_by: string | null;
   uploaded_at: string;
+  extraction_status: "pending" | "extracted" | "failed" | "unsupported" | "needs_manual_transcription" | null;
+  extracted_text: string | null;
+  extraction_error: string | null;
+  extracted_at: string | null;
+  extraction_quality: "high" | "medium" | "low" | "fail" | null;
+  sections_detected_count: number | null;
+};
+
+export type WeeklyReportImportReview = TimestampedRow & {
+  id: string;
+  report_id: string;
+  attachment_id: string;
+  reviewer_id: string | null;
+  file_format: string | null;
+  used_standard_template: boolean;
+  extraction_quality: "high" | "medium" | "low" | "fail" | null;
+  sections_detected: number;
+  privacy_alerts_count: number;
+  manual_corrections_needed: string | null;
+  review_time_minutes: number | null;
+  decision: "aprovado" | "precisa_ajuste" | "transcricao_manual" | "rejeitado" | null;
+  feedback_category: string | null;
+  notes: string | null;
 };
 
 export type ProjectMemoryEntry = TimestampedRow &
@@ -438,6 +521,7 @@ export type TeamCalendarEvent = TimestampedRow &
     neighborhood_id: string | null;
     google_calendar_event_id: string | null;
     google_calendar_id: string | null;
+    google_send_invites: boolean;
     google_sync_status: GoogleCalendarSyncStatus | null;
     google_synced_at: string | null;
   };
@@ -559,12 +643,17 @@ export type Database = {
       };
       weekly_team_reports: {
         Row: WeeklyTeamReport;
-        Insert: Omit<WeeklyTeamReport, "id" | "created_at" | "updated_at" | "status" | "reviewed_by" | "reviewed_at" | "team_calendar_event_id"> & {
+        Insert: Omit<WeeklyTeamReport, "id" | "created_at" | "updated_at" | "status" | "reviewed_by" | "reviewed_at" | "team_calendar_event_id" | "import_source" | "imported_attachment_id" | "imported_raw_text" | "import_status"> & {
           id?: string;
           status?: WeeklyTeamReportStatus;
           team_calendar_event_id?: string | null;
           reviewed_by?: string | null;
           reviewed_at?: string | null;
+          import_source?: "manual" | "uploaded_doc" | "uploaded_pdf" | null;
+          imported_attachment_id?: string | null;
+          imported_raw_text?: string | null;
+          import_status?: "manual" | "pending_extraction" | "extracted_draft" | "needs_review" | "extraction_failed" | "approved" | null;
+          extraction_quality?: "high" | "medium" | "low" | "fail" | null;
         };
         Update: Partial<Omit<WeeklyTeamReport, "id" | "created_at" | "updated_at">>;
         Relationships: [
@@ -590,6 +679,25 @@ export type Database = {
             foreignKeyName: "weekly_team_reports_team_calendar_event_id_fkey";
             columns: ["team_calendar_event_id"];
             referencedRelation: "team_calendar_events";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      weekly_report_import_reviews: {
+        Row: WeeklyReportImportReview;
+        Insert: Omit<WeeklyReportImportReview, "id" | "created_at" | "updated_at"> & { id?: string; created_at?: string; updated_at?: string };
+        Update: Partial<Omit<WeeklyReportImportReview, "id" | "created_at" | "updated_at">>;
+        Relationships: [
+          {
+            foreignKeyName: "weekly_report_import_reviews_report_id_fkey";
+            columns: ["report_id"];
+            referencedRelation: "weekly_team_reports";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "weekly_report_import_reviews_attachment_id_fkey";
+            columns: ["attachment_id"];
+            referencedRelation: "weekly_team_report_attachments";
             referencedColumns: ["id"];
           }
         ];
@@ -634,9 +742,15 @@ export type Database = {
       };
       weekly_team_report_attachments: {
         Row: WeeklyTeamReportAttachment;
-        Insert: Omit<WeeklyTeamReportAttachment, "id" | "created_at" | "updated_at" | "uploaded_at"> & {
+        Insert: Omit<WeeklyTeamReportAttachment, "id" | "created_at" | "updated_at" | "uploaded_at" | "extraction_status" | "extracted_text" | "extraction_error" | "extracted_at"> & {
           id?: string;
           uploaded_at?: string;
+          extraction_status?: "pending" | "extracted" | "failed" | "unsupported" | "needs_manual_transcription" | null;
+          extracted_text?: string | null;
+          extraction_error?: string | null;
+          extracted_at?: string | null;
+          extraction_quality?: "high" | "medium" | "low" | "fail" | null;
+          sections_detected_count?: number | null;
         };
         Update: Partial<Omit<WeeklyTeamReportAttachment, "id" | "created_at" | "updated_at">>;
         Relationships: [
@@ -682,12 +796,13 @@ export type Database = {
       };
       team_calendar_events: {
         Row: TeamCalendarEvent;
-        Insert: Omit<TeamCalendarEvent, "id" | "created_at" | "updated_at" | "all_day" | "status" | "google_calendar_event_id" | "google_calendar_id" | "google_sync_status" | "google_synced_at"> & {
+        Insert: Omit<TeamCalendarEvent, "id" | "created_at" | "updated_at" | "all_day" | "status" | "google_calendar_event_id" | "google_calendar_id" | "google_send_invites" | "google_sync_status" | "google_synced_at"> & {
           id?: string;
           all_day?: boolean;
           status?: TeamCalendarEventStatus;
           google_calendar_event_id?: string | null;
           google_calendar_id?: string | null;
+          google_send_invites?: boolean;
           google_sync_status?: string | null;
           google_synced_at?: string | null;
         };
@@ -703,6 +818,54 @@ export type Database = {
             foreignKeyName: "team_calendar_events_neighborhood_id_fkey";
             columns: ["neighborhood_id"];
             referencedRelation: "neighborhoods";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      in_app_notifications: {
+        Row: InAppNotification;
+        Insert: Omit<InAppNotification, "id" | "created_at" | "status" | "priority" | "resolved_at" | "resolution_reason" | "resolution_source" | "auto_resolution_suggested"> & {
+          id?: string;
+          status?: InAppNotificationStatus;
+          priority?: InAppNotificationPriority;
+          resolved_at?: string | null;
+          resolution_reason?: string | null;
+          resolution_source?: string | null;
+          auto_resolution_suggested?: boolean;
+        };
+        Update: Partial<Omit<InAppNotification, "id" | "created_at">>;
+        Relationships: [
+          {
+            foreignKeyName: "in_app_notifications_profile_id_fkey";
+            columns: ["profile_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "in_app_notifications_team_member_id_fkey";
+            columns: ["team_member_id"];
+            referencedRelation: "team_members";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "in_app_notifications_created_by_fkey";
+            columns: ["created_by"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      notification_preferences: {
+        Row: NotificationPreference;
+        Insert: Omit<NotificationPreference, "id" | "created_at" | "updated_at"> & {
+          id?: string;
+        };
+        Update: Partial<Omit<NotificationPreference, "id" | "created_at" | "updated_at" | "profile_id">>;
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_profile_id_fkey";
+            columns: ["profile_id"];
+            referencedRelation: "profiles";
             referencedColumns: ["id"];
           }
         ];
@@ -1038,6 +1201,50 @@ export type Database = {
             foreignKeyName: "public_transparency_homologation_packages_snapshot_version_id_fkey";
             columns: ["snapshot_version_id"];
             referencedRelation: "public_transparency_snapshot_versions";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      user_onboarding_state: {
+        Row: {
+          id: string;
+          profile_id: string;
+          seen_welcome: boolean;
+          opened_agenda: boolean;
+          opened_listening_help: boolean;
+          opened_notifications: boolean;
+          completed_privacy_ack: boolean;
+          dismissed_onboarding: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          profile_id: string;
+          seen_welcome?: boolean;
+          opened_agenda?: boolean;
+          opened_listening_help?: boolean;
+          opened_notifications?: boolean;
+          completed_privacy_ack?: boolean;
+          dismissed_onboarding?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          profile_id?: string;
+          seen_welcome?: boolean;
+          opened_agenda?: boolean;
+          opened_listening_help?: boolean;
+          opened_notifications?: boolean;
+          completed_privacy_ack?: boolean;
+          dismissed_onboarding?: boolean;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "user_onboarding_state_profile_id_fkey";
+            columns: ["profile_id"];
+            referencedRelation: "profiles";
             referencedColumns: ["id"];
           }
         ];

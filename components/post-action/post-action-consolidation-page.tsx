@@ -117,6 +117,23 @@ Recomendação da ação: ${territorialRecommendation}
         <p className="mt-4 max-w-3xl text-sm leading-6 text-stone-600">
           Selecione uma ação para consolidar dados reais, pendências e decisão formal do próximo passo. Esta tela não usa IA e não cria mapa.
         </p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link 
+            href="/leituras" 
+            className="inline-flex items-center gap-2 rounded-full bg-semear-green-soft px-4 py-2 text-sm font-bold text-semear-green hover:bg-semear-green/10 transition-all"
+          >
+            <MapPinned className="h-4 w-4" />
+            Ver leitura coletiva completa
+          </Link>
+          {selectedActionId && (
+            <Link 
+              href={`/leituras?action_id=${selectedActionId}`}
+              className="inline-flex items-center gap-2 rounded-full border border-semear-green/20 px-4 py-2 text-sm font-bold text-semear-green hover:bg-semear-green/5 transition-all"
+            >
+              Leitura coletiva desta ação
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="mt-6 rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
