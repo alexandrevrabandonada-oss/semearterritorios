@@ -319,7 +319,7 @@ export default function ImportQualityDashboard() {
                 Ajuda na Homologação
               </h3>
               <p className="text-xs text-stone-600 leading-relaxed mb-4">
-                A extração depende da estrutura do documento. Use cabeçalhos claros como "Atividades" e "Aprendizados" para garantir qualidade ALTA.
+                A extração depende da estrutura do documento. Use cabeçalhos claros como &quot;Atividades&quot; e &quot;Aprendizados&quot; para garantir qualidade ALTA.
               </p>
               <Link 
                 href="/docs/homologacao-importacao-relatorios-reais" 
