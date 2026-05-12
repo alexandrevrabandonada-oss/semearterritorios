@@ -218,19 +218,18 @@ export function ActionDebriefPage({ actionId }: Props) {
     quoteAudits.filter((audit) => approvedPublicIds.has(audit.quote_id)).map((audit) => audit.quote_id)
   ).size;
   const approvedPublicWithJustification = approvedPublicQuotes.filter((quote) => (quote.public_approval_reason ?? "").trim().length > 0).length;
-  const markdown = buildPublicDebriefMarkdown({
+  const voicesText = publicQuotes.length > 0
+    ? `\n\nVozes do territorio:\n${publicQuotes.slice(0, 5).map((quote) => `- ${(quote.sanitized_text?.trim() || quote.quote_text).trim()}`).join("\n")}`
+    : "\n\nVozes do territorio:\n- Ainda nao ha falas aprovadas para publicacao nesta acao.";
+  const markdown = `${buildPublicDebriefMarkdown({
     title: form.title,
     action: loadedAction,
     readiness,
     publicSummary: `${form.public_summary}\n\n${publicCautionText}`,
     keyFindings: form.key_findings,
     nextSteps: form.next_steps,
-    methodologyNote: form.methodology_note,
-    publicQuotes: publicQuotes.map((quote) => quote.sanitized_text?.trim() || quote.quote_text)
-  });
-  const voicesText = publicQuotes.length > 0
-    ? `\n\nVozes do territorio:\n${publicQuotes.slice(0, 5).map((quote) => `- ${(quote.sanitized_text?.trim() || quote.quote_text).trim()}`).join("\n")}`
-    : "\n\nVozes do territorio:\n- Ainda nao ha falas aprovadas para publicacao nesta acao.";
+    methodologyNote: form.methodology_note
+  })}${voicesText}`;
   const publicText = `${form.title}\n\n${form.public_summary}\n\n${publicCautionText}\n\n${form.key_findings}${voicesText}\n\nPróximos passos:\n${form.next_steps}\n\n${form.methodology_note}\n\n${defaultPrivacyNote}`;
 
   function updateField<TField extends keyof DebriefForm>(field: TField, value: DebriefForm[TField]) {
