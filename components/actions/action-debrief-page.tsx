@@ -32,7 +32,6 @@ import { buildTerritorialQualityMethodologyNote, calculateRespondentTerritoryQua
 import type {
   ActionDebrief,
   DebriefStatus,
-  Database,
   Json,
   Profile
 } from "@/lib/database.types";
@@ -52,8 +51,17 @@ type DebriefForm = {
   team_review_text: string;
 };
 
-type PublicQuoteRow = Database["public"]["Tables"]["listening_record_public_quotes"]["Row"];
-type PublicQuoteAuditRow = Database["public"]["Tables"]["listening_record_public_quote_audits"]["Row"];
+type PublicQuoteRow = {
+  id: string;
+  status: string;
+  quote_text: string;
+  sanitized_text: string | null;
+  public_approval_reason: string | null;
+};
+
+type PublicQuoteAuditRow = {
+  quote_id: string;
+};
 
 const emptyForm: DebriefForm = {
   title: "O que ouvimos nesta ação",
