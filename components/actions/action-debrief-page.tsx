@@ -32,9 +32,8 @@ import { buildTerritorialQualityMethodologyNote, calculateRespondentTerritoryQua
 import type {
   ActionDebrief,
   DebriefStatus,
+  Database,
   Json,
-  ListeningRecordPublicQuote,
-  ListeningRecordPublicQuoteAudit,
   Profile
 } from "@/lib/database.types";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -52,6 +51,9 @@ type DebriefForm = {
   next_steps: string;
   team_review_text: string;
 };
+
+type PublicQuoteRow = Database["public"]["Tables"]["listening_record_public_quotes"]["Row"];
+type PublicQuoteAuditRow = Database["public"]["Tables"]["listening_record_public_quote_audits"]["Row"];
 
 const emptyForm: DebriefForm = {
   title: "O que ouvimos nesta ação",
@@ -73,9 +75,9 @@ export function ActionDebriefPage({ actionId }: Props) {
   const [action, setAction] = useState<ActionForPilot | null>(null);
   const [records, setRecords] = useState<ListeningRecordForPilot[]>([]);
   const [debrief, setDebrief] = useState<ActionDebrief | null>(null);
-  const [allQuotes, setAllQuotes] = useState<ListeningRecordPublicQuote[]>([]);
-  const [publicQuotes, setPublicQuotes] = useState<ListeningRecordPublicQuote[]>([]);
-  const [quoteAudits, setQuoteAudits] = useState<ListeningRecordPublicQuoteAudit[]>([]);
+  const [allQuotes, setAllQuotes] = useState<PublicQuoteRow[]>([]);
+  const [publicQuotes, setPublicQuotes] = useState<PublicQuoteRow[]>([]);
+  const [quoteAudits, setQuoteAudits] = useState<PublicQuoteAuditRow[]>([]);
   const [analytics, setAnalytics] = useState<ActionAnalytics | null>(null);
   const [mode, setMode] = useState<"interno" | "publico">("publico");
   const [profile, setProfile] = useState<Pick<Profile, "id" | "role"> | null>(null);
@@ -142,14 +144,14 @@ export function ActionDebriefPage({ actionId }: Props) {
         loadedAction.neighborhoods ? { id: loadedAction.neighborhoods.id, name: loadedAction.neighborhoods.name } : undefined
       );
 
-      const loadedQuotes = (quotesResult.data ?? []) as ListeningRecordPublicQuote[];
+      const loadedQuotes = (quotesResult.data ?? []) as PublicQuoteRow[];
 
       setAction(loadedAction);
       setRecords(loadedRecords);
       setDebrief(loadedDebrief);
       setAllQuotes(loadedQuotes);
       setPublicQuotes(loadedQuotes.filter((quote) => quote.status === "approved_public"));
-      setQuoteAudits((auditsResult.data ?? []) as ListeningRecordPublicQuoteAudit[]);
+      setQuoteAudits((auditsResult.data ?? []) as PublicQuoteAuditRow[]);
       setAnalytics(builtAnalytics);
       setProfile(profileResult.data as Pick<Profile, "id" | "role"> | null);
 
