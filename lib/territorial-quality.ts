@@ -128,3 +128,122 @@ function formatItems(items: TerritoryQuality[]) {
 export function summarizeTerritorialQuality(records: TerritorialReviewRecord[]) {
   return getTerritorialQualityMetrics(records);
 }
+
+// ============= Novo para Tijolo 059 =============
+
+export interface RespondentTerritoryQualityMetrics {
+  totalRecords: number;
+  recordsWithRespondentTerritory: number;
+  recordsWithoutRespondentTerritory: number;
+  coveragePercent: number;
+  qualityStatus: "boa" | "atenção" | "crítica";
+}
+
+export interface ActionRespondentQuality extends RespondentTerritoryQualityMetrics {
+  actionId: string;
+  actionName?: string;
+  actionNeighborhood?: string;
+}
+
+export interface TeammemberRespondentQuality extends RespondentTerritoryQualityMetrics {
+  teamMemberId: string;
+  teamMemberName?: string;
+}
+
+export interface TerritorialQualityMethodologyNote {
+  status: "boa" | "atenção" | "crítica";
+  shortText: string;
+  fullText: string;
+  operationalRecommendation: string;
+  publicRecommendation: string;
+}
+
+/**
+ * Calcula qualidade de cobertura de "respondent_neighborhood_id"
+ * Tijolo 059: Governança de Qualidade Territorial de Referência
+ */
+export function calculateRespondentTerritoryQuality(
+  totalRecords: number,
+  recordsWithTerritory: number
+): RespondentTerritoryQualityMetrics {
+  const recordsWithout = totalRecords - recordsWithTerritory;
+  const coveragePercent = totalRecords > 0 ? (recordsWithTerritory / totalRecords) * 100 : 0;
+
+  let qualityStatus: "boa" | "atenção" | "crítica";
+  if (coveragePercent >= 80) {
+    qualityStatus = "boa";
+  } else if (coveragePercent >= 50) {
+    qualityStatus = "atenção";
+  } else {
+    qualityStatus = "crítica";
+  }
+
+  return {
+    totalRecords,
+    recordsWithRespondentTerritory: recordsWithTerritory,
+    recordsWithoutRespondentTerritory: recordsWithout,
+    coveragePercent: Math.round(coveragePercent * 10) / 10,
+    qualityStatus,
+  };
+}
+
+/**
+ * Obtém status label para UI
+ */
+export function getRespondentQualityStatusLabel(
+  status: "boa" | "atenção" | "crítica"
+): { label: string; color: string; icon: string } {
+  const labels = {
+    boa: { label: "Boa cobertura", color: "green", icon: "✓" },
+    atenção: { label: "Cobertura moderada", color: "yellow", icon: "⚠" },
+    crítica: { label: "Cobertura baixa", color: "red", icon: "✕" },
+  };
+  return labels[status];
+}
+
+/**
+ * Tijolo 061: nota metodológica automática para leitura territorial.
+ */
+export function buildTerritorialQualityMethodologyNote(
+  metrics: RespondentTerritoryQualityMetrics
+): TerritorialQualityMethodologyNote {
+  if (metrics.qualityStatus === "boa") {
+    return {
+      status: "boa",
+      shortText:
+        "A maioria das escutas possui território de referência preenchido. As leituras por bairro têm boa cobertura para o recorte analisado.",
+      fullText:
+        "A maioria das escutas possui território de referência do entrevistado preenchido. Neste recorte, as leituras por bairro têm boa cobertura e podem apoiar decisões territoriais com maior segurança, mantendo o cuidado de não confundir território da ação com território de referência.",
+      operationalRecommendation:
+        "Manter rotina de revisão e reforçar preenchimento em cada banca para sustentar cobertura >= 80%.",
+      publicRecommendation:
+        "Publicar com nota metodológica simples, destacando que os dados são agregados e não representam endereço nem geolocalização."
+    };
+  }
+
+  if (metrics.qualityStatus === "atenção") {
+    return {
+      status: "atenção",
+      shortText:
+        "Parte das escutas não possui território de referência preenchido. As leituras por bairro devem ser interpretadas como parciais.",
+      fullText:
+        "Parte relevante das escutas não possui território de referência do entrevistado preenchido. Por isso, as leituras por bairro neste recorte devem ser tratadas como parciais e usadas com cautela metodológica.",
+      operationalRecommendation:
+        "Revisar escutas sem território de referência antes de consolidar sínteses territoriais e reforçar a pergunta territorial na próxima banca.",
+      publicRecommendation:
+        "Publicar apenas com aviso explícito de leitura parcial e evitar conclusões fortes por bairro."
+    };
+  }
+
+  return {
+    status: "crítica",
+    shortText:
+      "A maioria das escutas não possui território de referência preenchido. Evite conclusões fortes por bairro neste recorte.",
+    fullText:
+      "A maioria das escutas não possui território de referência do entrevistado preenchido. Neste cenário, leituras por bairro são frágeis e não devem sustentar conclusões fortes sobre distribuição territorial.",
+    operationalRecommendation:
+      "Priorizar revisão territorial das escutas pendentes antes de qualquer síntese por bairro e orientar equipe para melhorar cobertura imediatamente.",
+    publicRecommendation:
+      "Se publicar, explicitar limitação crítica e evitar ranking territorial como conclusão principal."
+  };
+}

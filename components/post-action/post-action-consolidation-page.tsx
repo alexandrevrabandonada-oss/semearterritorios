@@ -12,7 +12,12 @@ import { getActionStatusLabel, getActionTypeLabel } from "@/lib/actions";
 import { getClosureStatusLabel } from "@/lib/action-closures";
 import { getRespondentTerritoryRelationLabel } from "@/lib/listening-records";
 import type { ActionClosure, ActionDebrief, Neighborhood, TeamMember } from "@/lib/database.types";
-import { buildTerritorialQualityByNeighborhood, buildTerritorialQualityReport } from "@/lib/territorial-quality";
+import {
+  buildTerritorialQualityByNeighborhood,
+  buildTerritorialQualityMethodologyNote,
+  buildTerritorialQualityReport,
+  calculateRespondentTerritoryQuality
+} from "@/lib/territorial-quality";
 import { getTerritorialQualityMetrics, getTerritorialQualityRecommendation, type TerritorialReviewRecord } from "@/lib/territorial-review";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
@@ -81,6 +86,11 @@ export function PostActionConsolidationPage() {
   const territorialMetrics = getTerritorialQualityMetrics(actionRecords);
   const territorialRecommendation = getTerritorialQualityRecommendation(actionRecords);
   const territoryQuality = buildTerritorialQualityByNeighborhood(neighborhoods, actionRecords).filter((item) => item.totalRecords > 0);
+  const respondentCoverageMetrics = calculateRespondentTerritoryQuality(
+    actionRecords.length,
+    actionRecords.filter((record) => Boolean(record.respondent_neighborhood_id)).length
+  );
+  const respondentCoverageNote = buildTerritorialQualityMethodologyNote(respondentCoverageMetrics);
   const readyTerritories = territoryQuality.filter((item) => item.recommendation === "bom para mapa interno").length;
   const blockedTerritories = territoryQuality.filter((item) => item.recommendation === "bloqueado por sensível").length;
   const territorialQualityText = selectedAction ? `${buildTerritorialQualityReport(territoryQuality)}
@@ -91,7 +101,7 @@ Ação: ${selectedAction.title}
 Recomendação da ação: ${territorialRecommendation}
 ` : "";
   const reviewedPercent = metrics.total > 0 ? Math.round((metrics.reviewed / metrics.total) * 100) : 0;
-  const territoryCount = new Set(actionRecords.map((record) => record.neighborhood_id).filter(Boolean)).size;
+  const territoryCount = new Set(actionRecords.map((record) => record.respondent_neighborhood_id).filter(Boolean)).size;
   const diagnostics = getDiagnostics(metrics, debrief, closure);
   const occupationSummary = summarizeOccupations(actionRecords as Array<TerritorialReviewRecord & { listening_record_themes?: Array<{ themes: { name: string } | null }> }>);
   const interviewerCounts = Array.from(
@@ -177,6 +187,9 @@ Recomendação da ação: ${territorialRecommendation}
                 <p className="mt-2 text-sm leading-6 text-stone-600">
                   {new Date(`${selectedAction.action_date}T00:00:00`).toLocaleDateString("pt-BR")} · {selectedAction.neighborhoods?.name ?? "sem território"} · {getActionTypeLabel(selectedAction.action_type)} · {getActionStatusLabel(selectedAction.status)}
                 </p>
+                <p className="mt-2 rounded-xl border border-semear-gray bg-semear-offwhite px-3 py-2 text-sm text-stone-700">
+                  <strong>Local da ação:</strong> {selectedAction.neighborhoods?.name ?? "Não informado"}
+                </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <ActionLink href={`/acoes/${selectedAction.id}`} label="Ação" />
@@ -190,6 +203,18 @@ Recomendação da ação: ${territorialRecommendation}
           <div className="mt-6 rounded-[1.5rem] border border-semear-gray/80 bg-white p-4 shadow-soft">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">2. Pendências e indicadores</p>
             <p className="mt-2 text-sm text-stone-600">Use os cartões abaixo para decidir rapidamente se a ação já pode avançar para devolutiva, dossiê e decisão final.</p>
+            <div className={`mt-3 rounded-xl border px-3 py-2 text-sm ${respondentCoverageNote.status === "boa" ? "border-green-200 bg-green-50 text-green-900" : respondentCoverageNote.status === "atenção" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-red-200 bg-red-50 text-red-900"}`}>
+              <p><strong>Cobertura territorial da ação:</strong> {respondentCoverageMetrics.coveragePercent}% ({respondentCoverageMetrics.recordsWithRespondentTerritory}/{respondentCoverageMetrics.totalRecords}) · {respondentCoverageNote.status}</p>
+              <p className="mt-1">{respondentCoverageNote.shortText}</p>
+              {respondentCoverageNote.status !== "boa" ? (
+                <>
+                  <p className="mt-1">Esta ação ouviu pessoas de vários territórios, mas parte das fichas não possui território de referência preenchido. A leitura por bairro deve ser interpretada com cautela.</p>
+                  <Link className="mt-2 inline-flex min-h-10 items-center rounded-lg bg-semear-green px-3 text-xs font-semibold text-white" href={`/escutas/revisao-territorial?tab=qualidade&actionId=${selectedAction.id}`}>
+                    Revisar escutas sem território desta ação
+                  </Link>
+                </>
+              ) : null}
+            </div>
           </div>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -197,7 +222,7 @@ Recomendação da ação: ${territorialRecommendation}
             <Metric icon={<ClipboardList className="h-5 w-5" />} label="Revisadas" value={`${metrics.reviewed} (${reviewedPercent}%)`} />
             <Metric icon={<AlertTriangle className="h-5 w-5" />} label="Rascunhos" value={metrics.draft.toString()} danger={metrics.draft > 0} />
             <Metric icon={<AlertTriangle className="h-5 w-5" />} label="Dado sensível" value={metrics.possibleSensitive.toString()} danger={metrics.possibleSensitive > 0} />
-            <Metric icon={<MapPinned className="h-5 w-5" />} label="Territórios" value={territoryCount.toString()} />
+            <Metric icon={<MapPinned className="h-5 w-5" />} label="Territórios de referência" value={territoryCount.toString()} />
             <Metric icon={<FileText className="h-5 w-5" />} label="Devolutiva" value={debrief?.status ?? "não criada"} danger={debrief?.status !== "approved"} />
             <Metric icon={<FolderCheck className="h-5 w-5" />} label="Dossiê" value={getClosureStatusLabel(closure?.status)} danger={closure?.status !== "closed"} />
             <Metric icon={<ClipboardList className="h-5 w-5" />} label="Pendências" value={metrics.pending.toString()} danger={metrics.pending > 0} />
@@ -230,6 +255,9 @@ Recomendação da ação: ${territorialRecommendation}
                   Separação entre território da ação (onde a banca ocorreu) e território de referência de cada entrevistado.<br />
                   Dados agregados por bairro oficial. Sem endereço ou ponto individual.
                 </p>
+                <p className="mt-2 rounded-xl border border-semear-gray bg-white px-3 py-2 text-xs leading-5 text-stone-600">
+                  Esta leitura mostra de onde vêm/as quais territórios se referem as pessoas escutadas nesta ação. Não indica endereço nem localização individual.
+                </p>
                 <div className="mt-5 space-y-4">
                   {respondentGroups.map((group) => (
                     <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4" key={group.neighborhoodName}>
@@ -256,6 +284,12 @@ Recomendação da ação: ${territorialRecommendation}
                         <p className="mt-1 text-sm leading-6 text-stone-700">
                           <strong className="font-semibold text-semear-green">Prioridades:</strong>{" "}
                           {group.priorities.slice(0, 4).join(", ")}
+                        </p>
+                      )}
+                      {group.topOccupations.length > 0 && (
+                        <p className="mt-1 text-sm leading-6 text-stone-700">
+                          <strong className="font-semibold text-semear-green">Ocupações (agregado seguro):</strong>{" "}
+                          {group.topOccupations.slice(0, 4).join(", ")}
                         </p>
                       )}
                     </div>
@@ -360,6 +394,7 @@ type RespondentGroup = {
   topThemes: string[];
   topWords: string[];
   priorities: string[];
+  topOccupations: string[];
 };
 
 type ActionRecordForRespondent = TerritorialReviewRecord & {
@@ -406,6 +441,9 @@ function buildRespondentTerritoryGroups(
     const topThemes = Array.from(themeCount.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([label, count]) => `${label} (${count})`);
     const topWords = Array.from(wordCount.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([w]) => w);
     const relations = Array.from(group.relations).map((r) => getRespondentTerritoryRelationLabel(r as import("@/lib/database.types").RespondentTerritoryRelation));
+    const occupations = summarizeOccupations(group.records as Array<TerritorialReviewRecord & { listening_record_themes?: Array<{ themes: { name: string } | null }> }>).groups
+      .slice(0, 4)
+      .map((item) => `${item.label} (${item.count})`);
 
     result.push({
       neighborhoodId,
@@ -414,7 +452,8 @@ function buildRespondentTerritoryGroups(
       relations,
       topThemes,
       topWords,
-      priorities: priorityFragments.slice(0, 3)
+      priorities: priorityFragments.slice(0, 3),
+      topOccupations: occupations
     });
   }
 

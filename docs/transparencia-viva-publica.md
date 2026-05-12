@@ -68,6 +68,30 @@ Se um snapshot `published` for editado, ele volta automaticamente para `reviewed
 
 Somente `coordenacao` ou `admin` podem aprovar e publicar snapshots.
 
+## Trava editorial opcional por risco territorial
+
+Quando a qualidade territorial estiver em status `crítica` (cobertura menor que 50%), a publicação pública fica bloqueada por padrão.
+
+Para liberar a publicação nesse cenário, a coordenação ou admin deve registrar justificativa institucional explícita no snapshot.
+
+Regras:
+
+- não bloqueia operação de campo;
+- não bloqueia cadastro, revisão ou devolutiva interna;
+- bloqueia somente a transição para `published` sem justificativa;
+- perfis `equipe` não podem registrar essa justificativa em nome institucional.
+
+No preview interno:
+
+- risco crítico sem justificativa: `Não recomendado para publicação pública.`;
+- risco crítico com justificativa: `Publicado com cautela metodológica e justificativa institucional.`.
+
+Na API pública:
+
+- a rota continua retornando apenas o último snapshot `published`;
+- quando houver risco crítico, inclui nota metodológica e justificativa sanitizada para leitura pública;
+- nunca expõe IDs internos de usuário responsáveis pela justificativa.
+
 ## O que pode aparecer
 
 - totais agregados de ações, escutas revisadas, territórios alcançados, devolutivas aprovadas e dossiês fechados;

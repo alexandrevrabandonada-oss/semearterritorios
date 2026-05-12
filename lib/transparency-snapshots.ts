@@ -1,6 +1,7 @@
 import type { Action, ActionClosure, ActionDebrief, ListeningRecord, Neighborhood, PublicTransparencySnapshot, Theme } from "@/lib/database.types";
 import { getActionStatusLabel, getActionTypeLabel } from "@/lib/actions";
 import { createEmptyTransparencyChecklist, normalizeTransparencyChecklist } from "@/lib/transparency-privacy";
+import { buildTerritorialQualityMethodologyNote, calculateRespondentTerritoryQuality } from "@/lib/territorial-quality";
 
 export const MIN_PUBLIC_TERRITORY_SAMPLE = 5;
 export const MIN_PUBLIC_OCCUPATION_SAMPLE = 3;
@@ -42,7 +43,13 @@ export function buildTransparencySnapshotDraft(input: TransparencyDraftInput) {
   const periodStart = periodDates[0] ?? null;
   const periodEnd = periodDates[periodDates.length - 1] ?? null;
   const actionTerritories = new Set(input.actions.map((action) => action.neighborhood_id).filter(Boolean));
-  const respondentTerritories = new Set(reviewedRecords.map((record) => record.respondent_neighborhood_id ?? record.neighborhood_id).filter(Boolean));
+  const respondentTerritories = new Set(reviewedRecords.map((record) => record.respondent_neighborhood_id).filter(Boolean));
+  const respondentWithoutTerritory = reviewedRecords.filter((record) => !record.respondent_neighborhood_id).length;
+  const territorialQuality = calculateRespondentTerritoryQuality(
+    reviewedRecords.length,
+    reviewedRecords.filter((record) => Boolean(record.respondent_neighborhood_id)).length
+  );
+  const territorialMethodology = buildTerritorialQualityMethodologyNote(territorialQuality);
   const approvedDebriefs = input.debriefs.filter((debrief) => debrief.status === "approved");
   const closedDossiers = input.closures.filter((closure) => closure.status === "closed");
 
@@ -57,7 +64,19 @@ export function buildTransparencySnapshotDraft(input: TransparencyDraftInput) {
 
   const themeSummary = rankThemes(reviewedRecords);
   const wordSummary = rankWords(reviewedRecords);
-  const territorySummary = summarizeTerritories(input.actions, reviewedRecords, approvedDebriefs);
+  const territorySummary = {
+    action_territory_summary: summarizeActionTerritories(input.actions, reviewedRecords, approvedDebriefs),
+    respondent_territory_summary: summarizeRespondentTerritories(reviewedRecords),
+    respondent_without_territory: respondentWithoutTerritory,
+    territorial_quality_summary: {
+      status: territorialMethodology.status,
+      coverage_percent: territorialQuality.coveragePercent,
+      records_with_territory: territorialQuality.recordsWithRespondentTerritory,
+      records_without_territory: territorialQuality.recordsWithoutRespondentTerritory,
+      methodology_note: territorialMethodology.fullText,
+      operational_recommendation: territorialMethodology.operationalRecommendation
+    }
+  };
   const actionTimeline = input.actions
     .filter((action) => action.status === "realizada")
     .sort((a, b) => a.action_date.localeCompare(b.action_date))
@@ -97,10 +116,12 @@ export function buildTransparencySnapshotDraft(input: TransparencyDraftInput) {
     word_summary: wordSummary,
     action_timeline: actionTimeline,
     debrief_links: debriefLinks,
-    methodology_notes: "Síntese pública produzida a partir de dados revisados, agregados e sanitizados pela equipe SEMEAR.",
+    methodology_notes: `Síntese pública produzida a partir de dados revisados, agregados e sanitizados pela equipe SEMEAR. ${territorialMethodology.fullText} Cobertura territorial: ${territorialQuality.coveragePercent}% (${territorialQuality.recordsWithRespondentTerritory}/${territorialQuality.totalRecords}).`,
     opening_text: "Esta leitura pública apresenta apenas recortes agregados e aprovados pela coordenação.",
     listening_text: "O que estamos ouvindo aparece aqui em linguagem pública, sem fala original e sem identificar pessoas.",
-    limits_text: `Territórios com menos de ${MIN_PUBLIC_TERRITORY_SAMPLE} escutas revisadas aparecem como dados insuficientes para síntese pública.`,
+    limits_text: territorialMethodology.status === "boa"
+      ? `Territórios com menos de ${MIN_PUBLIC_TERRITORY_SAMPLE} escutas revisadas aparecem como dados insuficientes para síntese pública.`
+      : `Territórios com menos de ${MIN_PUBLIC_TERRITORY_SAMPLE} escutas revisadas aparecem como dados insuficientes para síntese pública. Além disso, a cobertura de território de referência está em nível ${territorialMethodology.status}, exigindo cautela na leitura territorial.`,
     next_steps_text: "A publicação pública depende de revisão editorial, checklist de privacidade e aprovação institucional.",
     review_checklist: createEmptyTransparencyChecklist(),
     privacy_notes: [
@@ -162,7 +183,7 @@ function buildDefaultTitle(periodStart: string | null, periodEnd: string | null)
 }
 
 function buildPublicSummary(totals: Record<string, number>) {
-  return `Síntese pública agregada com ${totals.actions_realized} ação(ões) realizada(s), ${totals.listening_records_reviewed} escuta(s) revisada(s), ${totals.territories_reached} território(s) alcançado(s), ${totals.approved_debriefs} devolutiva(s) aprovada(s) e ${totals.closed_dossiers} dossiê(s) fechado(s).`;
+  return `Síntese pública agregada com ${totals.actions_realized} ação(ões) realizada(s), ${totals.listening_records_reviewed} escuta(s) revisada(s), ${totals.territories_reached} território(s) de referência alcançado(s), ${totals.approved_debriefs} devolutiva(s) aprovada(s) e ${totals.closed_dossiers} dossiê(s) fechado(s).`;
 }
 
 function rankThemes(records: SnapshotRecord[]) {
@@ -202,7 +223,7 @@ function rankWords(records: SnapshotRecord[]) {
     .slice(0, 30);
 }
 
-function summarizeTerritories(actions: SnapshotAction[], reviewedRecords: SnapshotRecord[], approvedDebriefs: ActionDebrief[]) {
+function summarizeActionTerritories(actions: SnapshotAction[], reviewedRecords: SnapshotRecord[], approvedDebriefs: ActionDebrief[]) {
   const groups = new Map<string, { territory: string; action_records: number; respondent_records: number; reviewed_records: number; action_count: number; approved_debriefs: number }>();
   const ensure = (id: string, territory: string) => {
     const existing = groups.get(id);
@@ -224,11 +245,6 @@ function summarizeTerritories(actions: SnapshotAction[], reviewedRecords: Snapsh
       group.action_records += 1;
       group.reviewed_records += 1;
     }
-    const respondentId = record.respondent_neighborhood_id ?? record.neighborhood_id;
-    if (respondentId) {
-      const group = ensure(respondentId, record.respondent_neighborhood?.name ?? record.neighborhoods?.name ?? "Território não informado");
-      group.respondent_records += 1;
-    }
   }
 
   return Array.from(groups.values())
@@ -239,6 +255,33 @@ function summarizeTerritories(actions: SnapshotAction[], reviewedRecords: Snapsh
         : group.approved_debriefs > 0
           ? "devolutiva publicada"
           : "em revisão"
+    }))
+    .sort((a, b) => b.reviewed_records - a.reviewed_records || a.territory.localeCompare(b.territory, "pt-BR"));
+}
+
+function summarizeRespondentTerritories(reviewedRecords: SnapshotRecord[]) {
+  const groups = new Map<string, { territory: string; respondent_records: number; reviewed_records: number }>();
+  const ensure = (id: string, territory: string) => {
+    const existing = groups.get(id);
+    if (existing) return existing;
+    const created = { territory, respondent_records: 0, reviewed_records: 0 };
+    groups.set(id, created);
+    return created;
+  };
+
+  for (const record of reviewedRecords) {
+    if (!record.respondent_neighborhood_id) continue;
+    const group = ensure(record.respondent_neighborhood_id, record.respondent_neighborhood?.name ?? "Território não informado");
+    group.respondent_records += 1;
+    group.reviewed_records += 1;
+  }
+
+  return Array.from(groups.values())
+    .map((group) => ({
+      ...group,
+      public_status: group.reviewed_records < MIN_PUBLIC_TERRITORY_SAMPLE
+        ? "dados insuficientes para síntese pública"
+        : "apto para síntese pública"
     }))
     .sort((a, b) => b.reviewed_records - a.reviewed_records || a.territory.localeCompare(b.territory, "pt-BR"));
 }

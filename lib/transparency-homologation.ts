@@ -10,6 +10,7 @@ import type {
 import { buildSnapshotAuditExport, buildSnapshotAuditStatus, getSnapshotReviewComments, getSnapshotVersions } from "@/lib/transparency-audit";
 import { normalizeTransparencyChecklist } from "@/lib/transparency-privacy";
 import { getSnapshotStatusLabel } from "@/lib/transparency-snapshots";
+import { getTerritorialRiskPublicationGuard } from "@/lib/transparency-territorial-risk";
 
 type DbClient = SupabaseClient<Database>;
 
@@ -21,6 +22,8 @@ export type HomologationChecklistState = {
   no_interviewer_or_team_email: boolean;
   rare_occupations_grouped: boolean;
   minimum_sample_respected: boolean;
+  coverage_territorial_reviewed: boolean;
+  territorial_risk_critical_justified: boolean;
   critical_comments_resolved: boolean;
   public_api_checked: boolean;
   validated_by_coordination: boolean;
@@ -51,6 +54,8 @@ export function createEmptyHomologationChecklist(): HomologationChecklistState {
     no_interviewer_or_team_email: false,
     rare_occupations_grouped: false,
     minimum_sample_respected: false,
+    coverage_territorial_reviewed: false,
+    territorial_risk_critical_justified: false,
     critical_comments_resolved: false,
     public_api_checked: false,
     validated_by_coordination: false
@@ -69,6 +74,8 @@ export function normalizeHomologationChecklist(value: unknown): HomologationChec
     no_interviewer_or_team_email: Boolean(source.no_interviewer_or_team_email),
     rare_occupations_grouped: Boolean(source.rare_occupations_grouped),
     minimum_sample_respected: Boolean(source.minimum_sample_respected),
+    coverage_territorial_reviewed: Boolean(source.coverage_territorial_reviewed),
+    territorial_risk_critical_justified: Boolean(source.territorial_risk_critical_justified),
     critical_comments_resolved: Boolean(source.critical_comments_resolved),
     public_api_checked: Boolean(source.public_api_checked),
     validated_by_coordination: Boolean(source.validated_by_coordination)
@@ -96,6 +103,8 @@ export function getHomologationChecklistItems() {
     { key: "no_interviewer_or_team_email", label: "Sem entrevistador ou e-mail da equipe." },
     { key: "rare_occupations_grouped", label: "Ocupações raras agrupadas." },
     { key: "minimum_sample_respected", label: "Territórios com amostra menor que 5 marcados como dados insuficientes." },
+    { key: "coverage_territorial_reviewed", label: "Cobertura territorial revisada." },
+    { key: "territorial_risk_critical_justified", label: "Risco territorial crítico justificado institucionalmente." },
     { key: "critical_comments_resolved", label: "Comentários críticos resolvidos." },
     { key: "public_api_checked", label: "API pública conferida, se já publicado." },
     { key: "validated_by_coordination", label: "Coordenação ou admin validou." }
@@ -116,6 +125,7 @@ export async function buildHomologationPackage(supabase: DbClient, snapshotId: s
   const existing = packages[0] ?? null;
   const audit = await buildSnapshotAuditExport(supabase, snapshotId);
   const frozenPayload = freezeSnapshotPayload(snapshot, latestVersion);
+  const territorialGuard = getTerritorialRiskPublicationGuard(snapshot);
   const approvalChecklist = existing ? normalizeHomologationChecklist(existing.approval_checklist) : inferHomologationChecklist(snapshot, comments, audit.riskReport.hasBlockingRisk);
   const packageItem = existing ?? {
     id: "",
@@ -139,6 +149,10 @@ export async function buildHomologationPackage(supabase: DbClient, snapshotId: s
     prepared_at: null,
     signed_by: null,
     signed_at: null,
+    territorial_risk_acknowledged: territorialGuard.critical ? true : false,
+    territorial_risk_justification: snapshot.territorial_risk_override_reason,
+    territorial_risk_acknowledged_by: snapshot.territorial_risk_override_by,
+    territorial_risk_acknowledged_at: snapshot.territorial_risk_override_at,
     rejected_by: null,
     rejected_at: null,
     created_by: null,
@@ -159,11 +173,19 @@ export async function buildHomologationPackage(supabase: DbClient, snapshotId: s
 }
 
 export function freezeSnapshotPayload(snapshot: PublicTransparencySnapshot, version: PublicTransparencySnapshotVersion | null) {
+  const territorialSummary = (snapshot.territory_summary ?? {}) as {
+    territorial_quality_summary?: { methodology_note?: string; status?: string; coverage_percent?: number };
+  };
   return {
     title: snapshot.title,
     public_summary: snapshot.public_summary ?? snapshot.edited_summary ?? "",
     totals: snapshot.totals,
     territory_summary: snapshot.territory_summary,
+    territorial_methodology_note: territorialSummary.territorial_quality_summary?.methodology_note ?? snapshot.methodology_notes,
+    territorial_quality_status: territorialSummary.territorial_quality_summary?.status ?? null,
+    territorial_coverage_percent: territorialSummary.territorial_quality_summary?.coverage_percent ?? null,
+    territorial_risk_override: snapshot.territorial_risk_override,
+    territorial_risk_override_reason: snapshot.territorial_risk_override_reason,
     theme_summary: snapshot.theme_summary,
     word_summary: snapshot.word_summary,
     action_timeline: snapshot.action_timeline,
@@ -193,7 +215,11 @@ export async function createHomologationPackage(supabase: DbClient, snapshotId: 
       audit_export: bundle.markdown,
       frozen_payload: freezeSnapshotPayload(bundle.snapshot, bundle.snapshotVersion),
       created_by: userId,
-      prepared_by: userId
+      prepared_by: userId,
+      territorial_risk_acknowledged: bundle.snapshot.territorial_risk_override,
+      territorial_risk_justification: bundle.snapshot.territorial_risk_override_reason,
+      territorial_risk_acknowledged_by: bundle.snapshot.territorial_risk_override_by,
+      territorial_risk_acknowledged_at: bundle.snapshot.territorial_risk_override_at
     })
     .select("*")
     .single();
@@ -286,11 +312,18 @@ export function evaluateHomologationReadiness(
   const pendingCritical = comments.filter((item) => !item.resolved && ["privacidade", "dados", "metodologia"].includes(item.comment_type)).length;
   const pendingText = comments.filter((item) => !item.resolved && item.comment_type === "texto").length;
   const frozenPayloadEmpty = !packageItem.frozen_payload || JSON.stringify(packageItem.frozen_payload) === "{}";
+  const territorialGuard = getTerritorialRiskPublicationGuard(snapshot);
+  const hasTerritorialJustification = Boolean(
+    packageItem.territorial_risk_acknowledged && packageItem.territorial_risk_justification?.trim()
+  );
 
   if (!["approved", "published"].includes(snapshot.status)) blockers.push("Snapshot precisa estar approved ou published para assinatura.");
   if (pendingCritical > 0) blockers.push("Há comentários críticos pendentes.");
   if (hasBlockingRisk) blockers.push("Há risco bloqueante detectado no pacote.");
   if (!isHomologationChecklistComplete(checklist, snapshot.status)) blockers.push("Checklist multi-etapa incompleto.");
+  if (territorialGuard.critical && !hasTerritorialJustification) {
+    blockers.push("Risco territorial crítico sem justificativa institucional registrada no pacote.");
+  }
   if (frozenPayloadEmpty) blockers.push("Frozen payload ainda não foi gerado.");
   if (["rejected", "archived"].includes(packageItem.status)) blockers.push("Pacote rejeitado ou arquivado não pode ser assinado.");
   if (pendingText > 0) warnings.push("Há comentários pendentes de texto para validação final.");
@@ -315,6 +348,7 @@ function inferHomologationChecklist(
   hasBlockingRisk: boolean
 ) {
   const checklist = normalizeTransparencyChecklist(snapshot.review_checklist);
+  const territorialGuard = getTerritorialRiskPublicationGuard(snapshot);
   const pendingCritical = comments.some((item) => !item.resolved && ["privacidade", "dados", "metodologia"].includes(item.comment_type));
   return {
     content_reviewed: snapshot.status === "approved" || snapshot.status === "published",
@@ -324,6 +358,10 @@ function inferHomologationChecklist(
     no_interviewer_or_team_email: checklist.no_interviewer_name && checklist.no_team_email,
     rare_occupations_grouped: checklist.rare_occupations_grouped,
     minimum_sample_respected: checklist.minimum_sample_respected,
+    coverage_territorial_reviewed: checklist.minimum_sample_respected,
+    territorial_risk_critical_justified: territorialGuard.critical
+      ? Boolean(snapshot.territorial_risk_override && snapshot.territorial_risk_override_reason?.trim())
+      : true,
     critical_comments_resolved: !pendingCritical,
     public_api_checked: snapshot.status === "published",
     validated_by_coordination: checklist.reviewed_by_coordination
@@ -338,6 +376,12 @@ function buildHomologationMarkdownFromData(
   auditExport: string
 ) {
   const checklist = normalizeHomologationChecklist(packageItem.approval_checklist);
+  const territorialSummary = (snapshot.territory_summary ?? {}) as {
+    territorial_quality_summary?: { methodology_note?: string; status?: string; coverage_percent?: number };
+  };
+  const territorialMethodology = territorialSummary.territorial_quality_summary?.methodology_note;
+  const territorialStatus = territorialSummary.territorial_quality_summary?.status;
+  const territorialCoverage = territorialSummary.territorial_quality_summary?.coverage_percent;
   return [
     "# Pacote de Homologação — Transparência Viva SEMEAR",
     "",
@@ -357,6 +401,13 @@ function buildHomologationMarkdownFromData(
     "",
     "## Metodologia",
     packageItem.methodology_note ?? snapshot.methodology_notes ?? "",
+    "",
+    "## Nota metodológica territorial",
+    territorialMethodology ?? "Não registrada no snapshot.",
+    ...(territorialStatus ? [`- status: ${territorialStatus}`] : []),
+    ...(typeof territorialCoverage === "number" ? [`- cobertura territorial: ${territorialCoverage}%`] : []),
+    `- override institucional registrado: ${snapshot.territorial_risk_override ? "sim" : "não"}`,
+    `- justificativa institucional: ${packageItem.territorial_risk_justification ?? snapshot.territorial_risk_override_reason ?? "não registrada"}`,
     "",
     "## Checklist de privacidade",
     ...Object.entries(checklist).map(([key, value]) => `- ${key}: ${value ? "ok" : "pendente"}`),

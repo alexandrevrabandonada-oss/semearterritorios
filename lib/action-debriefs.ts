@@ -8,6 +8,10 @@ import {
   type ListeningRecordForPilot
 } from "@/lib/action-pilot";
 import { getRespondentTerritoryRelationLabel } from "@/lib/listening-records";
+import {
+  buildTerritorialQualityMethodologyNote,
+  calculateRespondentTerritoryQuality
+} from "@/lib/territorial-quality";
 
 export const defaultMethodologyNote =
   "Esta devolutiva reúne percepções registradas durante a ação. Ela não substitui pesquisa estatística nem representa a totalidade da população. Seu objetivo é devolver ao território uma síntese inicial da escuta realizada.";
@@ -86,6 +90,11 @@ export function buildActionDebrief(action: ActionForPilot, records: ListeningRec
     : records.filter((record) => !hasPossibleSensitiveData(record));
   const metrics = getActionPilotMetrics(sourceRecords);
   const occupationSummary = summarizeOccupations(sourceRecords);
+  const territorialMetrics = calculateRespondentTerritoryQuality(
+    records.length,
+    records.filter((record) => Boolean(record.respondent_neighborhood_id)).length
+  );
+  const territorialMethodology = buildTerritorialQualityMethodologyNote(territorialMetrics);
   const bairro = action.neighborhoods?.name ?? "território informado";
   const isFair = action.action_type === "banca_escuta" || action.title.toLowerCase().includes("feira");
   const title = isFair ? "O que ouvimos na feira" : "O que ouvimos nesta ação";
@@ -113,7 +122,10 @@ export function buildActionDebrief(action: ActionForPilot, records: ListeningRec
   }
 
   const publicSummary = [
-    `Nesta ação, foram registradas ${fullMetrics.total} escutas no território ${bairro}.`,
+    territorialMethodology.status === "boa"
+      ? `Na ação realizada em ${bairro}, foram registradas ${fullMetrics.total} escutas.`
+      : `Na ação realizada em ${bairro}, foram registradas ${fullMetrics.total} escutas. Entre as escutas com território de referência preenchido, observam-se os padrões territoriais descritos abaixo.`,
+    "As pessoas escutadas podem se referir a diferentes territórios de referência, que não necessariamente coincidem com o território da ação.",
     `Para esta devolutiva, a síntese considera preferencialmente registros revisados e sem alerta de dado sensível. Até o momento, ${fullMetrics.reviewed} escuta(s) estão revisada(s) e ${fullMetrics.draft} permanecem em rascunho.`,
     `Os temas mais recorrentes foram: ${formatInline(metrics.topThemes.slice(0, 5))}. As palavras que mais apareceram foram: ${formatInline(metrics.topWords.slice(0, 8))}.`,
     occupationSummary.groups.length > 0
@@ -163,7 +175,7 @@ ${formatBullets(unexpected, "- Nenhum ponto inesperado registrado.")}`;
 
 - Ação: ${action.title}
 - Data: ${new Date(`${action.action_date}T00:00:00`).toLocaleDateString("pt-BR")}
-- Bairro/território: ${bairro}
+- Território da ação: ${bairro}
 - Tipo: ${getActionTypeLabel(action.action_type)}
 - Prontidão: ${getActionReadiness(records)}
 
@@ -183,6 +195,12 @@ ${respondentSection ? `${respondentSection}\n` : ""}## Nota metodológica
 
 ${defaultMethodologyNote}
 
+${territorialMethodology.fullText}
+
+Cobertura de território de referência do entrevistado nesta ação: ${territorialMetrics.coveragePercent}% (${territorialMetrics.recordsWithRespondentTerritory}/${territorialMetrics.totalRecords}).
+
+Recomendação operacional: ${territorialMethodology.operationalRecommendation}
+
 ## Privacidade
 
 ${defaultPrivacyNote}
@@ -191,7 +209,7 @@ ${defaultPrivacyNote}
   return {
     title,
     publicSummary,
-    methodologyNote: defaultMethodologyNote,
+    methodologyNote: `${defaultMethodologyNote}\n\n${territorialMethodology.fullText}\n\nCobertura de território de referência do entrevistado: ${territorialMetrics.coveragePercent}% (${territorialMetrics.recordsWithRespondentTerritory}/${territorialMetrics.totalRecords}).`,
     keyFindings,
     nextSteps,
     generatedMarkdown,
@@ -199,7 +217,10 @@ ${defaultPrivacyNote}
     totalsSnapshot: {
       ...fullMetrics,
       readiness: getActionReadiness(records),
-      source_records_for_public_text: sourceRecords.length
+      source_records_for_public_text: sourceRecords.length,
+      territorial_quality_status: territorialMetrics.qualityStatus,
+      territorial_coverage_percent: territorialMetrics.coveragePercent,
+      territorial_without_reference: territorialMetrics.recordsWithoutRespondentTerritory
     },
     warnings
   };
@@ -220,7 +241,7 @@ export function buildPublicDebriefMarkdown(input: {
 
 - Ação: ${input.action.title}
 - Data: ${new Date(`${input.action.action_date}T00:00:00`).toLocaleDateString("pt-BR")}
-- Bairro/território: ${input.action.neighborhoods?.name ?? "Não informado"}
+- Território da ação: ${input.action.neighborhoods?.name ?? "Não informado"}
 - Tipo: ${getActionTypeLabel(input.action.action_type)}
 - Prontidão: ${input.readiness}
 

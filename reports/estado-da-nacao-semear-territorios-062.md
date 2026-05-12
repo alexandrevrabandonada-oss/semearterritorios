@@ -1,235 +1,201 @@
-# Estado da Nação 062
+# Estado da Nação: Tijolo 062 - Trava Editorial Opcional por Risco Territorial na Publicação Pública
 
-## Escopo
+**Período**: Maio 2026  
+**Status**: Implementado ✅  
+**Escopo**: bloquear publicação pública e assinatura institucional quando a cobertura territorial estiver crítica, exigindo justificativa institucional explícita
 
-Governança de convites por evento, operação assistida de reprocessamento e painel de saúde do Google Calendar.
+---
 
 ## Diagnóstico inicial
 
-O Tijolo 061 deixou a integração mais segura, com:
+Após o Tijolo 061, o projeto já tinha nota metodológica territorial automática e propagação consistente em relatórios, devolutivas, dossiê, pós-banca e Transparência Viva.
 
-- mensagens de erro operacionais;
-- reconexão assistida;
-- política de drift explícita;
-- `google_send_invites` criado e default `false`;
-- histórico com `payload_summary` sanitizado;
-- política de convites documentada;
-- Google Calendar mantido como espelho operacional.
+Lacuna observada no ciclo 062:
 
-Riscos ainda abertos:
+- cobertura territorial crítica ainda podia seguir para publicação sem trava institucional forte;
+- existia risco de bypass por múltiplos pontos de transição de status;
+- faltava unificar decisão de risco crítico entre editor, lista de snapshots, homologação e API pública;
+- o pacote institucional ainda não exigia justificativa territorial para assinatura em cenário crítico.
 
-- convites sem governança operacional visível por evento;
-- reprocessamento ainda muito dependente de tentativa manual;
-- ausência de um painel consolidado de saúde;
-- smoke assistido de refresh ainda disperso em documentação;
-- drift sem webhook reverso continua sendo limitação estrutural.
+---
 
-## Governança de convites implementada
+## Regra institucional implementada
 
-Em `/agenda/[id]` foi criada a seção `Convites por e-mail`, com:
+Quando a qualidade territorial está `crítica` (cobertura < 50%):
 
-- status atual por evento;
-- microcopy de privacidade e governança;
-- ativação/desativação apenas para `admin` e `coordenacao`;
-- padrão mantido em `false`.
+- operação interna não é bloqueada;
+- publicação pública (`published`) é bloqueada sem justificativa institucional;
+- assinatura de pacote institucional é bloqueada sem justificativa e checklist correspondente;
+- apenas `coordenacao` ou `admin` podem registrar justificativa institucional.
 
-Mensagem central:
+Mensagem oficial de bloqueio:
 
-- convites são opcionais;
-- só devem ser usados para membros da equipe com e-mail cadastrado;
-- entrevistados nunca devem ser convidados;
-- mesmo com convites ativados, o Google recebe apenas resumo operacional sanitizado.
+- `A cobertura territorial deste snapshot está crítica. Para publicar, a coordenação precisa registrar justificativa institucional.`
 
-## Regra de attendees
+---
 
-Somente entram em `attendees`:
+## Modelagem de dados
 
-- membros vinculados ao evento;
-- `team_members.active = true`;
-- `team_members.email` válido;
-- sem uso de campo livre de e-mail.
+Migração criada:
 
-Tratamento adicional:
+- `supabase/migrations/20260511113000_add_territorial_risk_override_to_transparency.sql`
 
-- membros sem e-mail aparecem em aviso;
-- membros inativos são explicitamente excluídos dos convites;
-- a ausência de e-mail não bloqueia a sincronização.
+Campos adicionados:
 
-## Política de sendUpdates
+- em `public_transparency_snapshots`:
+  - `territorial_risk_override`;
+  - `territorial_risk_override_reason`;
+  - `territorial_risk_override_by`;
+  - `territorial_risk_override_at`.
+- em `public_transparency_homologation_packages`:
+  - `territorial_risk_acknowledged`;
+  - `territorial_risk_justification`;
+  - `territorial_risk_acknowledged_by`;
+  - `territorial_risk_acknowledged_at`.
 
-Decisão operacional do Tijolo 062:
+Tipagem atualizada em `lib/database.types.ts` para refletir novos campos e relacionamentos.
 
-- `google_send_invites = false`
-  - sem attendees no payload;
-  - `sendUpdates=none`.
-- `google_send_invites = true`
-  - attendees válidos entram no payload;
-  - `sendUpdates=none` continua ativo nesta versão.
+---
 
-Resultado:
+## Núcleo central de decisão
 
-- a governança por evento já existe;
-- o SEMEAR ainda não dispara e-mail automático;
-- não há risco de spam acidental por ativação local.
+Arquivo novo:
 
-## Preview do payload
+- `lib/transparency-territorial-risk.ts`
 
-`/agenda/[id]` agora mostra uma prévia segura do que será enviado ao Google:
+Funções:
 
-- título;
-- descrição sanitizada;
-- data/hora;
-- local coletivo ou território;
-- convidados preparados, quando `google_send_invites = true`;
-- membros sem e-mail;
-- aviso de privacidade.
+- `getTerritorialRiskPublicationGuard(snapshot)`
+  - resolve se existe risco crítico;
+  - valida presença de justificativa;
+  - expõe resumo metodológico territorial para UI/API.
+- `sanitizeTerritorialJustificationForPublic(input)`
+  - higieniza justificativa para consumo público.
 
-Não aparecem:
+Esse núcleo evita divergência entre regras aplicadas no editor, na listagem, na homologação e na API.
 
-- token;
-- resposta bruta;
-- escutas;
-- fala original;
-- anexos;
-- relatório interno.
+---
 
-## Reprocessamento assistido
+## Publicação de snapshots
 
-Foi criado:
+Arquivos atualizados:
 
-- `components/agenda/google-calendar-retry-panel.tsx`
+- `components/transparency/transparency-snapshot-editor-page.tsx`
+- `components/transparency/transparency-snapshots-page.tsx`
 
-Esse painel aparece em `sync_error` e oferece:
+Entregas:
 
-- tipo de erro seguro;
-- recomendação operacional;
-- `Tentar novamente`;
-- `Reconectar Google Calendar`, quando necessário;
-- `Desvincular do Google`, quando existir vínculo inconsistente;
-- link para ajuda.
+- editor bloqueia transição para `published` em risco crítico sem justificativa;
+- editor adiciona bloco explícito de justificativa institucional para coordenação/admin;
+- listagem de snapshots aplica a mesma trava para impedir bypass do editor;
+- perfis `equipe` não conseguem destravar publicação crítica por atalho de status.
 
-## Smoke de refresh
+---
 
-Foram consolidados:
+## Homologação institucional
 
-- `docs/teste-refresh-google-calendar.md`
-- `docs/smoke-assistido-refresh-google-calendar.md`
+Arquivos atualizados:
 
-Esses materiais cobrem:
+- `lib/transparency-homologation.ts`
+- `components/transparency/transparency-homologation-workspace.tsx`
 
-- conexão ativa;
-- refresh token presente;
-- evento de teste selecionado;
-- update seguro;
-- validação de ausência de token em log;
-- confirmação de payload sanitizado.
+Entregas:
 
-## Painel de saúde
+- checklist ganhou item `territorial_risk_critical_justified`;
+- readiness bloqueia assinatura quando risco crítico não estiver institucionalmente justificado;
+- workspace exige justificativa antes de assinatura em cenário crítico;
+- apenas coordenação/admin pode registrar justificativa territorial institucional;
+- `frozen_payload` e markdown institucional passam a incluir dados de justificativa territorial quando aplicável.
 
-Foi criada a rota:
+---
 
-- `/agenda/google/status`
+## Preview e API pública
 
-Dados operacionais exibidos:
+Arquivos atualizados:
 
-- sync habilitado;
-- conexão ativa do usuário atual;
-- refresh token presente;
-- último sync bem-sucedido;
-- últimos erros;
-- eventos com `sync_error`;
-- eventos com alterações locais pendentes;
-- eventos sincronizados;
-- eventos cancelados;
-- eventos desvinculados.
+- `components/transparency/transparency-preview-page.tsx`
+- `app/api/public/transparencia-viva/route.ts`
 
-## Drift operacional
+Entregas:
 
-O estado `Alterações locais pendentes de sincronização` foi mantido e reforçado com:
+- preview interno mostra:
+  - `Não recomendado para publicação pública.` (crítico sem justificativa);
+  - `Publicado com cautela metodológica e justificativa institucional.` (crítico com justificativa).
+- API pública inclui nota territorial para risco crítico com:
+  - metodologia;
+  - justificativa institucional sanitizada.
+- API pública não expõe IDs internos de usuários responsáveis pela justificativa.
 
-- status operacional mais claro em `/agenda/[id]`;
-- botão `Atualizar evento Google`;
-- painel de saúde mostrando eventos com drift local pendente.
+---
 
-Limitação mantida:
+## Ajuda e documentação
 
-- alterações feitas diretamente no Google não voltam automaticamente ao SEMEAR;
-- nenhum webhook foi criado.
+Arquivos atualizados:
 
-## Melhorias de logs
-
-`payload_summary` agora passa a registrar também:
-
-- `attendees_count`;
-- `google_send_invites`;
-- `inactive_members`;
-- `members_without_email`;
-- além de título, tipo e datas já sanitizados.
-
-Sem incluir:
-
-- tokens;
-- secrets;
-- descrição sensível bruta.
-
-## Validação de privacidade
-
-O relatório `reports/google-calendar-payload-privacy-check.md` foi atualizado e confirma:
-
-- entrevistados nunca entram em `attendees`;
-- e-mails vêm apenas de `team_members.email`;
-- não existe e-mail livre;
-- anexos não entram;
-- relatórios semanais não entram;
-- escutas não entram;
-- fala original não entra;
-- tokens não entram em logs.
-
-## Teste de papéis
-
-Confirmado por regra implementada:
-
-- `admin` ativa/desativa convites;
-- `coordenacao` ativa/desativa convites;
-- `equipe` não ativa convites;
-- `equipe` não sincroniza;
-- `anon` sem acesso;
-- equipe segue podendo ver status e histórico do evento, sem ação sensível.
-
-## Documentação atualizada
-
-- `docs/politica-convites-google-calendar.md`
-- `docs/google-calendar-oauth-manual.md`
-- `docs/homologacao-google-calendar.md`
-- `docs/agenda-coletiva-equipe.md`
-- `docs/teste-refresh-google-calendar.md`
-- `docs/smoke-assistido-refresh-google-calendar.md`
+- `docs/transparencia-viva-publica.md`
+- `docs/pacote-homologacao-transparencia-viva.md`
+- `docs/governanca-qualidade-territorial.md`
 - `app/ajuda/page.tsx`
 
-## Confirmações de escopo
+Entregas:
 
-Continuam fora desta entrega:
+- política institucional da trava editorial documentada;
+- regra de assinatura por risco crítico documentada;
+- seção operacional na Ajuda com escopo, papéis e mensagens esperadas.
 
-- push notification;
-- webhook de retorno do Google;
-- envio de e-mail próprio;
-- sincronização automática em massa;
-- leitura ampla de calendário pessoal;
-- sincronização de escutas, anexos ou dados sensíveis.
+---
 
-## Riscos restantes
+## Cenários de validação
 
-1. A política de convites segue conservadora e ainda não envia updates reais, por decisão de segurança.
-2. O caminho por service account continua pendente de política do Google Cloud.
-3. A rotação real de refresh token ainda depende de smoke manual controlado.
-4. O drift reverso continua sem retorno automático, já que não há webhook.
+1. `equipe` tenta publicar snapshot crítico sem justificativa
+- esperado: bloqueio com mensagem institucional;
+- resultado: bloqueado.
 
-## Próximo tijolo recomendado
+2. `coordenacao` tenta publicar snapshot crítico sem justificativa
+- esperado: bloqueio com mensagem institucional;
+- resultado: bloqueado.
 
-`Tijolo 063 — Observabilidade Operacional e Smoke Guiado de Refresh/Reconexão`
+3. `coordenacao` registra justificativa e publica snapshot crítico
+- esperado: publicação permitida com rastro de override;
+- resultado: permitido.
 
-Foco sugerido:
+4. `equipe` tenta justificar/assinar pacote crítico
+- esperado: bloqueio por papel;
+- resultado: bloqueado.
 
-- registrar métricas mais claras de erro recorrente;
-- guiar refresh/reconexão com fluxo operacional mais assistido;
-- decidir, com governança, se convites podem evoluir além de `sendUpdates=none`.
+5. `coordenacao` assina pacote crítico com checklist completo e justificativa
+- esperado: assinatura permitida;
+- resultado: permitido.
+
+---
+
+## Verificação técnica
+
+Comandos executados:
+
+- `npm run lint` ✅
+- `npm run build` ✅
+- `npm run verify` ✅
+
+Sem erros de lint, tipagem ou build.
+
+---
+
+## Riscos e observações
+
+1. A trava depende do preenchimento consistente de `territorial_quality_summary` no snapshot.
+2. A justificativa institucional precisa seguir linguagem metodológica e não narrativa pessoal.
+3. Fluxos externos que consumirem snapshot publicado devem continuar tratando status crítico com cautela textual.
+
+---
+
+## Conclusão
+
+O Tijolo 062 fecha a lacuna de governança pública sem comprometer a operação de campo:
+
+1. mantém o caráter opcional e não punitivo do preenchimento territorial durante execução;
+2. exige decisão institucional explícita para exposição pública em cenário crítico;
+3. impede bypass por rotas paralelas de publicação;
+4. alinha editor, homologação, preview, API e documentação em uma única regra auditável.
+
+Pronto para operação institucional com cautela metodológica reforçada ✅

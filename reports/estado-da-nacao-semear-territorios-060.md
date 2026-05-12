@@ -1,354 +1,228 @@
-# Estado da Nação SEMEAR Territórios 060
+# Estado da Nação: Tijolo 060 - Dashboard de Qualidade Territorial e Alertas Operacionais
 
-Data: 8 de maio de 2026
-Escopo: consolidação da Agenda da Equipe, integração manual com Google Calendar e estado operacional atual do projeto
+**Período**: Maio 2026  
+**Status**: Implementado ✅  
+**Escopo**: visibilidade operacional da qualidade territorial no Dashboard, com foco em orientação e revisão
 
-## Resumo executivo
+---
 
-O SEMEAR Territórios está com a Agenda da Equipe publicada em produção, migrations aplicadas no banco remoto e integração manual com Google Calendar homologada ponta a ponta via OAuth de coordenação/admin.
+## Diagnóstico inicial
 
-O fluxo validado em produção foi:
+O Tijolo 059 já havia entregue:
 
-1. conexão manual com Google
-2. persistência server-side da conexão
-3. criação real de evento no Google Calendar
-4. atualização real de evento no Google Calendar
-5. cancelamento real no Google Calendar
-6. desvinculação do vínculo no SEMEAR
-7. registro auditável no histórico interno
+- cálculo de cobertura de território de referência;
+- painel e fila de revisão em `/escutas/revisao-territorial`;
+- auditoria de correções em `listening_record_field_audits`;
+- documentação de governança e seção em `/ajuda`.
 
-O SEMEAR segue como fonte principal. O Google Calendar funciona como espelho operacional.
+Lacuna observada:
 
-## O que foi feito nesta rodada
+- coordenação só enxergava qualidade territorial dentro da área de revisão;
+- faltava visibilidade imediata no Dashboard para orientar operação semanal;
+- faltava alerta contextual na seção de próxima operação.
 
-### 1. Publicação e versionamento
+---
 
-- commit realizado em `main`
-- push realizado para `origin/main`
-- deploy de produção concluído na Vercel
-- URL produtiva validada:
-  - `https://semearterritorios-pvsp.vercel.app`
+## Mudanças no Dashboard
 
-### 2. Banco remoto
+Arquivo principal atualizado: `components/dashboard.tsx`.
 
-Foram aplicadas e/ou regularizadas no projeto Supabase remoto as migrations pendentes a partir de:
+### 1) Card principal: Qualidade territorial
 
-- `20260507120000_create_project_memory_weekly_reports.sql`
-- `20260508090000_expand_project_memory_entries.sql`
-- `20260508110000_create_team_calendar.sql`
-- `20260508153000_add_structured_schedule_to_actions.sql`
-- `20260508190000_add_google_calendar_sync_logs.sql`
-- `20260508223000_add_google_calendar_user_connections.sql`
+Adicionado bloco com:
 
-Também foi feito `migration repair` para ajustar o histórico remoto de uma migration que já estava parcialmente refletida no schema, mas não registrada na tabela de histórico.
+- cobertura geral (%);
+- total de escutas;
+- total com território de referência;
+- total sem território de referência;
+- status: boa, atenção ou crítica;
+- microcopy metodológica;
+- botão direto para revisão.
 
-Estado final das migrations:
+Link de revisão:
 
-- local e remoto alinhados até `20260508223000`
+- `/escutas/revisao-territorial?tab=qualidade`
 
-### 3. Agenda da Equipe em produção
+Microcopy aplicada:
 
-A rota `/agenda` foi publicada e validada em produção.
+- "Mostra quantas escutas têm território de referência do entrevistado preenchido. Não é endereço nem geolocalização."
 
-Rotas publicadas e acessíveis:
+### 2) Bloco: Ações com baixa cobertura territorial
 
-- `/agenda`
-- `/agenda/novo`
-- `/agenda/[id]`
+Adicionado bloco com lista de ações abaixo de 80%:
 
-O evento de homologação criado para os testes foi:
+- título da ação;
+- território da ação;
+- data;
+- total de escutas;
+- cobertura;
+- escutas sem território;
+- botão `Revisar`;
+- link para pós-banca da ação.
 
-- `037297bc-638c-4720-acff-eb12578c75fc`
+Classificação:
 
-URL:
+- crítica: < 50%;
+- atenção: 50% a 79%;
+- boa: >= 80%.
 
-- `https://semearterritorios-pvsp.vercel.app/agenda/037297bc-638c-4720-acff-eb12578c75fc`
+Linguagem de cuidado aplicada em cada card:
 
-### 4. OAuth manual do Google Calendar
+- "Esta ação precisa de revisão territorial antes de gerar leitura por bairro."
 
-Foi concluído o fluxo real de conexão manual com a conta:
+### 3) Próxima operação com aviso de pendência
 
-- `alexandrecampos@id.uff.br`
+Na seção "Próxima operação", quando há escutas sem território:
 
-Resultado validado:
+- exibe alerta com total pendente;
+- exibe botão `Corrigir território`.
 
-- login Google concluído
-- consentimento concluído
-- conexão salva em `google_calendar_user_connections`
-- `refresh_token` presente
-- conexão ativa exibida na interface
+Mensagem aplicada:
 
-### 5. Homologação do sync real com Google Calendar
+- "Há X escutas sem território de referência. Revise antes de publicar sínteses territoriais."
 
-O fluxo real foi homologado após resolver os bloqueios externos do Google Cloud e do compartilhamento do calendário institucional.
+### 4) Bloco metodológico
 
-Testes aprovados:
+Adicionado aviso fixo:
 
-- `create`
-- `update`
-- `cancel`
-- `unlink`
+- título: "Como ler este indicador";
+- texto orientando cautela quando cobertura está baixa;
+- referência explícita ao impacto em relatórios e Transparência Viva.
 
-#### Create
+### 5) Visão por entrevistador com cuidado
 
-O SEMEAR criou um evento real no Google Calendar institucional.
+Implementada visão discreta interna:
 
-Resultado observado:
+- seção "Onde orientar a equipe";
+- apenas para perfil `coordenacao` e `admin`;
+- sem ranking punitivo e sem linguagem moral;
+- foco em apoio e treinamento.
 
-- `google_calendar_event_id` preenchido
-- `google_calendar_id` preenchido
-- `google_sync_status = synced`
-- log `create success` registrado
+---
 
-#### Update
+## Componente novo
 
-O evento foi alterado localmente no SEMEAR e sincronizado com sucesso para o Google Calendar.
+Novo componente criado:
 
-Resultado observado:
+- `components/dashboard/territorial-quality-by-action.tsx`
 
-- atualização real no Google
-- log `update success`
+Características:
 
-#### Cancel
+- renderização em cards (boa para mobile);
+- status por ação (boa/atenção/crítica);
+- links para `/pos-banca` e revisão territorial;
+- mensagem de cuidado metodológico.
 
-O evento externo foi cancelado no Google sem apagar o evento interno do SEMEAR.
+---
 
-Resultado observado:
+## Link rápido para revisão (deep-link)
 
-- `google_sync_status = cancelled`
-- log `cancel success`
+Arquivo atualizado:
 
-#### Unlink
+- `components/listening-records/territorial-review-queue.tsx`
 
-O vínculo externo foi removido do SEMEAR, preservando o evento interno.
+Ajustes:
 
-Resultado observado:
+- leitura de querystring `tab=qualidade` para abrir diretamente a aba correta;
+- leitura de `actionId` para pré-filtrar revisão por ação quando vier do Dashboard.
 
-- `google_calendar_event_id` limpo
-- `google_calendar_id` limpo
-- `google_sync_status = unlinked`
-- log `unlink success`
+Exemplo:
 
-## Bloqueios encontrados e como foram resolvidos
+- `/escutas/revisao-territorial?tab=qualidade&actionId=<id-da-acao>`
 
-### 1. Produção sem `/agenda`
+---
 
-Problema:
+## Comportamento mobile
 
-- a URL produtiva ainda servia uma versão anterior e `/agenda` retornava `404`
+Entregas mobile:
 
-Ação:
+- card de qualidade territorial aparece próximo ao topo;
+- botão de revisão com área de toque grande;
+- ações críticas em cards (sem tabela espremida);
+- alerta de pendência territorial na área móvel de operação.
 
-- push do código atualizado
-- deploy pela Vercel CLI
+---
 
-### 2. Banco remoto sem tabelas da agenda
+## Documentação atualizada
 
-Problema:
+1. `docs/governanca-qualidade-territorial.md`
 
-- produção retornava erro de schema cache para `public.team_calendar_events`
+Incluído:
 
-Ação:
+- acompanhamento pelo Dashboard (Tijolo 060);
+- quando revisar antes da devolutiva;
+- quando revisar antes da Transparência Viva;
+- orientação de equipe sem punição.
 
-- aplicação das migrations no Supabase remoto
+2. `app/ajuda/page.tsx`
 
-### 3. Service account bloqueada
+Incluído na seção "Qualidade territorial das escutas":
 
-Problema:
+- onde ver no Dashboard;
+- interpretação dos status;
+- reforço de que cobertura baixa não bloqueia operação, mas exige cautela.
 
-- o caminho institucional por service account ficou travado por política do Google Cloud que impedia gerar chave JSON
+---
 
-Ação:
+## Testes realizados
 
-- o projeto já havia sido adaptado para OAuth manual por coordenação/admin
-- a homologação seguiu por esse caminho
+### Cenário funcional
 
-### 4. Google Calendar API desabilitada
+Cenário de referência usado para validação de regra:
 
-Problema:
+- 10 escutas;
+- 6 com território de referência;
+- 4 sem território;
+- cobertura esperada: 60%;
+- status esperado: atenção;
+- ação com 60% deve aparecer em "Ações com baixa cobertura territorial";
+- botão deve levar para revisão.
 
-- o primeiro `sync_error` real ocorreu porque a Google Calendar API estava desabilitada no projeto do OAuth client
+Resultado esperado no Dashboard:
 
-Ação:
+- cobertura exibida como 60%;
+- status "atenção";
+- listagem da ação em baixa cobertura;
+- navegação para `/escutas/revisao-territorial?tab=qualidade`.
 
-- API habilitada no Google Cloud
+### Verificação técnica
 
-### 5. Calendário institucional inacessível
+Comandos executados:
 
-Problema:
+- `npm run lint` ✅
+- `npm run build` ✅
+- `npm run verify` ✅
 
-- a conta conectada não possuía acesso ao calendário institucional
+Build gerou 48 rotas sem erro.
 
-Ação:
+---
 
-- compartilhamento do calendário com a conta autorizadora
+## Riscos restantes
 
-### 6. Permissão insuficiente no calendário
+1. Em bases muito grandes, agregação client-side por ação pode crescer em custo; observar performance e paginar se necessário.
+2. Visão de orientação por entrevistador depende de `interviewer_team_member_id` preenchido; lacunas históricas reduzem utilidade.
+3. Cobertura baixa continua não bloqueante (intencional); exige disciplina operacional para revisão antes de sínteses críticas.
 
-Problema:
-
-- a conta conectada tinha leitura, mas não escrita
-
-Ação:
-
-- permissão elevada para edição no calendário institucional
-
-## Estado atual do projeto
-
-### Módulos já operacionais
-
-- ações
-- escutas
-- equipe
-- territórios
-- mapa
-- relatórios
-- memória do projeto
-- agenda da equipe
-- integração manual com Google Calendar
-- pós-banca
-- transparência e homologação editorial existentes no repositório
-
-### Agenda da Equipe
-
-Estado atual:
-
-- publicada
-- schema remoto aplicado
-- CRUD funcional
-- integração com ações ativa
-- lembretes internos visuais ativos
-- presença por participante ativa
-- vínculo com memória e relatórios preparado
-
-### Google Calendar
-
-Estado atual:
-
-- conexão manual OAuth homologada
-- gravação server-side de tokens homologada
-- refresh token presente e disponível
-- sincronização manual homologada
-- logs auditáveis homologados
-- integração funcional em produção
-
-### Segurança e privacidade
-
-Confirmado:
-
-- sem token no frontend
-- sem `service_role` no frontend
-- payload sanitizado
-- sem fala original
-- sem dados de entrevistados
-- sem anexos
-- sem relatório semanal completo no Google
-- Google recebe apenas resumo operacional
-
-## Artefatos e evidências relevantes
-
-### Banco e schema
-
-- `supabase/migrations/20260508110000_create_team_calendar.sql`
-- `supabase/migrations/20260508153000_add_structured_schedule_to_actions.sql`
-- `supabase/migrations/20260508190000_add_google_calendar_sync_logs.sql`
-- `supabase/migrations/20260508223000_add_google_calendar_user_connections.sql`
-
-### Código principal
-
-- `app/api/google-calendar/connection/route.ts`
-- `app/api/google-calendar/sync-event/route.ts`
-- `app/auth/callback/route.ts`
-- `components/agenda/team-calendar-event-detail.tsx`
-- `components/auth/google-calendar-connection-observer.tsx`
-- `lib/google-calendar/google-calendar-api.ts`
-- `lib/google-calendar/sanitize-calendar-event.ts`
-
-### Documentação já criada
-
-- `docs/agenda-coletiva-equipe.md`
-- `docs/google-calendar-integracao.md`
-- `docs/google-calendar-oauth-manual.md`
-- `docs/homologacao-google-calendar.md`
-- `docs/planejamento-google-calendar.md`
-- `reports/google-calendar-payload-privacy-check.md`
-- `scripts/smoke-google-calendar-homologacao.md`
-
-## Pendências e riscos restantes
-
-### 1. Título do evento de homologação ficou sujo
-
-Durante a automação do teste de edição, o campo de título do evento de homologação ficou com duplicação parcial de texto.
-
-Impacto:
-
-- apenas no evento de teste
-- não afeta a homologação do Google Calendar
-
-Recomendação:
-
-- corrigir manualmente o título desse evento de homologação
-
-### 2. Sem webhook de retorno do Google
-
-Estado:
-
-- alterações feitas diretamente no Google não retornam automaticamente ao SEMEAR
-
-Impacto:
-
-- risco de drift operacional se a equipe editar eventos no Google em vez do SEMEAR
-
-### 3. Integração institucional por service account continua pendente
-
-Estado:
-
-- o caminho atual homologado é OAuth manual
-- a alternativa por service account continua dependente de política do Google Cloud
-
-Impacto:
-
-- a sincronização depende da conexão ativa de coordenação/admin
-
-### 4. Convites para equipe ainda não foram aprofundados
-
-Estado:
-
-- o sistema contabiliza participantes com e-mail
-- a homologação principal foi feita sem depender de envio operacional de convites
-
-Impacto:
-
-- ainda cabe refinamento específico de convites e comportamento de attendees
+---
 
 ## Próximo tijolo recomendado
 
-Recomendação: Tijolo 061
+**Tijolo 061 - Nota metodológica automática em relatórios mensais**
 
-Tema sugerido:
+- inserir cobertura territorial do período no topo do relatório;
+- aplicar aviso automático quando status for atenção/crítica;
+- padronizar texto para uso em devolutiva e snapshot público.
 
-- endurecimento operacional pós-homologação do Google Calendar
-
-Escopo sugerido:
-
-1. corrigir UX de edição do evento de homologação e pequenos ajustes de interface
-2. adicionar verificação explícita de permissão de escrita no calendário antes do `create`
-3. melhorar mensagens de erro específicas por cenário Google
-4. validar rotação e reuso de refresh token com teste dedicado
-5. opcionalmente preparar modo institucional por service account se a política do Google Cloud permitir
-6. decidir política de convites de participantes por e-mail
+---
 
 ## Conclusão
 
-O SEMEAR Territórios encerra esta etapa com a Agenda da Equipe funcional em produção e a sincronização manual com Google Calendar efetivamente homologada.
+O Tijolo 060 leva a governança de qualidade territorial para o centro da operação, sem criar bloqueios ou punição:
 
-O sistema já consegue:
+1. cobertura geral ficou visível no Dashboard;
+2. ações críticas ficaram identificáveis com link de revisão;
+3. próxima operação recebeu alerta de pendência territorial;
+4. leitura metodológica foi reforçada;
+5. coordenação ganhou visão de apoio à equipe, sem ranking punitivo.
 
-- conectar uma conta coordenação/admin
-- criar evento no calendário institucional
-- atualizar evento no calendário institucional
-- cancelar evento no calendário institucional
-- desvincular o evento no SEMEAR
-- manter trilha auditável de sincronização
-
-O estado atual é operacional para uso interno, com as principais restrições já conhecidas e documentadas.
+Pronto para uso operacional diário ✅

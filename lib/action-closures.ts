@@ -1,6 +1,7 @@
 import { getActionPilotMetrics, getActionReadiness, type ActionForPilot, type ListeningRecordForPilot } from "@/lib/action-pilot";
 import { getActionTypeLabel } from "@/lib/actions";
 import type { ActionClosure, ActionDebrief, ClosureStatus } from "@/lib/database.types";
+import { buildTerritorialQualityMethodologyNote, calculateRespondentTerritoryQuality } from "@/lib/territorial-quality";
 
 export const closureStatusLabels: Record<ClosureStatus, string> = {
   open: "Aberto",
@@ -60,10 +61,16 @@ export function buildClosureMarkdown(input: {
   records: ListeningRecordForPilot[];
   debrief: ActionDebrief | null;
   closure: ActionClosure | null;
+  territorialAuditCount?: number;
 }) {
   const metrics = getActionPilotMetrics(input.records);
   const checklist = parseClosureChecklist(input.closure?.documentation_checklist);
   const reviewedPercent = metrics.total > 0 ? Math.round((metrics.reviewed / metrics.total) * 100) : 0;
+  const territorialMetrics = calculateRespondentTerritoryQuality(
+    input.records.length,
+    input.records.filter((record) => Boolean(record.respondent_neighborhood_id)).length
+  );
+  const territorialMethodology = buildTerritorialQualityMethodologyNote(territorialMetrics);
 
   return `# Dossiê da ação
 
@@ -83,7 +90,21 @@ export function buildClosureMarkdown(input: {
 - Percentual revisado: ${reviewedPercent}%
 - Possíveis dados sensíveis: ${metrics.possibleSensitive}
 - Pendências de qualidade: ${metrics.pending}
+- Cobertura de território de referência do entrevistado: ${territorialMetrics.coveragePercent}% (${territorialMetrics.recordsWithRespondentTerritory}/${territorialMetrics.totalRecords})
+- Escutas sem território de referência do entrevistado: ${territorialMetrics.recordsWithoutRespondentTerritory}
+- Status metodológico territorial: ${territorialMethodology.status}
 - Prontidão: ${getActionReadiness(input.records, Boolean(input.closure?.coordination_sufficiency))}
+
+## Nota metodológica territorial
+
+${territorialMethodology.fullText}
+
+Recomendação operacional: ${territorialMethodology.operationalRecommendation}
+
+## Auditoria de correções territoriais
+
+- Correções registradas em listening_record_field_audits (respondent_neighborhood_id): ${input.territorialAuditCount ?? 0}
+- Revisão territorial recomendada antes de publicação: ${territorialMethodology.status === "boa" ? "não" : "sim"}
 
 ## Checklist documental
 

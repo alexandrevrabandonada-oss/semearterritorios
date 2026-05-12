@@ -117,7 +117,8 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
     setAiError(null);
     try {
       const recordsData = report.records.map(r => ({
-        bairro: r.neighborhoods?.name ?? "Sem bairro",
+        territorio_acao: r.neighborhoods?.name ?? "Território da ação não informado",
+        territorio_referencia_entrevistado: r.respondent_neighborhoods?.name ?? "Não informado",
         acao: r.actions?.title ?? "Sem ação",
         origem: getSourceTypeLabel(r.source_type),
         ocupacao: r.respondent_occupation ?? "não informado",
@@ -129,7 +130,7 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
       const actionsSummary = report.actions.map(a => ({
         titulo: a.title,
         tipo: getActionTypeLabel(a.action_type),
-        bairro: a.neighborhoods?.name ?? "Sem bairro"
+        territorio_acao: a.neighborhoods?.name ?? "Território da ação não informado"
       }));
 
       const res = await fetch("/api/gerar-sintese", {
@@ -266,9 +267,55 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
       <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard icon={<ClipboardList className="h-5 w-5" />} label="Ações" value={report.totalActions} />
         <MetricCard icon={<MessageSquareText className="h-5 w-5" />} label="Escutas" value={report.totalRecords} />
-        <MetricCard icon={<MapPinned className="h-5 w-5" />} label="Bairros" value={report.involvedNeighborhoods.length} />
+        <MetricCard icon={<MapPinned className="h-5 w-5" />} label="Bairros onde houve ação" value={report.operationNeighborhoods.length} />
         <MetricCard icon={<Tag className="h-5 w-5" />} label="Temas" value={report.topThemes.length} />
         <MetricCard icon={<Layers3 className="h-5 w-5" />} label="Pendências" value={report.pendingReviews.length} />
+      </div>
+
+      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+        <Panel title="Operação territorial" icon={<MapPinned className="h-5 w-5" />}>
+          <p className="text-sm leading-6 text-stone-700">Onde fizemos ações e volume coletado por território da ação.</p>
+          <div className="mt-3 space-y-2">
+            {report.actionTerritoryCounts.length > 0 ? report.actionTerritoryCounts.map((item) => (
+              <p className="rounded-xl bg-semear-offwhite px-3 py-2 text-sm text-stone-700" key={item.name}>
+                <strong className="text-semear-green">{item.name}</strong>: {item.count} ação(ões)
+              </p>
+            )) : <PedagogicEmpty text="Nenhum território da ação informado no mês." />}
+          </div>
+        </Panel>
+
+        <Panel title="Escuta territorial" icon={<MessageSquareText className="h-5 w-5" />}>
+          <p className="text-sm leading-6 text-stone-700">De onde vêm/as quais territórios se referem os entrevistados.</p>
+          <div className="mt-3 space-y-2">
+            {report.respondentTerritoryCounts.length > 0 ? report.respondentTerritoryCounts.map((item) => (
+              <p className="rounded-xl bg-semear-offwhite px-3 py-2 text-sm text-stone-700" key={item.name}>
+                <strong className="text-semear-green">{item.name}</strong>: {item.count} escuta(s)
+              </p>
+            )) : <PedagogicEmpty text="Nenhum território de referência informado no mês." />}
+            <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              Escutas sem território de referência: {report.respondentWithoutNeighborhood}
+            </p>
+          </div>
+        </Panel>
+      </div>
+
+      <div className="mt-5">
+      <Panel title="Nota metodológica territorial" icon={<AlertCircle className="h-5 w-5" />}>
+        <div className={`rounded-2xl border p-4 text-sm leading-6 ${report.territorialMethodologyNote.status === "boa" ? "border-green-200 bg-green-50 text-green-900" : report.territorialMethodologyNote.status === "atenção" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-red-200 bg-red-50 text-red-900"}`}>
+          <p><strong>Status:</strong> {report.territorialMethodologyNote.status}</p>
+          <p><strong>Cobertura territorial:</strong> {report.territorialQuality.coveragePercent}%</p>
+          <p><strong>Total de escutas no período:</strong> {report.territorialQuality.totalRecords}</p>
+          <p><strong>Escutas com território de referência:</strong> {report.territorialQuality.recordsWithRespondentTerritory}</p>
+          <p><strong>Escutas sem território de referência:</strong> {report.territorialQuality.recordsWithoutRespondentTerritory}</p>
+          <p className="mt-2">{report.territorialMethodologyNote.fullText}</p>
+          <p className="mt-2"><strong>Recomendação operacional:</strong> {report.territorialMethodologyNote.operationalRecommendation}</p>
+          {(report.territorialMethodologyNote.status === "atenção" || report.territorialMethodologyNote.status === "crítica") ? (
+            <div className="mt-3 rounded-xl border border-amber-300 bg-white px-3 py-2 text-amber-950">
+              Sugestão: revisar escutas sem território de referência antes de publicar síntese territorial.
+            </div>
+          ) : null}
+        </div>
+      </Panel>
       </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
@@ -284,7 +331,7 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
           <Panel title="Assistente de Síntese (IA)" icon={<Bot className="h-5 w-5" />}>
             <div className="space-y-4">
               <p className="text-sm leading-6 text-stone-600">
-                Gere uma sugestão de texto contendo resumo do mês, temas recorrentes, frases fortes e padrões por bairro cruzando as falas e ações do mês. Nomes e identificadores não são enviados.
+                Gere uma sugestão de texto contendo resumo do mês, temas recorrentes e padrões separados entre território da ação e território de referência do entrevistado. Nomes e identificadores não são enviados.
                 Esta sugestão não é relatório oficial; use apenas como apoio exploratório e revise antes de qualquer uso.
               </p>
               {!aiSuggestion && !generatingAi ? (
@@ -373,7 +420,7 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
                   <div className="flex flex-wrap gap-2 text-xs font-semibold text-stone-500">
                     <span>{formatDate(action.action_date)}</span>
                     <span>{getActionTypeLabel(action.action_type)}</span>
-                    <span>{action.neighborhoods?.name ?? "Sem bairro"}</span>
+                    <span>{action.neighborhoods?.name ?? "Território da ação não informado"}</span>
                   </div>
                   <p className="mt-2 text-sm font-semibold text-semear-green">{action.title}</p>
                   <ActionMonthlyStatus
@@ -395,7 +442,8 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
                 <Link className="block rounded-2xl border border-semear-gray bg-white p-4 transition hover:border-semear-green/30" href={`/escutas/${record.id}`} key={record.id}>
                   <div className="flex flex-wrap gap-2 text-xs font-semibold text-stone-500">
                     <span>{formatDate(record.date)}</span>
-                    <span>{record.neighborhoods?.name ?? "Sem bairro"}</span>
+                    <span>ação em {record.neighborhoods?.name ?? "Território da ação não informado"}</span>
+                    <span>referência {record.respondent_neighborhoods?.name ?? "Não informado"}</span>
                     <span>{getReviewStatusLabel(record.review_status)}</span>
                   </div>
                   <p className="mt-2 text-sm font-semibold text-semear-green">{record.free_speech_text}</p>
@@ -407,8 +455,12 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
       </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-2">
-        <Panel title="Bairros envolvidos" icon={<MapPinned className="h-5 w-5" />}>
-          {report.involvedNeighborhoods.length > 0 ? <TagList items={report.involvedNeighborhoods} /> : <PedagogicEmpty text="Nenhum bairro informado nas ações ou escutas do mês." />}
+        <Panel title="Bairros onde houve ação" icon={<MapPinned className="h-5 w-5" />}>
+          {report.operationNeighborhoods.length > 0 ? <TagList items={report.operationNeighborhoods} /> : <PedagogicEmpty text="Nenhum território da ação informado no mês." />}
+        </Panel>
+
+        <Panel title="Bairros de referência dos entrevistados" icon={<MapPinned className="h-5 w-5" />}>
+          {report.respondentNeighborhoods.length > 0 ? <TagList items={report.respondentNeighborhoods} /> : <PedagogicEmpty text="Nenhum território de referência informado no mês." />}
         </Panel>
 
         <Panel title="Escutas do mês para exportação" icon={<MessageSquareText className="h-5 w-5" />}>
@@ -418,7 +470,8 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
                 <div className="rounded-2xl bg-semear-offwhite p-4" key={record.id}>
                   <div className="flex flex-wrap gap-2 text-xs font-semibold text-stone-500">
                     <span>{formatDate(record.date)}</span>
-                    <span>{record.neighborhoods?.name ?? "Sem bairro"}</span>
+                    <span>ação em {record.neighborhoods?.name ?? "Território da ação não informado"}</span>
+                    <span>referência {record.respondent_neighborhoods?.name ?? "Não informado"}</span>
                     <span>{getSourceTypeLabel(record.source_type)}</span>
                   </div>
                   <p className="mt-2 text-sm leading-6 text-semear-green">{record.team_summary ?? record.free_speech_text}</p>

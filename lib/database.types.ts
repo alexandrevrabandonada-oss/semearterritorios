@@ -313,6 +313,10 @@ export type PublicTransparencySnapshot = TimestampedRow &
     approved_by: string | null;
     approved_at: string | null;
     published_at: string | null;
+    territorial_risk_override: boolean;
+    territorial_risk_override_reason: string | null;
+    territorial_risk_override_by: string | null;
+    territorial_risk_override_at: string | null;
     last_reviewed_by: string | null;
     last_reviewed_at: string | null;
     last_edited_by: string | null;
@@ -375,6 +379,10 @@ export type PublicTransparencyHomologationPackage = TimestampedRow &
     prepared_at: string | null;
     signed_by: string | null;
     signed_at: string | null;
+    territorial_risk_acknowledged: boolean;
+    territorial_risk_justification: string | null;
+    territorial_risk_acknowledged_by: string | null;
+    territorial_risk_acknowledged_at: string | null;
     rejected_by: string | null;
     rejected_at: string | null;
   };
@@ -1136,6 +1144,12 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "public_transparency_snapshots_territorial_risk_override_by_fkey";
+            columns: ["territorial_risk_override_by"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "public_transparency_snapshots_last_reviewed_by_fkey";
             columns: ["last_reviewed_by"];
             referencedRelation: "profiles";
@@ -1195,6 +1209,12 @@ export type Database = {
             foreignKeyName: "public_transparency_homologation_packages_snapshot_id_fkey";
             columns: ["snapshot_id"];
             referencedRelation: "public_transparency_snapshots";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "public_transparency_homologation_packages_territorial_risk_acknowledged_by_fkey";
+            columns: ["territorial_risk_acknowledged_by"];
+            referencedRelation: "profiles";
             referencedColumns: ["id"];
           },
           {

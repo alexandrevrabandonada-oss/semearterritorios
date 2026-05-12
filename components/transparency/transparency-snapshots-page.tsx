@@ -3,14 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Archive, CheckCircle2, Eye, FilePenLine, FileText, Send, ShieldCheck, Wand2 } from "lucide-react";
-import type { PublicTransparencySnapshot } from "@/lib/database.types";
+import type { Profile, PublicTransparencySnapshot } from "@/lib/database.types";
 import { buildTransparencySnapshotDraft, getSnapshotStatusLabel, type SnapshotAction, type SnapshotRecord } from "@/lib/transparency-snapshots";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { NotificationsInlinePanel } from "@/components/notifications/notifications-inline-panel";
+import { getTerritorialRiskPublicationGuard } from "@/lib/transparency-territorial-risk";
 
 export function TransparencySnapshotsPage() {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const [snapshots, setSnapshots] = useState<PublicTransparencySnapshot[]>([]);
+  const [profile, setProfile] = useState<Pick<Profile, "id" | "role"> | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,9 +29,19 @@ export function TransparencySnapshotsPage() {
       setLoading(false);
       return;
     }
-    const result = await supabase.from("public_transparency_snapshots").select("*").order("updated_at", { ascending: false });
-    if (result.error) setError(result.error.message);
-    else setSnapshots((result.data ?? []) as PublicTransparencySnapshot[]);
+    const userResult = await supabase.auth.getUser();
+    const userId = userResult.data.user?.id;
+    const [result, profileResult] = await Promise.all([
+      supabase.from("public_transparency_snapshots").select("*").order("updated_at", { ascending: false }),
+      userId ? supabase.from("profiles").select("id, role").eq("id", userId).maybeSingle() : Promise.resolve({ data: null, error: null })
+    ]);
+
+    if (result.error || profileResult.error) {
+      setError(result.error?.message ?? profileResult.error?.message ?? "Erro ao carregar snapshots.");
+    } else {
+      setSnapshots((result.data ?? []) as PublicTransparencySnapshot[]);
+      setProfile((profileResult.data ?? null) as Pick<Profile, "id" | "role"> | null);
+    }
     setLoading(false);
   }
 
@@ -78,6 +90,20 @@ export function TransparencySnapshotsPage() {
 
   async function transition(snapshot: PublicTransparencySnapshot, status: PublicTransparencySnapshot["status"]) {
     if (!supabase) return;
+    const canCoordinate = profile?.role === "admin" || profile?.role === "coordenacao";
+
+    if (status === "published") {
+      const guard = getTerritorialRiskPublicationGuard(snapshot);
+      if (guard.critical && !canCoordinate) {
+        setError("A cobertura territorial deste snapshot está crítica. Para publicar, a coordenação precisa registrar justificativa institucional.");
+        return;
+      }
+      if (guard.critical && !guard.hasOverride) {
+        setError("A cobertura territorial deste snapshot está crítica. Para publicar, a coordenação precisa registrar justificativa institucional.");
+        return;
+      }
+    }
+
     setSaving(true);
     setError(null);
     const userResult = await supabase.auth.getUser();

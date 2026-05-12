@@ -14,6 +14,7 @@ import {
 } from "@/lib/action-closures";
 import { getActionPilotMetrics, getActionReadiness, summarizeOccupations, type ActionForPilot, type ListeningRecordForPilot } from "@/lib/action-pilot";
 import { getActionStatusLabel, getActionTypeLabel } from "@/lib/actions";
+import { buildTerritorialQualityMethodologyNote, calculateRespondentTerritoryQuality } from "@/lib/territorial-quality";
 import type {
   ActionClosure,
   ActionDebrief,
@@ -56,6 +57,7 @@ export function ActionDossierPage({ actionId }: Props) {
   const [closure, setClosure] = useState<ActionClosure | null>(null);
   const [profile, setProfile] = useState<Pick<Profile, "id" | "role"> | null>(null);
   const [form, setForm] = useState<ClosureForm>(emptyForm);
+  const [territorialAuditCount, setTerritorialAuditCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,8 +104,24 @@ export function ActionDossierPage({ actionId }: Props) {
       }
 
       const loadedClosure = closureResult.data as ActionClosure | null;
+      const loadedRecords = (recordsResult.data ?? []) as ListeningRecordForPilot[];
+
+      if (loadedRecords.length > 0) {
+        const recordIds = loadedRecords.map((record) => record.id);
+        const auditResult = await supabase
+          .from("listening_record_field_audits" as any)
+          .select("id", { count: "exact", head: true })
+          .in("listening_record_id", recordIds)
+          .eq("field_name", "respondent_neighborhood_id");
+        if (!auditResult.error) {
+          setTerritorialAuditCount(auditResult.count ?? 0);
+        }
+      } else {
+        setTerritorialAuditCount(0);
+      }
+
       setAction(actionResult.data as ActionForPilot);
-      setRecords((recordsResult.data ?? []) as ListeningRecordForPilot[]);
+      setRecords(loadedRecords);
       setParticipants((participantsResult.data ?? []) as (ActionTeamMember & { team_members: Pick<TeamMember, "id" | "display_name" | "role_label"> | null })[]);
       setDebrief(debriefResult.data as ActionDebrief | null);
       setClosure(loadedClosure);
@@ -146,9 +164,20 @@ export function ActionDossierPage({ actionId }: Props) {
   const metrics = getActionPilotMetrics(records);
   const reviewedPercent = metrics.total > 0 ? Math.round((metrics.reviewed / metrics.total) * 100) : 0;
   const occupationSummary = summarizeOccupations(records);
+  const respondentTerritoryMetrics = calculateRespondentTerritoryQuality(
+    records.length,
+    records.filter((record) => Boolean(record.respondent_neighborhood_id)).length
+  );
+  const respondentTerritoryNote = buildTerritorialQualityMethodologyNote(respondentTerritoryMetrics);
   const canCoordinate = profile?.role === "admin" || profile?.role === "coordenacao";
   const virtualClosure = closure ? { ...closure, ...form, documentation_checklist: form.documentation_checklist as unknown as Json } : null;
-  const markdown = buildClosureMarkdown({ action: loadedAction, records, debrief, closure: virtualClosure as ActionClosure | null });
+  const markdown = buildClosureMarkdown({
+    action: loadedAction,
+    records,
+    debrief,
+    closure: virtualClosure as ActionClosure | null,
+    territorialAuditCount
+  });
   const canClose = getClosureCanClose({ records, debrief, closure: virtualClosure });
 
   function updateField<TField extends keyof ClosureForm>(field: TField, value: ClosureForm[TField]) {
@@ -310,6 +339,17 @@ export function ActionDossierPage({ actionId }: Props) {
           <Metric label="Rascunhos" value={metrics.draft} danger={metrics.draft > 0} />
           <Metric label="% revisado" value={reviewedPercent} />
           <Metric label="Dado sensível" value={metrics.possibleSensitive} danger={metrics.possibleSensitive > 0} />
+        </div>
+
+        <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${respondentTerritoryNote.status === "boa" ? "border-green-200 bg-green-50 text-green-900" : respondentTerritoryNote.status === "atenção" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-red-200 bg-red-50 text-red-900"}`}>
+          <p><strong>Qualidade territorial do dossiê:</strong> cobertura {respondentTerritoryMetrics.coveragePercent}% ({respondentTerritoryMetrics.recordsWithRespondentTerritory}/{respondentTerritoryMetrics.totalRecords}) · status {respondentTerritoryNote.status}</p>
+          <p className="mt-1">Escutas sem território de referência: {respondentTerritoryMetrics.recordsWithoutRespondentTerritory}. Correções auditadas em listening_record_field_audits: {territorialAuditCount}.</p>
+          <p className="mt-1">{respondentTerritoryNote.shortText}</p>
+          {respondentTerritoryNote.status !== "boa" ? (
+            <Link className="mt-2 inline-flex min-h-10 items-center rounded-lg bg-semear-green px-3 text-xs font-semibold text-white" href={`/escutas/revisao-territorial?tab=qualidade&actionId=${loadedAction.id}`}>
+              Revisar cobertura territorial antes da publicação
+            </Link>
+          ) : null}
         </div>
 
         <div className="mt-6 grid gap-5 lg:grid-cols-2">

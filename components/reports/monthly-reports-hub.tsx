@@ -16,6 +16,7 @@ type ActionWithNeighborhood = Action & {
 
 type RecordWithNeighborhood = ListeningRecord & {
   neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
+  respondent_neighborhoods?: Pick<Neighborhood, "id" | "name"> | null;
 };
 
 export function MonthlyReportsHub() {
@@ -39,7 +40,7 @@ export function MonthlyReportsHub() {
 
       const [actionsResult, recordsResult, weeklyReportsResult, entriesResult] = await Promise.all([
         supabase.from("actions").select("*, neighborhoods:neighborhood_id(id, name)").order("action_date", { ascending: false }),
-        supabase.from("listening_records").select("*, neighborhoods:neighborhood_id(id, name)").order("date", { ascending: false }),
+        supabase.from("listening_records").select("*, neighborhoods:neighborhood_id(id, name), respondent_neighborhoods:respondent_neighborhood_id(id, name)").order("date", { ascending: false }),
         supabase.from("weekly_team_reports").select("*").order("week_start", { ascending: false }),
         supabase.from("project_memory_entries").select("*").order("entry_date", { ascending: false })
       ]);
@@ -193,9 +194,11 @@ export function MonthlyReportsHub() {
             {availableMonths.map((month) => {
               const monthActions = actions.filter((item) => getMonthValue(item.action_date) === month);
               const monthRecords = records.filter((item) => getMonthValue(item.date) === month);
-              const neighborhoodsCount = new Set([
+              const actionNeighborhoodsCount = new Set([
                 ...monthActions.map((item) => item.neighborhoods?.name).filter(Boolean),
-                ...monthRecords.map((item) => item.neighborhoods?.name).filter(Boolean)
+              ]).size;
+              const respondentNeighborhoodsCount = new Set([
+                ...monthRecords.map((item) => item.respondent_neighborhoods?.name).filter(Boolean)
               ]).size;
 
               return (
@@ -208,10 +211,11 @@ export function MonthlyReportsHub() {
                     <ArrowRight className="h-5 w-5 text-semear-green" aria-hidden="true" />
                   </div>
 
-                  <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <div className="mt-5 grid gap-3 sm:grid-cols-4">
                     <StatChip icon={<CalendarDays className="h-4 w-4" />} label="Ações" value={monthActions.length} />
                     <StatChip icon={<FileText className="h-4 w-4" />} label="Escutas" value={monthRecords.length} />
-                    <StatChip icon={<MapPinned className="h-4 w-4" />} label="Bairros" value={neighborhoodsCount} />
+                    <StatChip icon={<MapPinned className="h-4 w-4" />} label="Bairros com ação" value={actionNeighborhoodsCount} />
+                    <StatChip icon={<MapPinned className="h-4 w-4" />} label="Bairros de referência" value={respondentNeighborhoodsCount} />
                   </div>
                 </Link>
               );

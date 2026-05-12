@@ -39,6 +39,7 @@ import {
 } from "@/lib/transparency-homologation";
 import { TransparencyHomologationChecklist } from "@/components/transparency/transparency-homologation-checklist";
 import { getSnapshotStatusLabel } from "@/lib/transparency-snapshots";
+import { getTerritorialRiskPublicationGuard } from "@/lib/transparency-territorial-risk";
 import { NotificationsInlinePanel } from "@/components/notifications/notifications-inline-panel";
 
 type PackageFormState = {
@@ -48,6 +49,7 @@ type PackageFormState = {
   institutional_summary: string;
   methodology_note: string;
   privacy_statement: string;
+  territorial_risk_justification: string;
   decision_reason: string;
 };
 
@@ -355,6 +357,26 @@ export function TransparencyHomologationDetailPage({ packageId }: { packageId: s
 
   async function savePackage() {
     if (!supabase || !packageItem || !snapshot || !form) return;
+    const canCoordinate = profile?.role === "admin" || profile?.role === "coordenacao";
+    const territorialGuard = getTerritorialRiskPublicationGuard(snapshot);
+
+    if (territorialGuard.critical && form.territorial_risk_justification.trim() && !canCoordinate) {
+      setError("Somente coordenação ou admin podem justificar risco territorial crítico.");
+      return false;
+    }
+
+    if (territorialGuard.critical && !form.territorial_risk_justification.trim()) {
+      setError("Risco territorial crítico exige justificativa institucional antes de assinar o pacote.");
+      return false;
+    }
+
+    const nextChecklist = {
+      ...checklist,
+      territorial_risk_critical_justified: territorialGuard.critical
+        ? Boolean(form.territorial_risk_justification.trim())
+        : true
+    };
+
     setSaving(true);
     setError(null);
     setFeedback(null);
@@ -372,11 +394,15 @@ export function TransparencyHomologationDetailPage({ packageId }: { packageId: s
           methodology_note: form.methodology_note,
           privacy_statement: form.privacy_statement,
           decision_reason: form.decision_reason || null,
-          approval_checklist: checklist,
+          approval_checklist: nextChecklist,
           risk_report: audit.riskReport,
           audit_export: audit.markdown,
           frozen_payload: payload,
           snapshot_version_id: snapshotVersion?.id ?? null,
+          territorial_risk_acknowledged: territorialGuard.critical ? true : packageItem.territorial_risk_acknowledged,
+          territorial_risk_justification: territorialGuard.critical ? form.territorial_risk_justification.trim() : packageItem.territorial_risk_justification,
+          territorial_risk_acknowledged_by: territorialGuard.critical ? currentUserId : packageItem.territorial_risk_acknowledged_by,
+          territorial_risk_acknowledged_at: territorialGuard.critical ? new Date().toISOString() : packageItem.territorial_risk_acknowledged_at,
           prepared_by: currentUserId,
           prepared_at: new Date().toISOString()
         })
@@ -385,6 +411,7 @@ export function TransparencyHomologationDetailPage({ packageId }: { packageId: s
         .single();
 
       if (updateResult.error) throw updateResult.error;
+      setChecklist(nextChecklist);
       setFeedback("Pacote de homologação salvo.");
       await refreshPackage(currentUserId);
       return true;
@@ -416,6 +443,10 @@ export function TransparencyHomologationDetailPage({ packageId }: { packageId: s
 
   async function handleSign() {
     if (!supabase || !packageItem) return;
+    if (!canCoordinate) {
+      setError("Somente coordenação ou admin podem assinar o pacote.");
+      return;
+    }
     setSaving(true);
     setError(null);
     setFeedback(null);
@@ -490,6 +521,8 @@ export function TransparencyHomologationDetailPage({ packageId }: { packageId: s
   if (!packageItem || !snapshot || !form) return <StateBox>Pacote não encontrado.</StateBox>;
 
   const canCoordinate = profile?.role === "admin" || profile?.role === "coordenacao";
+  const territorialRiskGuard = getTerritorialRiskPublicationGuard(snapshot);
+  const canEditTerritorialJustification = !territorialRiskGuard.critical || canCoordinate;
   const pendingComments = comments.filter((item) => !item.resolved);
   const criticalPendingComments = pendingComments.filter((item) => ["privacidade", "dados", "metodologia"].includes(item.comment_type));
   const checklistComplete = isHomologationChecklistComplete(checklist, snapshot.status);
@@ -552,8 +585,27 @@ export function TransparencyHomologationDetailPage({ packageId }: { packageId: s
               <TextArea label="Resumo institucional" rows={5} value={form.institutional_summary} onChange={(value) => setForm({ ...form, institutional_summary: value })} />
               <TextArea label="Metodologia" rows={4} value={form.methodology_note} onChange={(value) => setForm({ ...form, methodology_note: value })} />
               <TextArea label="Declaração de privacidade" rows={4} value={form.privacy_statement} onChange={(value) => setForm({ ...form, privacy_statement: value })} />
+              <TextArea
+                label="Justificativa institucional de risco territorial"
+                rows={3}
+                value={form.territorial_risk_justification}
+                disabled={!canEditTerritorialJustification}
+                onChange={(value) => setForm({ ...form, territorial_risk_justification: value })}
+              />
               <TextArea label="Motivo da decisão institucional" rows={3} value={form.decision_reason} onChange={(value) => setForm({ ...form, decision_reason: value })} />
             </div>
+
+            {territorialRiskGuard.critical ? (
+              <WarningBox tone="warning">
+                Risco territorial crítico: assinatura exige justificativa institucional preenchida.
+              </WarningBox>
+            ) : null}
+
+            {territorialRiskGuard.critical && !canCoordinate ? (
+              <WarningBox tone="error">
+                Somente coordenação ou admin podem registrar a justificativa institucional deste risco.
+              </WarningBox>
+            ) : null}
           </section>
 
           <TransparencyHomologationChecklist
@@ -622,10 +674,13 @@ export function TransparencyHomologationDetailPage({ packageId }: { packageId: s
             <h3 className="font-semibold text-semear-green">Decisão institucional</h3>
             <div className="mt-4 grid gap-3">
               <SmallInfo label="Decisão" value={packageItem.decision ? renderDecision(packageItem.decision) : "não registrada"} />
+              <SmallInfo label="Risco territorial crítico" value={territorialRiskGuard.critical ? "sim" : "não"} />
+              <SmallInfo label="Risco territorial justificado" value={packageItem.territorial_risk_acknowledged ? "sim" : "não"} />
               <SmallInfo label="Preparado por" value={formatPerson(packageItem.prepared_by, people)} />
               <SmallInfo label="Assinado por" value={formatPerson(packageItem.signed_by, people)} />
               <SmallInfo label="Rejeitado por" value={formatPerson(packageItem.rejected_by, people)} />
             </div>
+            <p className="mt-4 whitespace-pre-line text-sm leading-6 text-stone-700">{form.territorial_risk_justification || "Sem justificativa territorial registrada."}</p>
             <p className="mt-4 text-sm leading-6 text-stone-700">{form.decision_reason || "Sem motivo adicional registrado."}</p>
           </section>
 
@@ -802,6 +857,7 @@ function toPackageFormState(
     institutional_summary: packageItem.institutional_summary ?? snapshot.public_summary ?? "",
     methodology_note: packageItem.methodology_note ?? snapshot.methodology_notes ?? "",
     privacy_statement: packageItem.privacy_statement ?? snapshot.privacy_notes ?? "",
+    territorial_risk_justification: packageItem.territorial_risk_justification ?? snapshot.territorial_risk_override_reason ?? "",
     decision_reason: packageItem.decision_reason ?? ""
   };
 }
@@ -883,8 +939,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <label><span className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{label}</span>{children}</label>;
 }
 
-function TextArea({ label, rows, value, onChange }: { label: string; rows: number; value: string; onChange: (value: string) => void }) {
-  return <label><span className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{label}</span><textarea className="mt-2 w-full rounded-2xl border border-semear-gray bg-white px-4 py-3 text-sm leading-6 outline-none focus:border-semear-green" onChange={(event) => onChange(event.target.value)} rows={rows} value={value} /></label>;
+function TextArea({ label, rows, value, onChange, disabled = false }: { label: string; rows: number; value: string; onChange: (value: string) => void; disabled?: boolean }) {
+  return <label><span className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{label}</span><textarea className="mt-2 w-full rounded-2xl border border-semear-gray bg-white px-4 py-3 text-sm leading-6 outline-none focus:border-semear-green disabled:cursor-not-allowed disabled:bg-semear-offwhite" disabled={disabled} onChange={(event) => onChange(event.target.value)} rows={rows} value={value} /></label>;
 }
 
 function SmallInfo({ label, value }: { label: string; value: string }) {

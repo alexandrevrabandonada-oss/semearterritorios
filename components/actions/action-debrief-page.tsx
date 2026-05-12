@@ -27,6 +27,7 @@ import {
   type ListeningRecordForPilot
 } from "@/lib/action-pilot";
 import { getActionTypeLabel } from "@/lib/actions";
+import { buildTerritorialQualityMethodologyNote, calculateRespondentTerritoryQuality } from "@/lib/territorial-quality";
 import type { ActionDebrief, DebriefStatus, Json, Profile } from "@/lib/database.types";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
@@ -156,6 +157,11 @@ export function ActionDebriefPage({ actionId }: Props) {
   const generated = buildActionDebrief(loadedAction, records);
   const currentStatus = debrief?.status ?? "draft";
   const canApprove = profile?.role === "admin" || profile?.role === "coordenacao";
+  const respondentTerritoryMetrics = calculateRespondentTerritoryQuality(
+    records.length,
+    records.filter((record) => Boolean(record.respondent_neighborhood_id)).length
+  );
+  const respondentTerritoryNote = buildTerritorialQualityMethodologyNote(respondentTerritoryMetrics);
   const markdown = buildPublicDebriefMarkdown({
     title: form.title,
     action: loadedAction,
@@ -311,6 +317,20 @@ export function ActionDebriefPage({ actionId }: Props) {
           </div>
 
           <aside className="space-y-5">
+            <InfoPanel icon={<AlertTriangle className="h-5 w-5" />} title="Qualidade territorial da devolutiva">
+              <div className={`rounded-xl border px-3 py-2 text-sm ${respondentTerritoryNote.status === "boa" ? "border-green-200 bg-green-50 text-green-900" : respondentTerritoryNote.status === "atenção" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-red-200 bg-red-50 text-red-900"}`}>
+                <p><strong>Cobertura territorial:</strong> {respondentTerritoryMetrics.coveragePercent}% ({respondentTerritoryMetrics.recordsWithRespondentTerritory}/{respondentTerritoryMetrics.totalRecords})</p>
+                <p className="mt-1">{respondentTerritoryNote.shortText}</p>
+                {respondentTerritoryNote.status !== "boa" ? (
+                  <>
+                    <p className="mt-1">Entre as escutas com território de referência preenchido, observam-se os padrões descritos nesta devolutiva.</p>
+                    <Link className="mt-2 inline-flex min-h-10 items-center rounded-lg bg-semear-green px-3 text-xs font-semibold text-white" href={`/escutas/revisao-territorial?tab=qualidade&actionId=${loadedAction.id}`}>
+                      Revisar escutas sem território
+                    </Link>
+                  </>
+                ) : null}
+              </div>
+            </InfoPanel>
             <InfoPanel icon={<FileText className="h-5 w-5" />} title="Nota metodológica">
               <EditableBlock area label="Aviso metodológico" value={form.methodology_note} onChange={(value) => updateField("methodology_note", value)} compact />
             </InfoPanel>

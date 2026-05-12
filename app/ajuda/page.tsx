@@ -242,6 +242,7 @@ export default function AjudaPage() {
             <p><strong>Território da ação</strong> é onde a banca aconteceu — o bairro onde a equipe esteve. Sempre obrigatório ao cadastrar uma escuta.</p>
             <p><strong>Território de referência do entrevistado</strong> é de onde a pessoa fala, ou seja, onde ela mora, trabalha, estuda ou circula. É um campo opcional, preenchido apenas se a pessoa mencionar ou aceitar compartilhar.</p>
             <p>Esses dois campos podem ser iguais ou diferentes. Uma pessoa que mora em outro bairro pode participar de uma banca no centro, por exemplo.</p>
+            <p><strong>Exemplo prático:</strong> uma feira no Centro pode escutar pessoas do Retiro, Açude, Aterrado e outros bairros. Por isso o sistema separa onde a ação aconteceu de onde a pessoa fala.</p>
             <p>O campo de referência serve para entender a diversidade territorial das pessoas escutadas, sem restringir a análise ao local da banca.</p>
             <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900"><strong>Atenção:</strong> nunca registre rua, número, CEP ou coordenada geográfica. Use sempre o bairro oficial — o menor nível de agregação permitido.</p>
           </div>
@@ -436,6 +437,56 @@ export default function AjudaPage() {
           <div className="mt-4 flex flex-wrap gap-2">
             <Link className="inline-flex min-h-11 items-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/transparencia/homologacao">Abrir homologação</Link>
             <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/transparencia/snapshots">Abrir editor</Link>
+          </div>
+        </Panel>
+
+        <Panel className="mt-6" icon={<MapPinned className="h-5 w-5" />} title="Qualidade territorial das escutas">
+          <div className="space-y-3 text-sm leading-6 text-stone-700">
+            <p><strong>O que é territorio de referência:</strong> o bairro de onde a pessoa fala, mora, trabalha, estuda ou circula. Diferente do local onde aconteceu a ação.</p>
+            <p><strong>Exemplo:</strong> Feira no Centro (ação em Centro), mas pessoa que veio é moradora de Retiro → territorio de referência é Retiro.</p>
+              <p><strong>Campo é opcional:</strong> nunca invente. Se não houver base para preencher, marque &quot;Não informado&quot;.</p>
+              <p><strong>Como preencher:</strong> pergunte de forma simples: &quot;De qual bairro você é?&quot; ou &quot;De onde você fala?&quot;. Confie na resposta.</p>
+            <p><strong>Onde acompanhar:</strong> no Dashboard, no card <strong>Qualidade territorial</strong>, com cobertura geral, escutas sem território e ações em atenção/crítica.</p>
+            <p><strong>Como interpretar status:</strong> <strong>boa</strong> (≥ 80%), <strong>atenção</strong> (50% a 79%) e <strong>crítica</strong> (&lt; 50%). Atenção/crítica pedem revisão antes de leitura por bairro.</p>
+              <p><strong>Como revisar:</strong> em <strong>/escutas/revisao-territorial</strong>, aba &quot;Qualidade de territorio de referência&quot;, há painel de métricas e fila de escutas sem territorio para corrigir.</p>
+            <p><strong>Cobertura baixa:</strong> se menos de 80% tem territorio preenchido, leituras territoriais ficam parciais. Não bloqueia operação, mas exige cautela metodológica em relatório e transparência.</p>
+            <p><strong>Não geocodificar:</strong> não use localização de telefone, rua, número ou ponto. Sempre bairro oficial e baseado em resposta clara.</p>
+              <p><strong>Vínculo:</strong> ao revisar, também marque se a pessoa &quot;mora&quot;, &quot;trabalha/estuda&quot;, &quot;circula&quot;, &quot;fala sobre&quot; ou deixe &quot;Não informado&quot;.</p>
+            <p><strong>Auditoria:</strong> cada correção registra who, what, when e why em lista de alterações, disponível só internamente.</p>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link className="inline-flex min-h-11 items-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/escutas/revisao-territorial">Abrir revisão territorial</Link>
+            <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/docs/governanca-qualidade-territorial.md">Ler governança completa</Link>
+          </div>
+        </Panel>
+
+        <Panel className="mt-6" icon={<FileText className="h-5 w-5" />} title="Nota metodológica territorial">
+          <div className="space-y-3 text-sm leading-6 text-stone-700">
+            <p>A nota metodológica territorial agora é gerada automaticamente em relatório mensal, pós-banca, devolutiva, dossiê e Transparência Viva.</p>
+            <p><strong>Regra de status:</strong> <strong>boa</strong> (cobertura ≥ 80%), <strong>atenção</strong> (50% a 79%) e <strong>crítica</strong> (&lt; 50%).</p>
+            <p><strong>Quando houver atenção ou crítica:</strong> use linguagem cautelosa: &quot;Entre as escutas com território de referência preenchido...&quot; e priorize revisão antes de publicação.</p>
+            <p><strong>O que a nota informa:</strong> cobertura percentual, escutas com/sem território de referência, síntese metodológica e recomendação operacional.</p>
+            <p><strong>Objetivo:</strong> não bloquear operação de campo, mas impedir leitura territorial superinterpretada quando o preenchimento ainda está incompleto.</p>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link className="inline-flex min-h-11 items-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/relatorios">Ver relatórios com nota</Link>
+            <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/transparencia/preview">Ver nota no preview</Link>
+          </div>
+        </Panel>
+
+        <Panel className="mt-6" icon={<ShieldCheck className="h-5 w-5" />} title="Trava editorial por risco territorial">
+          <div className="space-y-3 text-sm leading-6 text-stone-700">
+            <p>Quando a qualidade territorial estiver <strong>crítica</strong> (&lt; 50% de cobertura), a publicação pública entra em cautela institucional.</p>
+            <p><strong>Não bloqueia operação interna:</strong> escutas, revisão, devolutiva e dossiê continuam normalmente.</p>
+            <p><strong>Bloqueia publicação pública:</strong> snapshot crítico só pode ir para <code>published</code> com justificativa institucional explícita.</p>
+            <p><strong>Bloqueia assinatura do pacote:</strong> homologação institucional também exige justificativa e checklist completo nesse cenário.</p>
+            <p><strong>Quem pode justificar:</strong> apenas perfis <code>coordenacao</code> ou <code>admin</code>.</p>
+            <p><strong>Mensagem no preview:</strong> sem justificativa aparece &quot;Não recomendado para publicação pública.&quot;; com justificativa aparece &quot;Publicado com cautela metodológica e justificativa institucional.&quot;</p>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link className="inline-flex min-h-11 items-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/transparencia/snapshots">Abrir snapshots</Link>
+            <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/transparencia/homologacao">Abrir homologação</Link>
+            <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/transparencia/preview">Abrir preview</Link>
           </div>
         </Panel>
 

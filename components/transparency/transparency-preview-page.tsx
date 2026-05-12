@@ -9,11 +9,25 @@ import { buildTransparencyTextBlob, detectTransparencyPrivacyRisks } from "@/lib
 import { buildSnapshotAuditStatus, getSnapshotReviewComments, getSnapshotVersions, type SnapshotAuditStatus } from "@/lib/transparency-audit";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { getHomologationPackages } from "@/lib/transparency-homologation";
+import { getTerritorialRiskPublicationGuard } from "@/lib/transparency-territorial-risk";
 
 type CountItem = { count: number };
 type ThemeItem = CountItem & { theme: string };
 type WordItem = CountItem & { word: string };
-type TerritoryItem = { territory: string; reviewed_records: number; respondent_records: number; action_records: number; public_status: string };
+type TerritoryItem = { territory: string; reviewed_records: number; respondent_records: number; action_records: number; action_count?: number; public_status: string };
+type TerritorySummaryPayload = {
+  action_territory_summary?: TerritoryItem[];
+  respondent_territory_summary?: TerritoryItem[];
+  respondent_without_territory?: number;
+  territorial_quality_summary?: {
+    status: "boa" | "atenção" | "crítica";
+    coverage_percent: number;
+    records_with_territory: number;
+    records_without_territory: number;
+    methodology_note: string;
+    operational_recommendation: string;
+  };
+};
 type TimelineItem = { date: string; title: string; territory: string; action_type: string; debrief_status: string };
 type DebriefItem = { title: string; approved_at: string | null };
 
@@ -74,7 +88,12 @@ export function TransparencyPreviewPage() {
   const totals = (snapshot.totals ?? {}) as Record<string, number>;
   const themes = (snapshot.theme_summary ?? []) as unknown as ThemeItem[];
   const words = (snapshot.word_summary ?? []) as unknown as WordItem[];
-  const territories = (snapshot.territory_summary ?? []) as unknown as TerritoryItem[];
+  const territoryPayload = (snapshot.territory_summary ?? {}) as unknown as TerritorySummaryPayload;
+  const actionTerritories = territoryPayload.action_territory_summary ?? [];
+  const respondentTerritories = territoryPayload.respondent_territory_summary ?? [];
+  const respondentWithoutTerritory = territoryPayload.respondent_without_territory ?? 0;
+  const territorialQuality = territoryPayload.territorial_quality_summary;
+  const territorialRiskGuard = getTerritorialRiskPublicationGuard(snapshot);
   const timeline = (snapshot.action_timeline ?? []) as unknown as TimelineItem[];
   const debriefs = (snapshot.debrief_links ?? []) as unknown as DebriefItem[];
   const riskReport = detectTransparencyPrivacyRisks(
@@ -89,7 +108,7 @@ export function TransparencyPreviewPage() {
       snapshot.methodology_notes
     ])
   );
-  const insufficientTerritories = territories.filter((item) => item.public_status === "dados insuficientes para síntese pública");
+  const insufficientTerritories = respondentTerritories.filter((item) => item.public_status === "dados insuficientes para síntese pública");
   const isPublished = snapshot.status === "published";
 
   return (
@@ -115,6 +134,28 @@ export function TransparencyPreviewPage() {
         <div className="mt-4 rounded-[1.5rem] border border-red-200 bg-red-50 p-4 text-sm text-red-800">
           <AlertTriangle className="mr-2 inline h-4 w-4" />
           Há comentários críticos pendentes de auditoria. A publicação deve permanecer bloqueada.
+        </div>
+      ) : null}
+
+      {territorialQuality ? (
+        <div className={`mt-4 rounded-[1.5rem] border p-4 text-sm ${territorialQuality.status === "boa" ? "border-green-200 bg-green-50 text-green-900" : territorialQuality.status === "atenção" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-red-200 bg-red-50 text-red-900"}`}>
+          <p><strong>Qualidade territorial:</strong> {territorialQuality.status} · cobertura {territorialQuality.coverage_percent}% ({territorialQuality.records_with_territory}/{territorialQuality.records_with_territory + territorialQuality.records_without_territory})</p>
+          <p className="mt-1">{territorialQuality.methodology_note}</p>
+          <p className="mt-1"><strong>Recomendação:</strong> {territorialQuality.operational_recommendation}</p>
+        </div>
+      ) : null}
+
+      {territorialRiskGuard.critical && !territorialRiskGuard.hasOverride ? (
+        <div className="mt-4 rounded-[1.5rem] border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <AlertTriangle className="mr-2 inline h-4 w-4" />
+          Não recomendado para publicação pública.
+        </div>
+      ) : null}
+
+      {territorialRiskGuard.critical && territorialRiskGuard.hasOverride ? (
+        <div className="mt-4 rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <AlertTriangle className="mr-2 inline h-4 w-4" />
+          Publicado com cautela metodológica e justificativa institucional.
         </div>
       ) : null}
 
@@ -157,14 +198,27 @@ export function TransparencyPreviewPage() {
             {words.slice(0, 20).map((item) => <span className="rounded-full bg-semear-green-soft px-3 py-1 text-sm font-semibold text-semear-green" key={item.word}>{item.word}</span>)}
           </div>
         </Panel>
-        <Panel title="Territórios alcançados" icon={<MapPinned className="h-5 w-5" />}>
+        <Panel title="Onde houve ações" icon={<MapPinned className="h-5 w-5" />}>
           <div className="space-y-3">
-            {territories.slice(0, 12).map((item) => (
+            {actionTerritories.slice(0, 12).map((item) => (
+              <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-3" key={`acao-${item.territory}`}>
+                <p className="font-semibold text-semear-green">{item.territory}</p>
+                <p className="mt-1 text-xs text-stone-600">{item.action_count ?? 0} ação(ões) · {item.reviewed_records} escuta(s) revisada(s) coletadas ali</p>
+              </div>
+            ))}
+          </div>
+        </Panel>
+        <Panel title="De onde vêm as pessoas escutadas" icon={<MapPinned className="h-5 w-5" />}>
+          <div className="space-y-3">
+            {respondentTerritories.slice(0, 12).map((item) => (
               <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-3" key={item.territory}>
                 <p className="font-semibold text-semear-green">{item.territory}</p>
                 <p className="mt-1 text-xs text-stone-600">{item.reviewed_records} escuta(s) revisada(s) · {item.public_status}</p>
               </div>
             ))}
+            <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              Escutas sem território de referência informado: {respondentWithoutTerritory}
+            </p>
           </div>
         </Panel>
       </div>

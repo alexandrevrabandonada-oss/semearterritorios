@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { AlertTriangle, Filter, MapPinned } from "lucide-react";
+import { AlertTriangle, Filter, MapPinned, ChevronDown } from "lucide-react";
 import { TerritorialReviewPanel } from "@/components/listening-records/territorial-review-panel";
+import { RespondentTerritoryQualityPanel } from "@/components/listening-records/respondent-territory-quality-panel";
+import { RespondentTerritoryReviewQueue } from "@/components/listening-records/respondent-territory-review-queue";
 import { hasPossibleSensitiveData, hasPossibleSensitiveOccupation } from "@/lib/action-pilot";
 import type { Action, Neighborhood } from "@/lib/database.types";
 import {
@@ -13,6 +15,7 @@ import {
   type TerritorialReviewRecord
 } from "@/lib/territorial-review";
 import { getRespondentTerritoryRelationLabel } from "@/lib/listening-records";
+import { calculateRespondentTerritoryQuality } from "@/lib/territorial-quality";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { formatNeighborhoodOption, getOfficialNeighborhoodsForSelect } from "@/lib/neighborhoods";
 
@@ -47,6 +50,8 @@ export function TerritorialReviewQueue() {
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showQualityReviewTab, setShowQualityReviewTab] = useState(false);
+  const [reloadTrigger, setReloadTrigger] = useState(0);
 
   async function load() {
     if (!supabase) {
@@ -79,7 +84,22 @@ export function TerritorialReviewQueue() {
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase]);
+  }, [supabase, reloadTrigger]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab");
+    const actionId = params.get("actionId");
+
+    if (tab === "qualidade") {
+      setShowQualityReviewTab(true);
+    }
+
+    if (actionId) {
+      setFilters((current) => ({ ...current, actionId }));
+    }
+  }, []);
 
   const filteredRecords = records.filter((record) => {
     if (filters.status && record.territorial_review_status !== filters.status) return false;
@@ -93,6 +113,7 @@ export function TerritorialReviewQueue() {
     if (filters.quality === "without_respondent_territory" && record.respondent_neighborhood_id) return false;
     return true;
   });
+  const qualityRecords = filters.actionId ? records.filter((record) => record.action_id === filters.actionId) : records;
 
   function updateFilter<TField extends keyof Filters>(field: TField, value: Filters[TField]) {
     setFilters((current) => ({ ...current, [field]: value }));
@@ -108,94 +129,145 @@ export function TerritorialReviewQueue() {
         </p>
       </div>
 
-      <div className="mt-5 rounded-[1.5rem] border border-white/80 bg-white p-4 shadow-soft">
-        <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-semear-green">
-          <Filter className="h-4 w-4" aria-hidden="true" />
-          Filtros
-        </div>
-        <div className="grid gap-3 md:grid-cols-4">
-          <Select label="Status" value={filters.status} onChange={(value) => updateFilter("status", value)}>
-            <option value="">Todos</option>
-            <option value="pending">Pendente</option>
-            <option value="reviewed">Revisada</option>
-            <option value="needs_attention">Precisa atenção</option>
-          </Select>
-          <Select label="Qualidade" value={filters.quality} onChange={(value) => updateFilter("quality", value)}>
-            <option value="">Todas</option>
-            <option value="without_neighborhood">Sem bairro da ação</option>
-            <option value="free_text_places">Com lugares em texto livre</option>
-            <option value="unstructured_places">Texto livre sem estrutura</option>
-            <option value="possible_sensitive">Possível dado sensível</option>
-            <option value="without_respondent_territory">Sem território de referência</option>
-          </Select>
-          <Select label="Ação" value={filters.actionId} onChange={(value) => updateFilter("actionId", value)}>
-            <option value="">Todas</option>
-            {actions.map((action) => <option key={action.id} value={action.id}>{action.title}</option>)}
-          </Select>
-          <Select label="Bairro da ação" value={filters.neighborhoodId} onChange={(value) => updateFilter("neighborhoodId", value)}>
-            <option value="">Todos</option>
-            {neighborhoods.map((neighborhood) => <option key={neighborhood.id} value={neighborhood.id}>{formatNeighborhoodOption(neighborhood)}</option>)}
-          </Select>
-          <Select label="Bairro de referência" value={filters.respondentNeighborhoodId} onChange={(value) => updateFilter("respondentNeighborhoodId", value)}>
-            <option value="">Todos</option>
-            {neighborhoods.map((neighborhood) => <option key={neighborhood.id} value={neighborhood.id}>{formatNeighborhoodOption(neighborhood)}</option>)}
-          </Select>
-        </div>
-      </div>
-
-      {loading ? <StateBox>Carregando fila territorial...</StateBox> : null}
-      {error ? <StateBox tone="error">{error}</StateBox> : null}
-
-      {!loading && !error ? (
+      {!loading && !error && (
         <div className="mt-5 space-y-4">
-          {filteredRecords.length === 0 ? <StateBox>Nenhuma escuta encontrada para os filtros atuais.</StateBox> : null}
-          {filteredRecords.map((record) => (
-            <article className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft" key={record.id}>
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge>{getTerritorialReviewStatusLabel(record.territorial_review_status)}</Badge>
-                    <Badge>{record.neighborhoods?.name ?? "Sem bairro"}</Badge>
-                    {record.respondent_neighborhood_id ? (
-                      <Badge>Ref.: {record.respondent_neighborhoods?.name ?? record.respondent_neighborhood_id}{record.respondent_territory_relation ? ` · ${getRespondentTerritoryRelationLabel(record.respondent_territory_relation)}` : ""}</Badge>
-                    ) : (
-                      <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">Sem território de referência</span>
+          {/* Tabs: Revisão de Lugares vs Revisão de Território de Referência */}
+          <div className="rounded-[1.5rem] border border-white/80 bg-white shadow-soft">
+            <div className="flex border-b border-gray-200">
+              <button
+                onClick={() => setShowQualityReviewTab(false)}
+                className={`flex-1 px-6 py-4 font-semibold text-sm transition-colors ${
+                  !showQualityReviewTab
+                    ? "text-semear-green border-b-2 border-semear-green"
+                    : "text-stone-600 hover:text-stone-900"
+                }`}
+              >
+                Revisão de lugares e dados
+              </button>
+              <button
+                onClick={() => setShowQualityReviewTab(true)}
+                className={`flex-1 px-6 py-4 font-semibold text-sm transition-colors ${
+                  showQualityReviewTab
+                    ? "text-semear-green border-b-2 border-semear-green"
+                    : "text-stone-600 hover:text-stone-900"
+                }`}
+              >
+                Qualidade de território de referência
+              </button>
+            </div>
+
+            <div className="p-6">
+              {showQualityReviewTab ? (
+                <div className="space-y-6">
+                  <RespondentTerritoryQualityPanel
+                    metrics={calculateRespondentTerritoryQuality(
+                      qualityRecords.length,
+                      qualityRecords.filter((r) => r.respondent_neighborhood_id).length
                     )}
-                    {hasPossibleSensitiveData(record) ? <DangerBadge /> : null}
+                    onReviewClick={() => window.scrollTo(0, document.querySelector("[data-quality-review]")?.getBoundingClientRect().top || 0)}
+                  />
+                  <div data-quality-review>
+                    <RespondentTerritoryReviewQueue
+                      records={qualityRecords as any}
+                      neighborhoods={neighborhoods}
+                      onRecordUpdated={() => setReloadTrigger((prev) => prev + 1)}
+                    />
                   </div>
-                  <p className="mt-3 line-clamp-2 text-sm leading-6 text-stone-700">{record.team_summary || record.free_speech_text}</p>
-                  <p className="mt-2 text-sm text-stone-600">Lugares livres: {record.places_mentioned_text || "não informado"}</p>
-                  <p className="mt-2 text-sm text-stone-600">
-                    Ocupação / atividade principal: {record.respondent_occupation?.trim() || "não informado"}
-                  </p>
-                  {hasPossibleSensitiveOccupation(record.respondent_occupation) ? (
-                    <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
-                      Verifique se a ocupação não identifica a pessoa. Prefira descrição geral.
-                    </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-semear-green">
+                    <Filter className="h-4 w-4" aria-hidden="true" />
+                    Filtros
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-4">
+                    <Select label="Status" value={filters.status} onChange={(value) => updateFilter("status", value)}>
+                      <option value="">Todos</option>
+                      <option value="pending">Pendente</option>
+                      <option value="reviewed">Revisada</option>
+                      <option value="needs_attention">Precisa atenção</option>
+                    </Select>
+                    <Select label="Qualidade" value={filters.quality} onChange={(value) => updateFilter("quality", value)}>
+                      <option value="">Todas</option>
+                      <option value="without_neighborhood">Sem bairro da ação</option>
+                      <option value="free_text_places">Com lugares em texto livre</option>
+                      <option value="unstructured_places">Texto livre sem estrutura</option>
+                      <option value="possible_sensitive">Possível dado sensível</option>
+                      <option value="without_respondent_territory">Sem território de referência</option>
+                    </Select>
+                    <Select label="Ação" value={filters.actionId} onChange={(value) => updateFilter("actionId", value)}>
+                      <option value="">Todas</option>
+                      {actions.map((action) => <option key={action.id} value={action.id}>{action.title}</option>)}
+                    </Select>
+                    <Select label="Bairro da ação" value={filters.neighborhoodId} onChange={(value) => updateFilter("neighborhoodId", value)}>
+                      <option value="">Todos</option>
+                      {neighborhoods.map((neighborhood) => <option key={neighborhood.id} value={neighborhood.id}>{formatNeighborhoodOption(neighborhood)}</option>)}
+                    </Select>
+                    <Select label="Bairro de referência" value={filters.respondentNeighborhoodId} onChange={(value) => updateFilter("respondentNeighborhoodId", value)}>
+                      <option value="">Todos</option>
+                      {neighborhoods.map((neighborhood) => <option key={neighborhood.id} value={neighborhood.id}>{formatNeighborhoodOption(neighborhood)}</option>)}
+                    </Select>
+                  </div>
+
+                  {loading ? <StateBox>Carregando fila territorial...</StateBox> : null}
+                  {error ? <StateBox tone="error">{error}</StateBox> : null}
+
+                  {!loading && !error ? (
+                    <div className="mt-5 space-y-4">
+                      {filteredRecords.length === 0 ? <StateBox>Nenhuma escuta encontrada para os filtros atuais.</StateBox> : null}
+                      {filteredRecords.map((record) => (
+                        <article className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft" key={record.id}>
+                          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                            <div>
+                              <div className="flex flex-wrap gap-2">
+                                <Badge>{getTerritorialReviewStatusLabel(record.territorial_review_status)}</Badge>
+                                <Badge>{record.neighborhoods?.name ?? "Sem bairro"}</Badge>
+                                {record.respondent_neighborhood_id ? (
+                                  <Badge>Ref.: {record.respondent_neighborhoods?.name ?? record.respondent_neighborhood_id}{record.respondent_territory_relation ? ` · ${getRespondentTerritoryRelationLabel(record.respondent_territory_relation)}` : ""}</Badge>
+                                ) : (
+                                  <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">Sem território de referência</span>
+                                )}
+                                {hasPossibleSensitiveData(record) ? <DangerBadge /> : null}
+                              </div>
+                              <p className="mt-3 line-clamp-2 text-sm leading-6 text-stone-700">{record.team_summary || record.free_speech_text}</p>
+                              <p className="mt-2 text-sm text-stone-600">Lugares livres: {record.places_mentioned_text || "não informado"}</p>
+                              <p className="mt-2 text-sm text-stone-600">
+                                Ocupação / atividade principal: {record.respondent_occupation?.trim() || "não informado"}
+                              </p>
+                              {hasPossibleSensitiveOccupation(record.respondent_occupation) ? (
+                                <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+                                  Verifique se a ocupação não identifica a pessoa. Prefira descrição geral.
+                                </p>
+                              ) : null}
+                              <p className="mt-2 text-sm text-stone-600">
+                                Estruturados: {record.places_mentioned.length > 0 ? record.places_mentioned.map((place) => `${place.place_name}${place.normalized_places ? ` → ${place.normalized_places.normalized_name}` : ""} (${place.place_type ?? "sem tipo"})`).join(", ") : "nenhum"}
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href={`/escutas/${record.id}`}>
+                                Editar escuta
+                              </Link>
+                              <button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-semear-green px-4 text-sm font-semibold text-white" onClick={() => setExpandedId((current) => current === record.id ? null : record.id)} type="button">
+                                <MapPinned className="h-4 w-4" aria-hidden="true" />
+                                Revisar território
+                              </button>
+                            </div>
+                          </div>
+                          {expandedId === record.id ? (
+                            <div className="mt-5">
+                              <TerritorialReviewPanel record={record} neighborhoods={neighborhoods} onSaved={() => void load()} />
+                            </div>
+                          ) : null}
+                        </article>
+                      ))}
+                    </div>
                   ) : null}
-                  <p className="mt-2 text-sm text-stone-600">
-                    Estruturados: {record.places_mentioned.length > 0 ? record.places_mentioned.map((place) => `${place.place_name}${place.normalized_places ? ` → ${place.normalized_places.normalized_name}` : ""} (${place.place_type ?? "sem tipo"})`).join(", ") : "nenhum"}
-                  </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href={`/escutas/${record.id}`}>
-                    Editar escuta
-                  </Link>
-                  <button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-semear-green px-4 text-sm font-semibold text-white" onClick={() => setExpandedId((current) => current === record.id ? null : record.id)} type="button">
-                    <MapPinned className="h-4 w-4" aria-hidden="true" />
-                    Revisar território
-                  </button>
-                </div>
-              </div>
-              {expandedId === record.id ? (
-                <div className="mt-5">
-                  <TerritorialReviewPanel record={record} neighborhoods={neighborhoods} onSaved={() => void load()} />
-                </div>
-              ) : null}
-            </article>
-          ))}
+              )}
+            </div>
+          </div>
         </div>
-      ) : null}
+      )}
     </section>
   );
 }

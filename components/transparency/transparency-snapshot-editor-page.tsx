@@ -55,6 +55,7 @@ import {
   type TransparencyChecklistState,
   type TransparencyRiskReport
 } from "@/lib/transparency-privacy";
+import { getTerritorialRiskPublicationGuard } from "@/lib/transparency-territorial-risk";
 
 type SnapshotEditorProps = {
   snapshotId: string;
@@ -74,6 +75,7 @@ type FormState = {
   listening_text: string;
   limits_text: string;
   next_steps_text: string;
+  territorial_risk_override_reason: string;
 };
 
 const commentTypeOptions: Array<{ value: SnapshotReviewCommentType; label: string }> = [
@@ -233,11 +235,23 @@ export function TransparencySnapshotEditorPage({ snapshotId }: SnapshotEditorPro
     setFeedback(null);
 
     const nextStatus = explicitStatus ?? (snapshot.status === "published" ? "reviewed" : snapshot.status);
+    const contentForm = {
+      title: form.title,
+      period_start: form.period_start,
+      period_end: form.period_end,
+      public_summary: form.public_summary,
+      privacy_notes: form.privacy_notes,
+      methodology_notes: form.methodology_notes,
+      opening_text: form.opening_text,
+      listening_text: form.listening_text,
+      limits_text: form.limits_text,
+      next_steps_text: form.next_steps_text
+    };
 
     const result = await supabase
       .from("public_transparency_snapshots")
       .update({
-        ...form,
+        ...contentForm,
         public_summary: form.public_summary.trim(),
         review_checklist: checklist,
         current_risk_report: riskReport,
@@ -344,8 +358,15 @@ export function TransparencySnapshotEditorPage({ snapshotId }: SnapshotEditorPro
 
   async function transition(status: PublicTransparencySnapshot["status"]) {
     if (!supabase || !snapshot || !form) return;
+    let overridePatch: {
+      territorial_risk_override?: boolean;
+      territorial_risk_override_reason?: string | null;
+      territorial_risk_override_by?: string | null;
+      territorial_risk_override_at?: string | null;
+    } = {};
 
     if (status === "published") {
+      const guard = getTerritorialRiskPublicationGuard(snapshot);
       if (!checklistComplete || riskReport.hasBlockingRisk) {
         setError("Checklist incompleto ou risco bloqueante detectado. A publicação foi bloqueada.");
         return;
@@ -353,6 +374,22 @@ export function TransparencySnapshotEditorPage({ snapshotId }: SnapshotEditorPro
       if (auditStatus.hasBlockingComments) {
         setError("Há comentários críticos pendentes de privacidade, dados ou metodologia. A publicação foi bloqueada.");
         return;
+      }
+      if (guard.critical && !canCoordinate) {
+        setError("A cobertura territorial deste snapshot está crítica. Para publicar, a coordenação precisa registrar justificativa institucional.");
+        return;
+      }
+      if (guard.critical && !guard.hasOverride) {
+        if (!form.territorial_risk_override_reason.trim()) {
+          setError("A cobertura territorial deste snapshot está crítica. Para publicar, a coordenação precisa registrar justificativa institucional.");
+          return;
+        }
+        overridePatch = {
+          territorial_risk_override: true,
+          territorial_risk_override_reason: form.territorial_risk_override_reason.trim(),
+          territorial_risk_override_by: currentUserId,
+          territorial_risk_override_at: new Date().toISOString()
+        };
       }
       if (auditStatus.hasTextWarnings && canCoordinate) {
         setFeedback("Há comentários pendentes de texto. A regra adotada permite publicar apenas com validação de coordenação ou admin.");
@@ -362,10 +399,24 @@ export function TransparencySnapshotEditorPage({ snapshotId }: SnapshotEditorPro
     setSaving(true);
     setError(null);
 
+    const contentForm = {
+      title: form.title,
+      period_start: form.period_start,
+      period_end: form.period_end,
+      public_summary: form.public_summary,
+      privacy_notes: form.privacy_notes,
+      methodology_notes: form.methodology_notes,
+      opening_text: form.opening_text,
+      listening_text: form.listening_text,
+      limits_text: form.limits_text,
+      next_steps_text: form.next_steps_text
+    };
+
     const result = await supabase
       .from("public_transparency_snapshots")
       .update({
-        ...form,
+        ...contentForm,
+        ...overridePatch,
         review_checklist: checklist,
         current_risk_report: riskReport,
         status
@@ -385,6 +436,55 @@ export function TransparencySnapshotEditorPage({ snapshotId }: SnapshotEditorPro
       setFeedback(`Snapshot marcado como ${getSnapshotStatusLabel(updated.status)}.`);
     }
 
+    setSaving(false);
+  }
+
+  async function registerTerritorialRiskOverride() {
+    if (!supabase || !snapshot || !canCoordinate) {
+      setError("Somente coordenação ou admin podem registrar justificativa institucional.");
+      return;
+    }
+
+    const guard = getTerritorialRiskPublicationGuard(snapshot);
+    if (!guard.critical) {
+      setFeedback("Este snapshot não está em risco territorial crítico. Override não é necessário.");
+      return;
+    }
+
+    const reason = form?.territorial_risk_override_reason.trim() ?? "";
+    if (!reason) {
+      setError("Preencha a justificativa institucional antes de registrar o override de risco territorial.");
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    setFeedback(null);
+
+    const result = await supabase
+      .from("public_transparency_snapshots")
+      .update({
+        territorial_risk_override: true,
+        territorial_risk_override_reason: reason,
+        territorial_risk_override_by: currentUserId,
+        territorial_risk_override_at: new Date().toISOString()
+      })
+      .eq("id", snapshot.id)
+      .select("*")
+      .single();
+
+    if (result.error) {
+      setError(result.error.message);
+      setSaving(false);
+      return;
+    }
+
+    const updated = result.data as PublicTransparencySnapshot;
+    setSnapshot(updated);
+    setForm(toFormState(updated));
+    setChecklist(normalizeTransparencyChecklist(updated.review_checklist));
+    await refreshAuditCollections(updated, currentUserId);
+    setFeedback("Justificativa institucional de risco territorial registrada.");
     setSaving(false);
   }
 
@@ -475,7 +575,24 @@ export function TransparencySnapshotEditorPage({ snapshotId }: SnapshotEditorPro
   if (!snapshot || !form) return <StateBox>Snapshot não encontrado.</StateBox>;
 
   const diffItems = buildSummaryDiff(snapshot.generated_summary ?? "", form.public_summary);
-  const territories = ((snapshot.territory_summary ?? []) as Array<{ territory: string; reviewed_records: number; public_status: string }>).slice(0, 12);
+  const territoryPayload = (snapshot.territory_summary ?? {}) as {
+    action_territory_summary?: Array<{ territory: string; reviewed_records: number; public_status: string }>;
+    respondent_territory_summary?: Array<{ territory: string; reviewed_records: number; public_status: string }>;
+    respondent_without_territory?: number;
+    territorial_quality_summary?: {
+      status: "boa" | "atenção" | "crítica";
+      coverage_percent: number;
+      records_with_territory: number;
+      records_without_territory: number;
+      methodology_note: string;
+      operational_recommendation: string;
+    };
+  };
+  const territoriesAction = (territoryPayload.action_territory_summary ?? []).slice(0, 12);
+  const territoriesRespondent = (territoryPayload.respondent_territory_summary ?? []).slice(0, 12);
+  const respondentWithoutTerritory = territoryPayload.respondent_without_territory ?? 0;
+  const territorialQuality = territoryPayload.territorial_quality_summary;
+  const territorialRiskGuard = getTerritorialRiskPublicationGuard(snapshot);
 
   return (
     <section className="pb-10">
@@ -523,6 +640,44 @@ export function TransparencySnapshotEditorPage({ snapshotId }: SnapshotEditorPro
 
           {activeTab === "content" ? (
             <>
+              {territorialQuality ? (
+                <div className={`mb-4 rounded-2xl border px-4 py-3 text-sm ${territorialQuality.status === "boa" ? "border-green-200 bg-green-50 text-green-900" : territorialQuality.status === "atenção" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-red-200 bg-red-50 text-red-900"}`}>
+                  <p><strong>Qualidade territorial automática:</strong> {territorialQuality.status} · cobertura {territorialQuality.coverage_percent}% ({territorialQuality.records_with_territory}/{territorialQuality.records_with_territory + territorialQuality.records_without_territory})</p>
+                  <p className="mt-1">{territorialQuality.methodology_note}</p>
+                  <p className="mt-1"><strong>Recomendação:</strong> {territorialQuality.operational_recommendation}</p>
+                </div>
+              ) : null}
+
+              {territorialQuality ? (
+                <div className={`mb-4 rounded-2xl border px-4 py-3 text-sm ${territorialRiskGuard.critical ? "border-red-300 bg-red-50 text-red-900" : "border-semear-gray bg-semear-offwhite text-stone-700"}`}>
+                  <p className="font-semibold">Risco territorial de publicação</p>
+                  <p className="mt-1">
+                    Status: <strong>{territorialQuality.status}</strong> · cobertura: <strong>{territorialQuality.coverage_percent}%</strong> · sem território: <strong>{territorialQuality.records_without_territory}</strong>
+                  </p>
+                  <p className="mt-1">{territorialQuality.methodology_note}</p>
+                  <p className="mt-2 text-xs">Use apenas quando a publicação pública for necessária mesmo com cobertura territorial crítica. A justificativa ficará registrada no pacote institucional.</p>
+                  <TextArea
+                    label="Justificativa institucional de risco territorial"
+                    rows={3}
+                    value={form.territorial_risk_override_reason}
+                    onChange={(value) => setForm({ ...form, territorial_risk_override_reason: value })}
+                  />
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <ActionButton
+                      disabled={saving || !canCoordinate || !territorialRiskGuard.critical}
+                      icon={<ShieldAlert className="h-4 w-4" />}
+                      label="Registrar justificativa institucional"
+                      onClick={() => void registerTerritorialRiskOverride()}
+                    />
+                    {snapshot.territorial_risk_override ? (
+                      <span className="inline-flex min-h-10 items-center rounded-full border border-green-200 bg-green-50 px-3 text-xs font-semibold text-green-800">
+                        Override ativo em {snapshot.territorial_risk_override_at ? new Date(snapshot.territorial_risk_override_at).toLocaleString("pt-BR") : "data não registrada"}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+
               <div className="grid gap-4 md:grid-cols-2">
                 <Field label="Título"><input className="mt-2 min-h-11 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" onChange={(event) => setForm({ ...form, title: event.target.value })} value={form.title} /></Field>
                 <div className="grid grid-cols-2 gap-3">
@@ -613,7 +768,7 @@ export function TransparencySnapshotEditorPage({ snapshotId }: SnapshotEditorPro
                 <JsonSummary title="Totais" data={snapshot.totals} />
                 <JsonSummary title="Temas" data={snapshot.theme_summary} />
                 <JsonSummary title="Palavras" data={snapshot.word_summary} />
-                <JsonSummary title="Territórios" data={snapshot.territory_summary} />
+                <JsonSummary title="Territórios (ação e referência)" data={snapshot.territory_summary} />
                 <JsonSummary title="Linha do tempo" data={snapshot.action_timeline} />
               </Panel>
             </>
@@ -689,12 +844,21 @@ export function TransparencySnapshotEditorPage({ snapshotId }: SnapshotEditorPro
 
           <section className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
             <h3 className="font-semibold text-semear-green">Amostra mínima e territórios</h3>
+            <p className="mt-2 text-xs text-stone-500">Territórios da ação e territórios de referência dos entrevistados são listados separadamente.</p>
             <div className="mt-4 space-y-2">
-              {territories.map((territory) => (
-                <div className="rounded-xl border border-semear-gray bg-semear-offwhite px-3 py-2 text-sm text-stone-700" key={territory.territory}>
-                  <strong className="text-semear-green">{territory.territory}</strong>: {territory.reviewed_records} escuta(s) revisada(s) · {territory.public_status}
+              {territoriesAction.map((territory) => (
+                <div className="rounded-xl border border-semear-gray bg-semear-offwhite px-3 py-2 text-sm text-stone-700" key={`acao-${territory.territory}`}>
+                  <strong className="text-semear-green">[Ação] {territory.territory}</strong>: {territory.reviewed_records} escuta(s) revisada(s) · {territory.public_status}
                 </div>
               ))}
+              {territoriesRespondent.map((territory) => (
+                <div className="rounded-xl border border-semear-gray bg-semear-offwhite px-3 py-2 text-sm text-stone-700" key={`ref-${territory.territory}`}>
+                  <strong className="text-semear-green">[Referência] {territory.territory}</strong>: {territory.reviewed_records} escuta(s) revisada(s) · {territory.public_status}
+                </div>
+              ))}
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                Escutas sem território de referência informado: {respondentWithoutTerritory}
+              </div>
             </div>
           </section>
 
@@ -733,7 +897,8 @@ function toFormState(snapshot: PublicTransparencySnapshot): FormState {
     opening_text: snapshot.opening_text ?? "",
     listening_text: snapshot.listening_text ?? "",
     limits_text: snapshot.limits_text ?? "",
-    next_steps_text: snapshot.next_steps_text ?? ""
+    next_steps_text: snapshot.next_steps_text ?? "",
+    territorial_risk_override_reason: snapshot.territorial_risk_override_reason ?? ""
   };
 }
 

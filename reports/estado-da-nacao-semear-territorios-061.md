@@ -1,246 +1,227 @@
-# Estado da Nação 061
+# Estado da Nação: Tijolo 061 - Nota Metodológica Automática de Qualidade Territorial
 
-## Escopo
+**Período**: Maio 2026  
+**Status**: Implementado ✅  
+**Escopo**: propagação automática da cautela metodológica territorial em relatório, devolutiva, dossiê, pós-banca e Transparência Viva
 
-Endurecimento operacional pós-homologação do Google Calendar na Agenda da Equipe.
+---
 
 ## Diagnóstico inicial
 
-Antes deste tijolo, o SEMEAR já tinha:
+Com os Tijolos 058-060, o projeto já tinha:
 
-- `/agenda`, `/agenda/novo` e `/agenda/[id]` publicados;
-- sincronização manual homologada com Google Calendar via OAuth de `admin` e `coordenacao`;
-- `create`, `update`, `cancel` e `unlink` reais aprovados;
-- `google_calendar_sync_logs` funcionando;
-- payload sanitizado e sem dado sensível;
-- conexão OAuth persistida server-side.
+- separação explícita entre território da ação e território de referência do entrevistado;
+- governança de revisão territorial e auditoria;
+- visibilidade operacional no Dashboard.
 
-Riscos abertos:
+Lacuna observada no ciclo 061:
 
-- evento de homologação de teste com título sujo;
-- mensagens de erro ainda genéricas em parte do fluxo;
-- necessidade de checagem explícita de pré-condições e permissão de escrita;
-- política de convites ainda indefinida;
-- histórico de sync ainda sem exibir resumo sanitizado do payload;
-- necessidade de documentação dedicada para refresh token e drift.
+- a qualidade territorial ainda não aparecia de forma uniforme em todos os artefatos oficiais;
+- existia risco de leitura territorial sem aviso metodológico quando cobertura estivesse baixa;
+- faltava congelar esse aviso também no pacote institucional de homologação.
 
-## Correção do evento de homologação
+---
 
-Evento de teste localizado:
+## Núcleo metodológico unificado
 
-- `037297bc-638c-4720-acff-eb12578c75fc`
+Arquivo-base: `lib/territorial-quality.ts`.
 
-Correção aplicada diretamente no banco remoto:
+Foi adotada função única para textos oficiais de qualidade territorial:
 
-- título anterior: `Homologação OAuth Google Calendar — SEMEAHomologacao OAuth Google Calendar - SEMEAR atualizado`
-- título atual: `Homologação Google Calendar — SEMEAR`
+- `buildTerritorialQualityMethodologyNote(metrics)`
 
-Observação:
+Saída padronizada:
 
-- a correção afetou apenas o evento de teste de homologação;
-- nenhum evento operacional real foi alterado.
+- status (`boa`, `atenção`, `crítica`);
+- texto curto e texto completo;
+- recomendação operacional.
 
-## Melhorias de erro
+Critério utilizado em todos os módulos:
 
-Foi criada a camada:
+- boa: cobertura >= 80%;
+- atenção: cobertura entre 50% e 79%;
+- crítica: cobertura < 50%.
 
-- `lib/google-calendar/google-calendar-errors.ts`
+---
 
-Ela transforma erro técnico em:
+## Relatórios mensais
 
-- código interno;
-- mensagem segura para UI;
-- recomendação de ação;
-- sinalização para reconexão, permissão ou revisão de setup.
+Arquivos atualizados:
 
-Casos tratados:
+- `lib/monthly-reports.ts`
+- `components/reports/monthly-report-detail.tsx`
 
-- sync desabilitado;
-- calendário institucional ausente;
-- Google Calendar API desabilitada;
-- calendário não encontrado;
-- conta sem permissão de edição;
-- conexão OAuth ausente;
-- refresh token ausente;
-- refresh token revogado;
-- token expirado;
-- quota/rate limit;
-- evento externo não encontrado;
-- falha de rede.
+Entregas:
 
-## Melhorias de permissão
+- dados do relatório incluem métrica territorial e nota metodológica;
+- exports (plain text, markdown e CSV) incluem contexto de cobertura e recomendação;
+- detalhe do relatório mostra bloco visual com status, cobertura, com/sem território e alerta quando necessário.
 
-Antes de `create`, `update` e `cancel`, a rota agora valida:
+---
 
-- sync habilitado;
-- `GOOGLE_CALENDAR_ID` configurado;
-- conexão Google ativa quando não houver service account;
-- token de acesso disponível para a conta autorizada.
+## Pós-banca
 
-Quando o Google responder falta de escrita, a UI passa a orientar:
+Arquivo atualizado:
 
-- compartilhar o calendário institucional com permissão de edição;
-- revisar a documentação operacional;
-- reconectar quando o problema for de autorização expirada.
+- `components/post-action/post-action-consolidation-page.tsx`
 
-## UX de reconexão
+Entregas:
 
-Melhorias aplicadas em `/agenda/[id]`:
+- cobertura territorial por ação no fluxo de decisão;
+- faixa de status com texto metodológico;
+- aviso explícito para atenção/crítica;
+- link direto para revisão: `/escutas/revisao-territorial?tab=qualidade&actionId=<id>`.
 
-- botão explícito `Reconectar Google Calendar`;
-- mensagens seguras para refresh expirado, revogação ou ausência de refresh token;
-- atalho para ajuda/configuração;
-- bloco de `sync_error` com recomendação de ação em linguagem operacional.
+---
 
-## Política de drift
+## Devolutiva
 
-Permanece explícito na UI e na documentação:
+Arquivos atualizados:
 
-- o SEMEAR é a fonte principal;
-- o Google é espelho operacional;
-- alterações feitas diretamente no Google não retornam automaticamente ao SEMEAR nesta versão.
+- `lib/action-debriefs.ts`
+- `components/actions/action-debrief-page.tsx`
 
-Além disso, a tela reforça:
+Entregas:
 
-- `Sincronizado`
-- `Alterações locais pendentes de sincronização`
-- `Erro de sincronização`
-- `Desvinculado`
-- `Cancelado no Google`
+- geração de devolutiva incorpora nota metodológica territorial automática;
+- linguagem cautelosa em status `atenção` e `crítica`:
+  - "Entre as escutas com território de referência preenchido...";
+- snapshot interno da devolutiva passa a registrar status e cobertura territorial;
+- UI de devolutiva exibe card de qualidade territorial com link de revisão.
 
-## Teste de refresh
+---
 
-Foi criado:
+## Dossiê da ação
 
-- `docs/teste-refresh-google-calendar.md`
+Arquivos atualizados:
 
-Conteúdo:
+- `lib/action-closures.ts`
+- `components/actions/action-dossier-page.tsx`
 
-- checklist manual para testar renovação do access token;
-- confirmação de preservação ou rotação segura do refresh token;
-- exigência de não expor token em log, frontend ou relatório.
+Entregas:
 
-## Política de convites
+- dossiê exibe cobertura, escutas sem território e status metodológico;
+- markdown do dossiê ganhou seção "Nota metodológica territorial";
+- seção "Auditoria de correções territoriais" adicionada no markdown;
+- contagem de correções em `listening_record_field_audits` (`respondent_neighborhood_id`) incluída na interface e no documento.
 
-Foi criado:
+---
 
-- `docs/politica-convites-google-calendar.md`
+## Transparência Viva
 
-Decisão recomendada:
+Arquivos atualizados:
 
-- convites por e-mail desativados por padrão;
-- calendário institucional como destino único neste estágio;
-- eventual ativação futura apenas por evento, sem campo livre de e-mail e sem convidar entrevistados.
+- `lib/transparency-snapshots.ts`
+- `components/transparency/transparency-preview-page.tsx`
+- `components/transparency/transparency-snapshot-editor-page.tsx`
 
-## Flag para convites
+Entregas:
 
-Migration criada:
+- payload territorial inclui `territorial_quality_summary` agregado:
+  - status;
+  - cobertura;
+  - com/sem território;
+  - nota metodológica;
+  - recomendação operacional;
+- preview e editor exibem esse bloco automaticamente;
+- `methodology_notes` e `limits_text` passam a refletir status territorial quando cobertura está baixa;
+- preservado princípio de não expor dados brutos na camada pública.
 
-- `supabase/migrations/20260508234500_add_google_send_invites_to_team_calendar_events.sql`
+---
 
-Campo adicionado:
+## Homologação institucional
 
-- `team_calendar_events.google_send_invites boolean default false`
+Arquivo atualizado:
 
-Situação:
+- `lib/transparency-homologation.ts`
 
-- apenas preparação de schema;
-- não ativa envio automático;
-- não altera a política atual de `sendUpdates=none`.
+Entregas:
 
-## Melhorias no histórico de sync
+- checklist do pacote ganhou item obrigatório:
+  - "Cobertura territorial revisada.";
+- frozen payload agora congela também:
+  - nota metodológica territorial;
+  - status de qualidade territorial;
+  - cobertura territorial;
+- markdown institucional ganhou seção "Nota metodológica territorial" com status e cobertura.
 
-`/agenda/[id]` agora mostra no histórico:
+---
 
-- ação;
-- status;
-- data;
-- usuário;
-- mensagem segura;
-- resumo sanitizado do payload.
+## Ajuda operacional
 
-Sem exibir:
-
-- token;
-- segredo;
-- resposta bruta do Google;
-- dado sensível.
-
-## Validação de privacidade
-
-Relatório atualizado:
-
-- `reports/google-calendar-payload-privacy-check.md`
-
-Confirmação mantida:
-
-- sem fala original;
-- sem escutas;
-- sem dados de entrevistados;
-- sem anexos;
-- sem relatório semanal completo;
-- sem CPF;
-- sem telefone;
-- sem endereço pessoal;
-- sem dado de saúde individual;
-- sem access token;
-- sem refresh token;
-- sem private key;
-- sem client secret.
-
-## Teste de papéis
-
-Confirmações mantidas por regra implementada e fluxo homologado:
-
-- `admin` sincroniza;
-- `coordenacao` sincroniza;
-- `equipe` não sincroniza;
-- `anon` sem acesso;
-- equipe pode ver status e histórico sem executar sync.
-
-Observação:
-
-- neste tijolo não foi reexecutado smoke manual completo para `anon` e `equipe`;
-- o bloqueio permanece sustentado por checagem de papel na API e pela UI sem botões operacionais para perfis não autorizados.
-
-## Documentação atualizada
-
-- `docs/google-calendar-oauth-manual.md`
-- `docs/google-calendar-integracao.md`
-- `docs/homologacao-google-calendar.md`
-- `docs/agenda-coletiva-equipe.md`
-- `docs/teste-refresh-google-calendar.md`
-- `docs/politica-convites-google-calendar.md`
-
-Também foi atualizada a ajuda interna em:
+Arquivo atualizado:
 
 - `app/ajuda/page.tsx`
 
-## Confirmações de escopo
+Entregas:
 
-Continuam fora desta entrega:
+- nova seção "Nota metodológica territorial" com:
+  - regra de status;
+  - linguagem cautelosa para atenção/crítica;
+  - explicação de objetivo operacional;
+  - links para relatório e preview.
 
-- push notification;
-- webhook de retorno do Google;
-- envio de e-mail próprio;
-- sincronização automática em massa;
-- leitura ampla de calendário pessoal;
-- sincronização de dado sensível.
+---
 
-## Riscos restantes
+## Cenários de validação
 
-1. O caminho por service account continua pendente de política do Google Cloud para geração de chave.
-2. Alterações feitas diretamente no Google continuam sem retorno automático ao SEMEAR.
-3. Convites por e-mail seguem apenas preparados, não operacionalizados.
-4. Teste de rotação real do refresh token ainda depende de novo ciclo manual controlado.
+Cenários funcionais cobertos pelo cálculo único de qualidade territorial e pela propagação de texto:
+
+1. boa (9/10)
+- cobertura: 90%;
+- status esperado: `boa`;
+- leitura territorial permitida sem alerta crítico.
+
+2. atenção (6/10)
+- cobertura: 60%;
+- status esperado: `atenção`;
+- leitura territorial com cautela e recomendação de revisão.
+
+3. crítica (3/10)
+- cobertura: 30%;
+- status esperado: `crítica`;
+- alerta forte em artefatos e recomendação explícita de revisão antes de publicação territorial.
+
+---
+
+## Verificação técnica
+
+Comandos executados:
+
+- `npm run lint` ✅
+- `npm run build` ✅
+- `npm run verify` ✅
+
+Build concluído com 48 rotas geradas, sem erros de lint e tipagem.
+
+---
+
+## Riscos e observações
+
+1. cobertura é indicador de preenchimento e não de representatividade estatística; texto metodológico deve continuar explícito.
+2. qualidade territorial depende de disciplina de revisão no campo; sistema orienta, mas não substitui revisão humana.
+3. uso de status com acento (`atenção`, `crítica`) exige manutenção consistente de typing/string em integrações futuras.
+
+---
 
 ## Próximo tijolo recomendado
 
-`Tijolo 062 — Governança de Convites e Operação Assistida de Reprocessamento`
+**Tijolo 062 - Trava editorial opcional por risco territorial em publicação pública**
 
-Foco sugerido:
+Proposta:
 
-- decisão final sobre convites por evento;
-- ativação opcional e segura de `google_send_invites`;
-- smoke assistido de refresh/rotação;
-- painel mais claro para erros recorrentes e reconexão da coordenação.
+- manter operação sem bloqueio no campo;
+- permitir bloqueio apenas na etapa de publicação externa quando status territorial estiver `crítica` e coordenação não registrar justificativa institucional.
+
+---
+
+## Conclusão
+
+O Tijolo 061 consolidou a governança territorial como linguagem institucional automática:
+
+1. a mesma regra metodológica agora aparece em todos os artefatos-chave;
+2. cobertura baixa ativa cautela textual de forma consistente;
+3. homologação congela a nota territorial para rastreabilidade;
+4. Transparência Viva mantém agregado e auditável, sem dados brutos.
+
+Pronto para operação e prestação institucional ✅

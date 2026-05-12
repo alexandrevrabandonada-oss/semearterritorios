@@ -2,6 +2,12 @@ import { getActionTypeLabel } from "@/lib/actions";
 import type { Action, ListeningRecord, Neighborhood, Theme } from "@/lib/database.types";
 import { getRespondentTerritoryRelationLabel, getReviewStatusLabel, getSourceTypeLabel } from "@/lib/listening-records";
 import { summarizeOccupations } from "@/lib/action-pilot";
+import {
+  buildTerritorialQualityMethodologyNote,
+  calculateRespondentTerritoryQuality,
+  type RespondentTerritoryQualityMetrics,
+  type TerritorialQualityMethodologyNote
+} from "@/lib/territorial-quality";
 
 type ActionWithNeighborhood = Action & {
   neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
@@ -19,8 +25,14 @@ export type MonthlyReportData = {
   title: string;
   totalActions: number;
   totalRecords: number;
-  involvedNeighborhoods: string[];
+  operationNeighborhoods: string[];
+  respondentNeighborhoods: string[];
+  respondentWithoutNeighborhood: number;
   actionTypeCounts: Array<{ name: string; count: number }>;
+  actionTerritoryCounts: Array<{ name: string; count: number }>;
+  respondentTerritoryCounts: Array<{ name: string; count: number }>;
+  territorialQuality: RespondentTerritoryQualityMetrics;
+  territorialMethodologyNote: TerritorialQualityMethodologyNote;
   topThemes: Array<{ name: string; count: number }>;
   sourceTypeCounts: Array<{ name: string; count: number }>;
   occupationCounts: Array<{ name: string; count: number }>;
@@ -57,12 +69,19 @@ export function collectAvailableMonths(actions: Array<Pick<Action, "action_date"
 }
 
 export function buildMonthlyReportData(month: string, actions: ActionWithNeighborhood[], records: RecordWithRelations[]): MonthlyReportData {
-  const involvedNeighborhoods = Array.from(new Set([
-    ...actions.map((item) => item.neighborhoods?.name).filter(Boolean),
-    ...records.map((item) => item.neighborhoods?.name).filter(Boolean)
+  const operationNeighborhoods = Array.from(new Set([
+    ...actions.map((item) => item.neighborhoods?.name).filter(Boolean)
   ] as string[])).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const respondentNeighborhoods = Array.from(new Set([
+    ...records.map((item) => item.respondent_neighborhoods?.name).filter(Boolean)
+  ] as string[])).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const respondentWithoutNeighborhood = records.filter((item) => !item.respondent_neighborhood_id).length;
 
   const actionTypeCounts = countBy(actions, (item) => getActionTypeLabel(item.action_type));
+  const actionTerritoryCounts = countBy(actions, (item) => item.neighborhoods?.name ?? "Território da ação não informado");
+  const respondentTerritoryCounts = countBy(records.filter((item) => Boolean(item.respondent_neighborhoods?.name)), (item) => item.respondent_neighborhoods?.name ?? "");
+  const territorialQuality = calculateRespondentTerritoryQuality(records.length, records.length - respondentWithoutNeighborhood);
+  const territorialMethodologyNote = buildTerritorialQualityMethodologyNote(territorialQuality);
   const topThemes = countThemes(records).slice(0, 8);
   const sourceTypeCounts = countBy(records, (item) => getSourceTypeLabel(item.source_type));
   const occupationSummary = summarizeOccupations(records);
@@ -76,14 +95,20 @@ export function buildMonthlyReportData(month: string, actions: ActionWithNeighbo
     title: `Relatório mensal - ${formatMonthLabel(month)}`,
     totalActions: actions.length,
     totalRecords: records.length,
-    involvedNeighborhoods,
+    operationNeighborhoods,
+    respondentNeighborhoods,
+    respondentWithoutNeighborhood,
     actionTypeCounts,
+    actionTerritoryCounts,
+    respondentTerritoryCounts,
+    territorialQuality,
+    territorialMethodologyNote,
     topThemes,
     sourceTypeCounts,
     occupationCounts,
     priorities,
     unexpectedTopics,
-    activeSearchSummary: buildActiveSearchSummary(month, actions, records, involvedNeighborhoods, sourceTypeCounts),
+    activeSearchSummary: buildActiveSearchSummary(month, actions, records, operationNeighborhoods, respondentNeighborhoods, respondentWithoutNeighborhood, sourceTypeCounts),
     pedagogicalSummary: buildPedagogicalSummary(month, records, topThemes, priorities, unexpectedTopics),
     actions,
     records,
@@ -98,7 +123,13 @@ export function buildMonthlyReportPlainText(report: MonthlyReportData) {
     `Mes de referencia: ${formatMonthLabel(report.month)}`,
     `Total de acoes: ${report.totalActions}`,
     `Total de escutas: ${report.totalRecords}`,
-    `Bairros envolvidos: ${report.involvedNeighborhoods.join(", ") || "Nenhum bairro informado"}`,
+    `Bairros onde houve ação: ${report.operationNeighborhoods.join(", ") || "Nenhum território da ação informado"}`,
+    `Bairros de referência dos entrevistados: ${report.respondentNeighborhoods.join(", ") || "Nenhum território de referência informado"}`,
+    `Escutas sem território de referência: ${report.respondentWithoutNeighborhood}`,
+    `Cobertura territorial (%): ${report.territorialQuality.coveragePercent}`,
+    `Status de qualidade territorial: ${report.territorialQuality.qualityStatus}`,
+    `Ações por território da ação: ${formatCountList(report.actionTerritoryCounts)}`,
+    `Escutas por território de referência: ${formatCountList(report.respondentTerritoryCounts)}`,
     `Tipos de acao: ${formatCountList(report.actionTypeCounts)}`,
     `Temas mais recorrentes: ${formatCountList(report.topThemes)}`,
     `Ocupações informadas (agregado seguro): ${formatCountList(report.occupationCounts)}`,
@@ -107,12 +138,17 @@ export function buildMonthlyReportPlainText(report: MonthlyReportData) {
     `Temas inesperados: ${formatCountList(report.unexpectedTopics)}`,
     `Prioridades apontadas: ${formatCountList(report.priorities)}`,
     "",
+    "Nota metodológica sobre território de referência:",
+    report.territorialMethodologyNote.fullText,
+    `Recomendação operacional: ${report.territorialMethodologyNote.operationalRecommendation}`,
+    `Recomendação para publicação pública: ${report.territorialMethodologyNote.publicRecommendation}`,
+    "",
     "Lista de acoes do mes:",
-    ...report.actions.map((action) => `- ${formatDate(action.action_date)} | ${action.title} | ${getActionTypeLabel(action.action_type)} | ${action.neighborhoods?.name ?? "Sem bairro"}`),
+    ...report.actions.map((action) => `- ${formatDate(action.action_date)} | ${action.title} | ${getActionTypeLabel(action.action_type)} | ${action.neighborhoods?.name ?? "Território da ação não informado"}`),
     "",
     "Pendencias de revisao:",
     ...(report.pendingReviews.length > 0
-      ? report.pendingReviews.map((record) => `- ${formatDate(record.date)} | ${record.neighborhoods?.name ?? "Sem bairro"} | ${truncate(record.free_speech_text, 110)}`)
+      ? report.pendingReviews.map((record) => `- ${formatDate(record.date)} | ação em ${record.neighborhoods?.name ?? "Território da ação não informado"} | referência ${record.respondent_neighborhoods?.name ?? "Não informado"} | ${truncate(record.free_speech_text, 110)}`)
       : ["- Nenhuma pendencia de revisao no mes."])
   ].join("\n");
 }
@@ -124,7 +160,27 @@ export function buildMonthlyReportMarkdown(report: MonthlyReportData) {
     `Mes de referencia: ${formatMonthLabel(report.month)}  `,
     `Total de acoes: ${report.totalActions}  `,
     `Total de escutas: ${report.totalRecords}  `,
-    `Bairros envolvidos: ${report.involvedNeighborhoods.join(", ") || "Nenhum bairro informado"}`,
+    `Bairros onde houve ação: ${report.operationNeighborhoods.join(", ") || "Nenhum território da ação informado"}  `,
+    `Bairros de referência dos entrevistados: ${report.respondentNeighborhoods.join(", ") || "Nenhum território de referência informado"}  `,
+    `Escutas sem território de referência: ${report.respondentWithoutNeighborhood}`,
+    `Cobertura territorial: ${report.territorialQuality.coveragePercent}% (${report.territorialQuality.qualityStatus})`,
+    "",
+    "## Operação territorial",
+    `- Territórios da ação: ${report.operationNeighborhoods.length}`,
+    `- Ações por território da ação: ${formatCountList(report.actionTerritoryCounts)}`,
+    "",
+    "## Escuta territorial",
+    `- Territórios de referência dos entrevistados: ${report.respondentNeighborhoods.length}`,
+    `- Escutas por território de referência: ${formatCountList(report.respondentTerritoryCounts)}`,
+    `- Escutas sem território de referência: ${report.respondentWithoutNeighborhood}`,
+    "",
+    "## Nota metodológica sobre território de referência",
+    `- Status: ${report.territorialMethodologyNote.status}`,
+    `- Cobertura: ${report.territorialQuality.coveragePercent}% (${report.territorialQuality.recordsWithRespondentTerritory}/${report.territorialQuality.totalRecords})`,
+    `- Escutas sem território de referência: ${report.territorialQuality.recordsWithoutRespondentTerritory}`,
+    report.territorialMethodologyNote.fullText,
+    `- Recomendação operacional: ${report.territorialMethodologyNote.operationalRecommendation}`,
+    `- Recomendação para publicação pública: ${report.territorialMethodologyNote.publicRecommendation}`,
     "",
     "## Tipos de acao",
     formatBulletList(report.actionTypeCounts),
@@ -149,12 +205,12 @@ export function buildMonthlyReportMarkdown(report: MonthlyReportData) {
     "",
     "## Lista de acoes do mes",
     report.actions.length > 0
-      ? report.actions.map((action) => `- ${formatDate(action.action_date)} | ${action.title} | ${getActionTypeLabel(action.action_type)} | ${action.neighborhoods?.name ?? "Sem bairro"}`).join("\n")
+      ? report.actions.map((action) => `- ${formatDate(action.action_date)} | ${action.title} | ${getActionTypeLabel(action.action_type)} | ${action.neighborhoods?.name ?? "Território da ação não informado"}`).join("\n")
       : "- Nenhuma acao cadastrada no mes.",
     "",
     "## Pendencias de revisao",
     report.pendingReviews.length > 0
-      ? report.pendingReviews.map((record) => `- ${formatDate(record.date)} | ${record.neighborhoods?.name ?? "Sem bairro"} | ${truncate(record.free_speech_text, 110)}`).join("\n")
+      ? report.pendingReviews.map((record) => `- ${formatDate(record.date)} | ação em ${record.neighborhoods?.name ?? "Território da ação não informado"} | referência ${record.respondent_neighborhoods?.name ?? "Não informado"} | ${truncate(record.free_speech_text, 110)}`).join("\n")
       : "- Nenhuma pendencia de revisao no mes.",
     "",
     "## Territorio de referencia do entrevistado",
@@ -165,7 +221,8 @@ export function buildMonthlyReportMarkdown(report: MonthlyReportData) {
 export function buildMonthlyReportCsv(report: MonthlyReportData) {
   const headers = [
     "data",
-    "bairro",
+    "territorio_acao_registro",
+    "territorio_acao",
     "acao",
     "tipo_acao",
     "origem_escuta",
@@ -179,10 +236,14 @@ export function buildMonthlyReportCsv(report: MonthlyReportData) {
     "bairro_referencia_entrevistado",
     "vinculo_territorio"
     ,"ocupacao_atividade_principal"
+    ,"cobertura_territorial_percentual"
+    ,"escutas_sem_territorio_referencia"
+    ,"status_qualidade_territorial"
   ];
 
   const rows = report.records.map((record) => [
     record.date,
+    record.neighborhoods?.name ?? "",
     record.neighborhoods?.name ?? "",
     record.actions?.title ?? "",
     record.actions?.action_type ? getActionTypeLabel(record.actions.action_type) : "",
@@ -196,7 +257,10 @@ export function buildMonthlyReportCsv(report: MonthlyReportData) {
     record.respondent_city ?? "",
     (record as RecordWithRelations).respondent_neighborhoods?.name ?? "",
     record.respondent_territory_relation ? getRespondentTerritoryRelationLabel(record.respondent_territory_relation) : "",
-    record.respondent_occupation ?? ""
+    record.respondent_occupation ?? "",
+    report.territorialQuality.coveragePercent.toString(),
+    report.territorialQuality.recordsWithoutRespondentTerritory.toString(),
+    report.territorialQuality.qualityStatus
   ]);
 
   return [headers.join(","), ...rows.map((row) => row.map(escapeCsv).join(","))].join("\n");
@@ -206,12 +270,14 @@ function buildActiveSearchSummary(
   month: string,
   actions: ActionWithNeighborhood[],
   records: RecordWithRelations[],
-  neighborhoods: string[],
+  operationNeighborhoods: string[],
+  respondentNeighborhoods: string[],
+  respondentWithoutNeighborhood: number,
   sourceTypeCounts: Array<{ name: string; count: number }>
 ) {
   const sourceText = sourceTypeCounts.length > 0 ? formatCountList(sourceTypeCounts.slice(0, 3)) : "sem origem de escuta recorrente identificada";
   const actionText = actions.length > 0 ? formatCountList(countBy(actions, (item) => getActionTypeLabel(item.action_type)).slice(0, 3)) : "sem acoes registradas";
-  return `Em ${formatMonthLabel(month)}, a busca ativa registrada pelo sistema reuniu ${actions.length} acao(oes) e ${records.length} escuta(s), envolvendo ${neighborhoods.length} bairro(s): ${neighborhoods.join(", ") || "nenhum bairro informado"}. Os tipos de acao mais presentes foram ${actionText}, enquanto as origens de escuta mais frequentes foram ${sourceText}.`;
+  return `Em ${formatMonthLabel(month)}, a busca ativa registrada pelo sistema reuniu ${actions.length} acao(oes) e ${records.length} escuta(s). Na operação territorial, houve ação em ${operationNeighborhoods.length} território(s): ${operationNeighborhoods.join(", ") || "nenhum território da ação informado"}. Na escuta territorial, apareceram ${respondentNeighborhoods.length} território(s) de referência: ${respondentNeighborhoods.join(", ") || "nenhum território de referência informado"}. Escutas sem território de referência: ${respondentWithoutNeighborhood}. Os tipos de ação mais presentes foram ${actionText}, enquanto as origens de escuta mais frequentes foram ${sourceText}.`;
 }
 
 function buildPedagogicalSummary(

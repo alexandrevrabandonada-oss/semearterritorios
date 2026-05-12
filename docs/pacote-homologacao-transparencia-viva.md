@@ -63,6 +63,17 @@ Assinatura é bloqueada se:
 - `frozen_payload` estiver vazio;
 - pacote estiver `rejected` ou `archived`.
 
+## Trava por risco territorial crítico
+
+Se o snapshot vinculado estiver com qualidade territorial `crítica` (cobertura menor que 50%), a assinatura institucional também é bloqueada até existir justificativa institucional registrada.
+
+Regras adicionais:
+
+- somente `coordenacao` ou `admin` podem registrar a justificativa;
+- o checklist inclui o item `territorial_risk_critical_justified`;
+- sem esse item e sem justificativa, o pacote não pode ser assinado;
+- a justificativa aparece no markdown institucional e no payload congelado do pacote.
+
 ## Como arquivar
 
 Pacotes arquivados permanecem como rastro institucional, mas deixam de ser candidatos ativos para assinatura.
