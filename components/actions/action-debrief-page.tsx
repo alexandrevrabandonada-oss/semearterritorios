@@ -94,6 +94,7 @@ export function ActionDebriefPage({ actionId }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [draftRefreshLabel, setDraftRefreshLabel] = useState<string | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -239,15 +240,30 @@ export function ActionDebriefPage({ actionId }: Props) {
   function generateDraft() {
     console.log("[generateDraft] Iniciando...");
     try {
-      setForm({
+      setError(null);
+      const nextDraft = {
         title: generated.title,
         public_summary: generated.publicSummary,
         methodology_note: generated.methodologyNote,
         key_findings: generated.keyFindings,
         next_steps: generated.nextSteps,
         team_review_text: generated.teamReviewText
-      });
-      setFeedback("Rascunho determinístico gerado. Revise antes de salvar ou aprovar.");
+      };
+      const alreadyUpToDate =
+        form.title === nextDraft.title &&
+        form.public_summary === nextDraft.public_summary &&
+        form.methodology_note === nextDraft.methodology_note &&
+        form.key_findings === nextDraft.key_findings &&
+        form.next_steps === nextDraft.next_steps &&
+        form.team_review_text === nextDraft.team_review_text;
+
+      setForm(nextDraft);
+      setFeedback(
+        alreadyUpToDate
+          ? "Rascunho recalculado. O texto já estava atualizado."
+          : "Rascunho determinístico aplicado. Revise antes de salvar ou aprovar."
+      );
+      setDraftRefreshLabel(`Última geração: ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`);
       console.log("[generateDraft] Sucesso");
       // Limpar feedback após 5 segundos
       setTimeout(() => setFeedback(null), 5000);
@@ -369,6 +385,7 @@ export function ActionDebriefPage({ actionId }: Props) {
           <Sparkles className="h-4 w-4" aria-hidden="true" />
           Gerar rascunho determinístico
         </button>
+        {draftRefreshLabel ? <p className="inline-flex min-h-11 items-center text-sm font-semibold text-semear-green">{draftRefreshLabel}</p> : null}
         <div className="inline-flex rounded-full border border-semear-green/20 bg-white p-1">
           <button
             className={`rounded-full px-4 py-2 text-xs font-semibold ${mode === "interno" ? "bg-semear-green text-white" : "text-semear-green"}`}
