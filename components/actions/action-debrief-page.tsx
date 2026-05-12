@@ -227,9 +227,35 @@ export function ActionDebriefPage({ actionId }: Props) {
       approved_at: status === "approved" ? new Date().toISOString() : null
     };
 
-    const result = debrief
+    // RLS em action_debriefs permite INSERT apenas em draft/reviewed.
+    // Se a primeira operação já for aprovação, inserimos como reviewed e promovemos em seguida.
+    let result = debrief
       ? await supabase.from("action_debriefs").update(payload).eq("id", debrief.id).select("*").single()
-      : await supabase.from("action_debriefs").insert(payload).select("*").single();
+      : await supabase
+          .from("action_debriefs")
+          .insert({
+            ...payload,
+            status: status === "approved" ? "reviewed" : status,
+            approved_by: status === "approved" ? null : payload.approved_by,
+            approved_at: status === "approved" ? null : payload.approved_at
+          })
+          .select("*")
+          .single();
+
+    if (!result.error && !debrief && status === "approved") {
+      result = await supabase
+        .from("action_debriefs")
+        .update({
+          status: "approved",
+          approved_by: user.id,
+          approved_at: new Date().toISOString(),
+          generated_markdown: markdown,
+          totals_snapshot: generated.totalsSnapshot as Json
+        })
+        .eq("id", result.data.id)
+        .select("*")
+        .single();
+    }
 
     setSaving(false);
 
