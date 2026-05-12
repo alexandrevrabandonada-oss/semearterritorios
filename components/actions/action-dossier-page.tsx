@@ -15,6 +15,17 @@ import {
 import { getActionPilotMetrics, getActionReadiness, summarizeOccupations, type ActionForPilot, type ListeningRecordForPilot } from "@/lib/action-pilot";
 import { getActionStatusLabel, getActionTypeLabel } from "@/lib/actions";
 import { buildTerritorialQualityMethodologyNote, calculateRespondentTerritoryQuality } from "@/lib/territorial-quality";
+import { buildActionAnalytics, type ActionAnalytics } from "@/lib/action-analytics";
+import {
+  AnalyticalSignalsPanel,
+  ThemeMatrixPanel,
+  ThemeCooccurrencePanel,
+  TerritorialReadingPanel,
+  OccupationReadingPanel,
+  PlacesPanelImproved,
+  MethodologicalWarningsPanel,
+  SuggestedNextStepsPanel
+} from "@/components/actions/analytical-panels";
 import type {
   ActionClosure,
   ActionDebrief,
@@ -57,6 +68,7 @@ export function ActionDossierPage({ actionId }: Props) {
   const [closure, setClosure] = useState<ActionClosure | null>(null);
   const [profile, setProfile] = useState<Pick<Profile, "id" | "role"> | null>(null);
   const [form, setForm] = useState<ClosureForm>(emptyForm);
+  const [analytics, setAnalytics] = useState<ActionAnalytics | null>(null);
   const [territorialAuditCount, setTerritorialAuditCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -126,6 +138,17 @@ export function ActionDossierPage({ actionId }: Props) {
       setDebrief(debriefResult.data as ActionDebrief | null);
       setClosure(loadedClosure);
       setProfile(profileResult.data as Pick<Profile, "id" | "role"> | null);
+
+      // Build analytics
+      const loadedAction = actionResult.data as ActionForPilot;
+      const builtAnalytics = await buildActionAnalytics(
+        actionId,
+        loadedRecords,
+        loadedAction.title,
+        loadedAction.neighborhoods ? { id: loadedAction.neighborhoods.id, name: loadedAction.neighborhoods.name } : undefined
+      );
+      setAnalytics(builtAnalytics);
+
       if (loadedClosure) {
         setForm({
           status: loadedClosure.status,
@@ -412,7 +435,46 @@ export function ActionDossierPage({ actionId }: Props) {
             />
             {loadedAction.team ? <Mini title="Registro legado de equipe" items={[loadedAction.team]} /> : null}
           </Panel>
+        </div>
 
+        {/* NEW: Analytical panels */}
+        {analytics && (
+          <>
+            <div className="mt-6 grid gap-5">
+              {analytics.topSignals.length > 0 && (
+                <AnalyticalSignalsPanel signals={analytics.topSignals} />
+              )}
+            </div>
+
+            <div className="mt-6 grid gap-5 lg:grid-cols-2">
+              <ThemeMatrixPanel analytics={analytics} />
+              <ThemeCooccurrencePanel cooccurrences={analytics.themeCooccurrences} />
+            </div>
+
+            <div className="mt-6">
+              <TerritorialReadingPanel analytics={analytics} />
+            </div>
+
+            <div className="mt-6 grid gap-5 lg:grid-cols-2">
+              <OccupationReadingPanel occupations={analytics.occupationSummary} withoutCount={analytics.occupationWithoutCount} />
+              <PlacesPanelImproved places={analytics.placeRanking} />
+            </div>
+
+            {analytics.methodologicalWarnings.length > 0 && (
+              <div className="mt-6">
+                <MethodologicalWarningsPanel warnings={analytics.methodologicalWarnings} />
+              </div>
+            )}
+
+            {analytics.suggestedNextSteps.length > 0 && (
+              <div className="mt-6">
+                <SuggestedNextStepsPanel steps={analytics.suggestedNextSteps} />
+              </div>
+            )}
+          </>
+        )}
+
+        <div className="mt-6 grid gap-5 lg:grid-cols-2">
           <Panel title="Decisão da coordenação e notas" icon={<CheckCircle2 className="h-5 w-5" />}>
             <label className={`flex items-start gap-3 rounded-2xl border border-semear-gray bg-semear-offwhite p-4 text-sm ${!canCoordinate ? "opacity-60" : ""}`}>
               <input checked={form.coordination_sufficiency} disabled={!canCoordinate} onChange={(event) => updateField("coordination_sufficiency", event.target.checked)} type="checkbox" />
