@@ -20,6 +20,7 @@ import {
   buildPublicDebriefMarkdown,
   defaultPrivacyNote
 } from "@/lib/action-debriefs";
+import { buildActionAnalytics, type ActionAnalytics } from "@/lib/action-analytics";
 import {
   getActionPilotMetrics,
   getActionReadiness,
@@ -28,8 +29,16 @@ import {
 } from "@/lib/action-pilot";
 import { getActionTypeLabel } from "@/lib/actions";
 import { buildTerritorialQualityMethodologyNote, calculateRespondentTerritoryQuality } from "@/lib/territorial-quality";
-import type { ActionDebrief, DebriefStatus, Json, Profile } from "@/lib/database.types";
+import type {
+  ActionDebrief,
+  DebriefStatus,
+  Json,
+  ListeningRecordPublicQuote,
+  ListeningRecordPublicQuoteAudit,
+  Profile
+} from "@/lib/database.types";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { MethodologicalWarningsPanel } from "@/components/actions/analytical-panels";
 
 type Props = {
   actionId: string;
@@ -64,6 +73,11 @@ export function ActionDebriefPage({ actionId }: Props) {
   const [action, setAction] = useState<ActionForPilot | null>(null);
   const [records, setRecords] = useState<ListeningRecordForPilot[]>([]);
   const [debrief, setDebrief] = useState<ActionDebrief | null>(null);
+  const [allQuotes, setAllQuotes] = useState<ListeningRecordPublicQuote[]>([]);
+  const [publicQuotes, setPublicQuotes] = useState<ListeningRecordPublicQuote[]>([]);
+  const [quoteAudits, setQuoteAudits] = useState<ListeningRecordPublicQuoteAudit[]>([]);
+  const [analytics, setAnalytics] = useState<ActionAnalytics | null>(null);
+  const [mode, setMode] = useState<"interno" | "publico">("publico");
   const [profile, setProfile] = useState<Pick<Profile, "id" | "role"> | null>(null);
   const [form, setForm] = useState<DebriefForm>(emptyForm);
   const [loading, setLoading] = useState(true);
@@ -84,7 +98,7 @@ export function ActionDebriefPage({ actionId }: Props) {
       const userResult = await supabase.auth.getUser();
       const userId = userResult.data.user?.id;
 
-      const [actionResult, recordsResult, debriefResult, profileResult] = await Promise.all([
+      const [actionResult, recordsResult, debriefResult, quotesResult, auditsResult, profileResult] = await Promise.all([
         supabase.from("actions").select("*, neighborhoods:neighborhood_id(id, name)").eq("id", actionId).single(),
         supabase
           .from("listening_records")
@@ -92,16 +106,25 @@ export function ActionDebriefPage({ actionId }: Props) {
           .eq("action_id", actionId)
           .order("created_at", { ascending: true }),
         supabase.from("action_debriefs").select("*").eq("action_id", actionId).maybeSingle(),
+        supabase
+          .from("listening_record_public_quotes")
+          .select("*")
+          .eq("action_id", actionId)
+          .in("status", ["draft", "needs_review", "approved_internal", "approved_public", "rejected", "archived"])
+          .order("updated_at", { ascending: false }),
+        supabase.from("listening_record_public_quote_audits").select("*").eq("action_id", actionId).order("changed_at", { ascending: false }),
         userId ? supabase.from("profiles").select("id, role").eq("id", userId).maybeSingle() : Promise.resolve({ data: null, error: null })
       ]);
 
       if (ignore) return;
 
-      if (actionResult.error || recordsResult.error || debriefResult.error || profileResult.error) {
+      if (actionResult.error || recordsResult.error || debriefResult.error || quotesResult.error || auditsResult.error || profileResult.error) {
         setError(
           actionResult.error?.message ??
             recordsResult.error?.message ??
             debriefResult.error?.message ??
+            quotesResult.error?.message ??
+            auditsResult.error?.message ??
             profileResult.error?.message ??
             "Erro ao carregar devolutiva."
         );
@@ -112,10 +135,22 @@ export function ActionDebriefPage({ actionId }: Props) {
       const loadedAction = actionResult.data as ActionForPilot;
       const loadedRecords = (recordsResult.data ?? []) as ListeningRecordForPilot[];
       const loadedDebrief = debriefResult.data as ActionDebrief | null;
+      const builtAnalytics = await buildActionAnalytics(
+        actionId,
+        loadedRecords,
+        loadedAction.title,
+        loadedAction.neighborhoods ? { id: loadedAction.neighborhoods.id, name: loadedAction.neighborhoods.name } : undefined
+      );
+
+      const loadedQuotes = (quotesResult.data ?? []) as ListeningRecordPublicQuote[];
 
       setAction(loadedAction);
       setRecords(loadedRecords);
       setDebrief(loadedDebrief);
+      setAllQuotes(loadedQuotes);
+      setPublicQuotes(loadedQuotes.filter((quote) => quote.status === "approved_public"));
+      setQuoteAudits((auditsResult.data ?? []) as ListeningRecordPublicQuoteAudit[]);
+      setAnalytics(builtAnalytics);
       setProfile(profileResult.data as Pick<Profile, "id" | "role"> | null);
 
       if (loadedDebrief) {
@@ -162,31 +197,55 @@ export function ActionDebriefPage({ actionId }: Props) {
     records.filter((record) => Boolean(record.respondent_neighborhood_id)).length
   );
   const respondentTerritoryNote = buildTerritorialQualityMethodologyNote(respondentTerritoryMetrics);
+  const publicCautionText = respondentTerritoryMetrics.qualityStatus === "crítica"
+    ? "Leitura territorial com cobertura critica. Esta devolutiva evita conclusoes fortes por bairro e prioriza analise agregada."
+    : respondentTerritoryMetrics.qualityStatus === "atenção"
+      ? "Leitura territorial com cobertura em atencao. Interpretacoes por bairro exigem cautela metodologica."
+      : "Cobertura territorial adequada para leitura agregada responsavel.";
+  const approvedPublicQuotes = allQuotes.filter((quote) => quote.status === "approved_public");
+  const approvedPublicIds = new Set(approvedPublicQuotes.map((quote) => quote.id));
+  const approvedPublicWithAudit = new Set(
+    quoteAudits.filter((audit) => approvedPublicIds.has(audit.quote_id)).map((audit) => audit.quote_id)
+  ).size;
+  const approvedPublicWithJustification = approvedPublicQuotes.filter((quote) => (quote.public_approval_reason ?? "").trim().length > 0).length;
   const markdown = buildPublicDebriefMarkdown({
     title: form.title,
     action: loadedAction,
     readiness,
-    publicSummary: form.public_summary,
+    publicSummary: `${form.public_summary}\n\n${publicCautionText}`,
     keyFindings: form.key_findings,
     nextSteps: form.next_steps,
-    methodologyNote: form.methodology_note
+    methodologyNote: form.methodology_note,
+    publicQuotes: publicQuotes.map((quote) => quote.sanitized_text?.trim() || quote.quote_text)
   });
-  const publicText = `${form.title}\n\n${form.public_summary}\n\n${form.key_findings}\n\nPróximos passos:\n${form.next_steps}\n\n${form.methodology_note}\n\n${defaultPrivacyNote}`;
+  const voicesText = publicQuotes.length > 0
+    ? `\n\nVozes do territorio:\n${publicQuotes.slice(0, 5).map((quote) => `- ${(quote.sanitized_text?.trim() || quote.quote_text).trim()}`).join("\n")}`
+    : "\n\nVozes do territorio:\n- Ainda nao ha falas aprovadas para publicacao nesta acao.";
+  const publicText = `${form.title}\n\n${form.public_summary}\n\n${publicCautionText}\n\n${form.key_findings}${voicesText}\n\nPróximos passos:\n${form.next_steps}\n\n${form.methodology_note}\n\n${defaultPrivacyNote}`;
 
   function updateField<TField extends keyof DebriefForm>(field: TField, value: DebriefForm[TField]) {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
   function generateDraft() {
-    setForm({
-      title: generated.title,
-      public_summary: generated.publicSummary,
-      methodology_note: generated.methodologyNote,
-      key_findings: generated.keyFindings,
-      next_steps: generated.nextSteps,
-      team_review_text: generated.teamReviewText
-    });
-    setFeedback("Rascunho determinístico gerado. Revise antes de salvar ou aprovar.");
+    console.log("[generateDraft] Iniciando...");
+    try {
+      setForm({
+        title: generated.title,
+        public_summary: generated.publicSummary,
+        methodology_note: generated.methodologyNote,
+        key_findings: generated.keyFindings,
+        next_steps: generated.nextSteps,
+        team_review_text: generated.teamReviewText
+      });
+      setFeedback("Rascunho determinístico gerado. Revise antes de salvar ou aprovar.");
+      console.log("[generateDraft] Sucesso");
+      // Limpar feedback após 5 segundos
+      setTimeout(() => setFeedback(null), 5000);
+    } catch (err) {
+      console.error("[generateDraft] Erro:", err);
+      setError(`Erro ao gerar rascunho: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   async function saveDebrief(status: DebriefStatus) {
@@ -301,6 +360,22 @@ export function ActionDebriefPage({ actionId }: Props) {
           <Sparkles className="h-4 w-4" aria-hidden="true" />
           Gerar rascunho determinístico
         </button>
+        <div className="inline-flex rounded-full border border-semear-green/20 bg-white p-1">
+          <button
+            className={`rounded-full px-4 py-2 text-xs font-semibold ${mode === "interno" ? "bg-semear-green text-white" : "text-semear-green"}`}
+            onClick={() => setMode("interno")}
+            type="button"
+          >
+            Modo tecnico interno
+          </button>
+          <button
+            className={`rounded-full px-4 py-2 text-xs font-semibold ${mode === "publico" ? "bg-semear-green text-white" : "text-semear-green"}`}
+            onClick={() => setMode("publico")}
+            type="button"
+          >
+            Modo publico
+          </button>
+        </div>
       </div>
 
       <article className="print-sheet rounded-[2rem] border border-white/80 bg-white/82 p-5 shadow-soft sm:p-8">
@@ -336,10 +411,51 @@ export function ActionDebriefPage({ actionId }: Props) {
 
         <div className="mt-6 grid gap-5 xl:grid-cols-[1fr_360px]">
           <div className="space-y-5">
-            <EditableBlock label="Título público" value={form.title} onChange={(value) => updateField("title", value)} />
-            <EditableBlock area label="Texto público" value={form.public_summary} onChange={(value) => updateField("public_summary", value)} />
-            <EditableBlock area label="Principais achados" value={form.key_findings} onChange={(value) => updateField("key_findings", value)} />
-            <EditableBlock area label="Próximos passos" value={form.next_steps} onChange={(value) => updateField("next_steps", value)} />
+            {mode === "publico" ? (
+              <>
+                <EditableBlock label="Titulo publico" value={form.title} onChange={(value) => updateField("title", value)} />
+                <EditableBlock area label="Texto publico sugerido" value={form.public_summary} onChange={(value) => updateField("public_summary", value)} />
+                <EditableBlock area label="Principais achados" value={form.key_findings} onChange={(value) => updateField("key_findings", value)} />
+                <EditableBlock area label="Proximos passos" value={form.next_steps} onChange={(value) => updateField("next_steps", value)} />
+                <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <p className="text-sm font-semibold text-amber-900">Ressalva metodologica automatica</p>
+                  <p className="mt-1 text-sm text-amber-900">{publicCautionText}</p>
+                </section>
+                <section className="rounded-2xl border border-semear-green/15 bg-semear-offwhite p-4">
+                  <p className="text-sm font-semibold text-semear-green">Vozes do territorio</p>
+                  <p className="mt-1 text-xs text-stone-600">Trechos curtos revisados e sem identificação pessoal.</p>
+                  {publicQuotes.length > 0 ? (
+                    <ul className="mt-3 space-y-2 text-sm leading-6 text-stone-700">
+                      {publicQuotes.slice(0, 5).map((quote) => (
+                        <li className="rounded-xl border border-semear-gray bg-white p-3" key={quote.id}>
+                          {(quote.sanitized_text?.trim() || quote.quote_text).trim()}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-3 text-sm text-stone-600">Ainda não há falas aprovadas para publicação nesta ação.</p>
+                  )}
+                </section>
+              </>
+            ) : (
+              <>
+                <EditableBlock label="Titulo interno" value={form.title} onChange={(value) => updateField("title", value)} />
+                <EditableBlock area label="Notas internas de contexto" value={form.team_review_text} onChange={(value) => updateField("team_review_text", value)} />
+                <EditableBlock area label="Leitura interna dos achados" value={form.key_findings} onChange={(value) => updateField("key_findings", value)} />
+                <EditableBlock area label="Encaminhamentos internos" value={form.next_steps} onChange={(value) => updateField("next_steps", value)} />
+                <section className="rounded-2xl border border-semear-green/15 bg-semear-offwhite p-4">
+                  <p className="text-sm font-semibold text-semear-green">Governança das falas representativas</p>
+                  <p className="mt-1 text-sm text-stone-700">Aprovadas públicas: {approvedPublicQuotes.length}</p>
+                  <p className="mt-1 text-sm text-stone-700">Com evento de auditoria: {approvedPublicWithAudit}/{approvedPublicQuotes.length}</p>
+                  <p className="mt-1 text-sm text-stone-700">Com justificativa de aprovação pública: {approvedPublicWithJustification}/{approvedPublicQuotes.length}</p>
+                  {approvedPublicQuotes.length > 0 && approvedPublicWithAudit === approvedPublicQuotes.length && approvedPublicWithJustification === approvedPublicQuotes.length ? (
+                    <p className="mt-2 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-xs font-semibold text-green-800">Conformidade editorial completa para uso interno.</p>
+                  ) : (
+                    <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">Há pendências de auditoria/justificativa em falas aprovadas para público.</p>
+                  )}
+                </section>
+              </>
+            )}
           </div>
 
           <aside className="space-y-5">
@@ -368,6 +484,12 @@ export function ActionDebriefPage({ actionId }: Props) {
             </InfoPanel>
           </aside>
         </div>
+
+        {analytics && analytics.methodologicalWarnings.length > 0 ? (
+          <div className="mt-6">
+            <MethodologicalWarningsPanel warnings={analytics.methodologicalWarnings} />
+          </div>
+        ) : null}
 
         <footer className="print-only mt-10 border-t border-semear-gray pt-4 text-sm font-semibold text-semear-green">
           Projeto SEMEAR — UFF + APS
