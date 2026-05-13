@@ -84,3 +84,33 @@ O Portal PWA não deve consumir o pacote diretamente como payload público. O us
 
 1. snapshot `published` como fonte de leitura pública;
 2. pacote `signed` como evidência institucional de que aquela leitura foi homologada.
+
+## Página pública controlada atual
+
+A rota pública controlada desta fase é `/publico/transparencia-viva`.
+
+Ela não lê o pacote institucional diretamente. Ela lê apenas `/api/public/transparencia-viva`, que já retorna somente conteúdo aprovado/publicado e sanitizado.
+
+O pacote `signed` continua sendo evidência institucional e trilha formal, não payload de exibição direta.
+
+## Origem de leituras coletivas
+
+Quando o snapshot foi criado via `/leituras`, o processo de homologação deve manter a rastreabilidade da origem com:
+
+- `source_type = collective_reading`;
+- filtros de geração (`source_filters`);
+- data/hora de geração (`source_generated_at`).
+
+Esses metadados não substituem revisão editorial e não reduzem exigências de privacidade.
+
+## Testes de regressão institucional (Tijolo 048)
+
+Reforçar validação contínua antes de homologação final:
+
+1. `npm run test:transparencia` para regras de bloqueio, checklist e payload.
+2. `npm run smoke:transparencia` para validar assinaturas e transições no banco remoto.
+
+Documentos de apoio:
+
+- [docs/testes-transparencia-viva.md](docs/testes-transparencia-viva.md)
+- [scripts/smoke-transparencia-rls.md](scripts/smoke-transparencia-rls.md)

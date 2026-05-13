@@ -1,51 +1,71 @@
-# Estado da Nação — SEMEAR Territórios — Tijolo 064
+# Estado da Nacao — SEMEAR Territorios — Tijolo 064
 
-## Diagnóstico Inicial
-O sistema possuía uma Central de Avisos funcional (Tijolo 063), mas os alertas eram exibidos de forma isolada, gerando ruído visual e dependendo da proatividade individual para recálculo. Faltava uma camada de inteligência que traduzisse esses avisos em uma rotina de trabalho clara por papel.
+## Diagnostico inicial
+O fluxo de dossie e devolutiva ja era funcional, mas faltava densidade analitica para apoiar decisao institucional com leitura territorial responsavel. A equipe tinha indicadores basicos, sem coocorrencia de temas, sem sinais fortes priorizados e sem um bloco de recomendacoes orientado por evidencias.
 
-## Componentes Criados
-- **DailyBriefingPanel**: Componente premium e responsivo integrado ao Dashboard e à Central de Avisos. Oferece uma visão consolidada do "estado da nação" operacional para o usuário logado.
-- **build-daily-briefing.ts**: Motor de lógica determinística que agrupa notificações, calcula métricas de saúde e gera recomendações de ação personalizadas.
+## Motor analitico criado
+- Arquivo: lib/action-analytics.ts
+- Entrega: funcao buildActionAnalytics(actionId, records, actionName?, actionTerritory?)
+- Garantias: 100% deterministico, sem IA gerativa, sem inferencia territorial indevida, sem geocodificacao, sem exposicao de dado pessoal.
+- Saidas principais:
+	- rankings de tema, palavra, prioridade e lugar
+	- coocorrencia de temas
+	- leitura por territorio de referencia do respondente
+	- leitura por ocupacao com regra de frequencia minima
+	- sinais analiticos (forca, cobertura, revisao e padroes)
+	- alertas metodologicos
+	- encaminhamentos sugeridos
+	- avaliacao de seguranca para uso publico
 
-## Regras de Prioridade (Tijolo 064)
-Implementamos uma hierarquia clara de prioridades:
-- **Urgent**: Riscos de privacidade (dados sensíveis), erros críticos de sincronização, eventos atrasados e relatórios de semanas anteriores pendentes.
-- **High**: Pendências operacionais da semana (dossiês, devolutivas, revisão territorial).
-- **Normal**: Rotina e planejamento (eventos de amanhã, revisões editoriais).
-- **Low**: Informativos gerais.
+## Mudancas no dossie
+- Arquivo: components/actions/action-dossier-page.tsx
+- Integracao completa do motor analitico e dos paineis:
+	- sinais analiticos
+	- matriz de temas
+	- coocorrencia
+	- leitura territorial responsavel
+	- leitura por ocupacao
+	- lugares mencionados com ocultacao de padrao sensivel
+	- alertas metodologicos
+	- proximos encaminhamentos
+- Exportacao markdown melhorada: agora inclui resumo executivo, sinais fortes e encaminhamentos sugeridos.
+- Inclusao de bloco de transicao para falas candidatas sanitizadas, sem publicar fala bruta automaticamente.
 
-## Agrupamento de Avisos
-Para reduzir o ruído, avisos repetitivos são agora agrupados logicamente:
-- Ex: *"12 escutas aguardam revisão"* em vez de 12 cards individuais.
-- Isso permite uma leitura rápida e foco no que é volumoso ou urgente.
+## Mudancas na devolutiva
+- Arquivo: components/actions/action-debrief-page.tsx
+- Redesenho com dois modos:
+	- Modo tecnico interno
+	- Modo publico
+- Inclusao de ressalva metodologica automatica conforme qualidade de cobertura territorial.
+- Integracao de alertas metodologicos no fluxo de devolutiva.
+- Texto publico e markdown agora incorporam cautela territorial automaticamente quando necessario.
 
-## Melhorias no Recálculo
-O botão "Atualizar Avisos" foi aprimorado para suportar diferentes escopos:
-- **Meus avisos**: Foco no indivíduo.
-- **Avisos do papel**: Foco na colaboração (ex: Coordenação).
-- **Avisos gerais**: Visão macro da operação (Admin/Coordenação).
-O sistema agora exibe estatísticas da última atualização (novos, atualizados, ignorados).
+## Visual, impressao e mobile
+- Painel analitico consolidado com cards e hierarquia visual padronizada.
+- Arquivo: app/globals.css
+	- melhorias de impressao com @page, preservacao de contraste e reducao de quebra ruim entre cards.
+- Interfaces com grids responsivos e empilhamento adequado em telas menores.
 
-## Resolução Assistida
-Cada aviso na central agora exibe uma **Ação Recomendada** contextualizada com ícones específicos:
-- "Revisar escutas", "Abrir dossiê", "Reconectar Google", "Abrir relatório", etc.
-- Botões de ação rápida para marcar como lido, dispensar ou arquivar.
+## Ajuda operacional
+- Arquivo: app/ajuda/page.tsx
+- Nova secao "Dossie e devolutiva avancados" explicando:
+	- diferenca entre uso interno e publico
+	- regra de privacidade
+	- regra metodologica quando cobertura territorial e critica
 
-## Métricas de Saúde Operacional
-Adicionamos um painel de indicadores de saúde no resumo diário:
-- Monitoramento de pendências de escuta, relatórios, transparência e erros técnicos.
+## Validacao tecnica
+- npm run lint: OK
+- npm run build: OK
+- npm run verify: OK
 
-## Documentação
-- Criado: `docs/orquestracao-avisos-internos.md`
-- Atualizado: `docs/central-de-avisos-internos.md`
+## Garantias de privacidade
+- Nao publica fala bruta automaticamente.
+- Mantem abordagem agregada para devolutiva publica.
+- Nao remove RLS nem amplia privilegios de acesso.
 
-## Garantias de Privacidade e Segurança
-- **Sem Push/E-mail/Webhook**: Todo o sistema continua 100% interno ao app.
-- **Dados Protegidos**: O resumo diário não expõe falas, CPFs ou dados sensíveis.
-- **RLS Preservado**: Nenhuma regra de segurança foi relaxada.
+## Riscos restantes
+- Fluxo de "falas representativas sanitizadas" ainda depende de schema dedicado para ciclo completo (selecao, revisao e aprovacao editorial de trecho).
+- Teste de cenario real com massa especifica (ex: 42 escutas, cobertura 14.3%) depende da base de homologacao conter esse conjunto para validacao ponta a ponta.
 
-## Riscos Restantes
-- O recálculo ainda é manual; embora facilitado, depende de um clique do usuário para refletir mudanças externas imediatas (como uma alteração manual no banco por outro usuário).
-
-## Próximo Tijolo Recomendado
-**Tijolo 065: Automação de Limpeza e Notificações de Contexto**. Sugerir limpeza automática de avisos cujas fontes foram excluídas e adicionar avisos de "boas-vindas operacional" para novos membros.
+## Proximo tijolo recomendado
+Tijolo 065: consolidar workflow de falas representativas sanitizadas com trilha de aprovacao e auditoria editorial, reutilizando as salvaguardas metodologicas do motor 064.

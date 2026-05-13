@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "verify": "npm run lint && npm run build"
+    "test:transparencia": "vitest run tests/transparencia",
+    "smoke:transparencia": "node scripts/test_transparencia_remote_048.mjs",
+    "verify": "npm run lint && npm run build && npm run test:transparencia"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.53",
@@ -34,6 +36,7 @@
     "postcss": "^8.4.49",
     "supabase": "^2.98.1",
     "tailwindcss": "^3.4.15",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.6"
   }
 }

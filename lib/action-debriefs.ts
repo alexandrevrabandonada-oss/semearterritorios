@@ -234,7 +234,9 @@ export function buildPublicDebriefMarkdown(input: {
   keyFindings: string;
   nextSteps: string;
   methodologyNote: string;
+  publicQuotes?: string[];
 }) {
+  const voices = (input.publicQuotes ?? []).map((item) => item.trim()).filter(Boolean);
   return `# ${input.title}
 
 ## Dados da ação
@@ -252,6 +254,10 @@ ${input.publicSummary}
 ## Principais achados
 
 ${input.keyFindings}
+
+## Vozes do território
+
+${voices.length > 0 ? voices.map((quote) => `- ${quote}`).join("\n") : "- Ainda não há falas aprovadas para publicação nesta ação."}
 
 ## Próximos passos
 

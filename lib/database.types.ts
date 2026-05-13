@@ -55,6 +55,19 @@ export type GoogleCalendarSyncStatus = "not_synced" | "synced" | "sync_error" | 
 export type GoogleCalendarSyncAction = "create" | "update" | "cancel" | "unlink" | "error";
 export type GoogleCalendarSyncLogStatus = "success" | "failed" | "skipped";
 export type GoogleCalendarConnectionProvider = "google";
+export type PublicQuoteStatus = "draft" | "needs_review" | "approved_internal" | "approved_public" | "rejected" | "archived";
+export type PublicQuoteAuditEventType =
+  | "created"
+  | "text_changed"
+  | "sanitized_text_changed"
+  | "sent_to_review"
+  | "approved_internal"
+  | "approved_public"
+  | "rejected"
+  | "archived"
+  | "restored"
+  | "risk_detected"
+  | "status_changed";
 
 export type NeighborhoodStatus = "oficial" | "provisorio" | "revisar" | "nao_usar";
 export type NeighborhoodSector = "SCN" | "SO" | "SN" | "SL" | "SS" | "SCS" | "SSO";
@@ -192,6 +205,46 @@ export type ListeningRecordTheme = TimestampedRow &
     notes: string | null;
   };
 
+export type ListeningRecordPublicQuote = TimestampedRow &
+  CreatedByRow & {
+    id: string;
+    listening_record_id: string;
+    action_id: string;
+    quote_text: string;
+    sanitized_text: string | null;
+    theme_label: string | null;
+    context_note: string | null;
+    status: PublicQuoteStatus;
+    sensitive_risk: boolean;
+    risk_notes: string | null;
+    reviewed_by: string | null;
+    reviewed_at: string | null;
+    approved_by: string | null;
+    approved_at: string | null;
+    public_approval_reason: string | null;
+    rejection_reason: string | null;
+    archive_reason: string | null;
+    last_edit_reason: string | null;
+  };
+
+export type ListeningRecordPublicQuoteAudit = {
+  id: string;
+  quote_id: string;
+  listening_record_id: string | null;
+  action_id: string | null;
+  event_type: PublicQuoteAuditEventType;
+  old_status: string | null;
+  new_status: string | null;
+  old_sanitized_text: string | null;
+  new_sanitized_text: string | null;
+  old_quote_text: string | null;
+  new_quote_text: string | null;
+  risk_report: Json;
+  reason: string | null;
+  changed_by: string | null;
+  changed_at: string;
+};
+
 export type PlaceMentioned = TimestampedRow &
   CreatedByRow & {
     id: string;
@@ -321,6 +374,9 @@ export type PublicTransparencySnapshot = TimestampedRow &
     last_reviewed_at: string | null;
     last_edited_by: string | null;
     last_edited_at: string | null;
+    source_type: string | null;
+    source_filters: Json;
+    source_generated_at: string | null;
   };
 
 export type PublicTransparencySnapshotVersion = {
@@ -1002,6 +1058,52 @@ export type Database = {
             foreignKeyName: "listening_record_themes_theme_id_fkey";
             columns: ["theme_id"];
             referencedRelation: "themes";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      listening_record_public_quotes: {
+        Row: ListeningRecordPublicQuote;
+        Insert: Omit<
+          ListeningRecordPublicQuote,
+          "id" | "created_at" | "updated_at" | "status" | "sensitive_risk" | "reviewed_by" | "reviewed_at" | "approved_by" | "approved_at"
+        > & {
+          id?: string;
+          status?: PublicQuoteStatus;
+          sensitive_risk?: boolean;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          approved_by?: string | null;
+          approved_at?: string | null;
+        };
+        Update: Partial<Omit<ListeningRecordPublicQuote, "id" | "created_at" | "updated_at">>;
+        Relationships: [
+          {
+            foreignKeyName: "listening_record_public_quotes_action_id_fkey";
+            columns: ["action_id"];
+            referencedRelation: "actions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "listening_record_public_quotes_listening_record_id_fkey";
+            columns: ["listening_record_id"];
+            referencedRelation: "listening_records";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      listening_record_public_quote_audits: {
+        Row: ListeningRecordPublicQuoteAudit;
+        Insert: Omit<ListeningRecordPublicQuoteAudit, "id" | "changed_at"> & {
+          id?: string;
+          changed_at?: string;
+        };
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: "listening_record_public_quote_audits_quote_id_fkey";
+            columns: ["quote_id"];
+            referencedRelation: "listening_record_public_quotes";
             referencedColumns: ["id"];
           }
         ];

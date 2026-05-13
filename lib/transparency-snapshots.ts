@@ -32,6 +32,7 @@ export type TransparencyDraftInput = {
   records: SnapshotRecord[];
   debriefs: ActionDebrief[];
   closures: ActionClosure[];
+  approvedPublicQuotesByAction?: Record<string, number>;
 };
 
 export function buildTransparencySnapshotDraft(input: TransparencyDraftInput) {
@@ -131,6 +132,14 @@ export function buildTransparencySnapshotDraft(input: TransparencyDraftInput) {
       `Ocupações com contagem menor que ${MIN_PUBLIC_OCCUPATION_SAMPLE} devem ser agrupadas como outras ocupações quando usadas em análises futuras.`
     ].join("\n")
   };
+}
+
+export function countApprovedPublicQuotesByAction(quotes: Array<{ action_id: string; status: string }>) {
+  return quotes.reduce<Record<string, number>>((acc, quote) => {
+    if (quote.status !== "approved_public") return acc;
+    acc[quote.action_id] = (acc[quote.action_id] ?? 0) + 1;
+    return acc;
+  }, {});
 }
 
 export function getLatestPreviewSnapshot(snapshots: PublicTransparencySnapshot[]) {

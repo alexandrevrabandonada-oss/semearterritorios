@@ -90,3 +90,9 @@ No editor do snapshot existem dois artefatos distintos:
 - `Gerar pacote de homologação`: cria o artefato institucional versionado.
 
 O export nunca inclui fala original, escutas brutas, entrevistador, e-mail, CPF, telefone, endereço, dado de saúde individual ou lugar sensível.
+
+## Origem coletiva no editor
+
+Quando o snapshot for criado a partir de `/leituras`, o editor exibe aviso de origem e metadados de rastreabilidade (`source_type`, `source_generated_at`).
+
+Esse contexto serve para reforçar que o texto nasce de leitura agregada e que a publicação continua condicionada a checklist completo, revisão de comentários e aprovação de coordenação/admin.

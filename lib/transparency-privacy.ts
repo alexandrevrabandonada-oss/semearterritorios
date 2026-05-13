@@ -1,6 +1,7 @@
 import { MIN_PUBLIC_TERRITORY_SAMPLE } from "@/lib/transparency-snapshots";
 
 export const transparencyChecklistKeys = [
+  "data_from_aggregates",
   "no_raw_quote",
   "no_interviewer_name",
   "no_team_email",
@@ -10,7 +11,9 @@ export const transparencyChecklistKeys = [
   "no_health_data",
   "rare_occupations_grouped",
   "minimum_sample_respected",
+  "words_sanitized",
   "sensitive_places_hidden",
+  "no_census_claim",
   "reviewed_by_coordination"
 ] as const;
 
@@ -41,6 +44,7 @@ const properNameStopWords = new Set([
 
 export function createEmptyTransparencyChecklist(): TransparencyChecklistState {
   return {
+    data_from_aggregates: false,
     no_raw_quote: false,
     no_interviewer_name: false,
     no_team_email: false,
@@ -50,7 +54,9 @@ export function createEmptyTransparencyChecklist(): TransparencyChecklistState {
     no_health_data: false,
     rare_occupations_grouped: false,
     minimum_sample_respected: false,
+    words_sanitized: false,
     sensitive_places_hidden: false,
+    no_census_claim: false,
     reviewed_by_coordination: false
   };
 }
@@ -71,6 +77,7 @@ export function isTransparencyChecklistComplete(checklist: TransparencyChecklist
 
 export function getTransparencyChecklistItems() {
   return [
+    { key: "data_from_aggregates", label: "dados vieram de agregados de leitura coletiva" },
     { key: "no_raw_quote", label: "não contém fala original bruta" },
     { key: "no_interviewer_name", label: "não contém nome de entrevistador" },
     { key: "no_team_email", label: "não contém e-mail de equipe" },
@@ -80,7 +87,9 @@ export function getTransparencyChecklistItems() {
     { key: "no_health_data", label: "não contém dado de saúde individual identificável" },
     { key: "rare_occupations_grouped", label: "ocupações raras foram agrupadas" },
     { key: "minimum_sample_respected", label: `territórios com menos de ${MIN_PUBLIC_TERRITORY_SAMPLE} escutas revisadas aparecem como dados insuficientes` },
+    { key: "words_sanitized", label: "palavras recorrentes foram sanitizadas" },
     { key: "sensitive_places_hidden", label: "lugares sensíveis não aparecem" },
+    { key: "no_census_claim", label: "leitura não é apresentada como pesquisa estatística censitária" },
     { key: "reviewed_by_coordination", label: "publicação foi revisada por coordenação ou admin" }
   ] as const;
 }

@@ -34,3 +34,13 @@ Validar criação, congelamento, bloqueios e assinatura do pacote institucional 
 - assinatura falha com comentário crítico, risco bloqueante ou checklist incompleto;
 - assinatura bem-sucedida registra responsável, data e decisão;
 - preview print permanece limpo e sem dado sensível.
+
+## Execução automatizada complementar (Tijolo 048)
+
+- Rodar `npm run test:transparencia` para validar regras puras e payload público.
+- Rodar `npm run smoke:transparencia` para validar transições reais de snapshot/pacote no banco remoto.
+
+Materiais:
+
+- [docs/testes-transparencia-viva.md](docs/testes-transparencia-viva.md)
+- [scripts/smoke-transparencia-rls.md](scripts/smoke-transparencia-rls.md)

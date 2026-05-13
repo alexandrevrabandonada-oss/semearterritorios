@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   Archive,
@@ -91,6 +92,7 @@ const commentTypeOptions: Array<{ value: SnapshotReviewCommentType; label: strin
 export function TransparencySnapshotEditorPage({ snapshotId }: SnapshotEditorProps) {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [snapshot, setSnapshot] = useState<PublicTransparencySnapshot | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
   const [checklist, setChecklist] = useState<TransparencyChecklistState>(createEmptyTransparencyChecklist());
@@ -137,6 +139,7 @@ export function TransparencySnapshotEditorPage({ snapshotId }: SnapshotEditorPro
   const canCoordinate = profile?.role === "admin" || profile?.role === "coordenacao";
   const checklistComplete = isTransparencyChecklistComplete(checklist);
   const filteredComments = comments.filter((item) => commentFilter === "todos" || item.comment_type === commentFilter);
+  const showCollectiveReadingNotice = searchParams.get("source") === "collective_reading";
 
   useEffect(() => {
     let ignore = false;
@@ -614,6 +617,17 @@ export function TransparencySnapshotEditorPage({ snapshotId }: SnapshotEditorPro
             </Link>
           </div>
         </div>
+        {showCollectiveReadingNotice ? (
+          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            Snapshot criado a partir de Leituras Coletivas. Revise texto, checklist e privacidade antes de aprovar.
+          </div>
+        ) : null}
+        {snapshot?.source_type === "collective_reading" ? (
+          <div className="mt-3 rounded-2xl border border-semear-green/20 bg-semear-offwhite p-3 text-sm text-stone-700">
+            <p><strong>Origem:</strong> collective_reading</p>
+            <p className="mt-1"><strong>Gerado em:</strong> {snapshot.source_generated_at ? new Date(snapshot.source_generated_at).toLocaleString("pt-BR") : "-"}</p>
+          </div>
+        ) : null}
       </div>
 
       {error ? <StateBox tone="error">{error}</StateBox> : null}

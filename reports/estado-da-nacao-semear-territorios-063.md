@@ -1,143 +1,72 @@
-# Estado da Nação 063
+# Estado da Nacao - Tijolo 063
 
-## Diagnóstico inicial
+## Objetivo
 
-Antes da implementação, o repositório já tinha lembretes visuais distribuídos:
+Implementar a primeira pagina publica controlada da Transparencia Viva no SEMEAR, sem integracao PWA nesta etapa, usando apenas payload publicado e seguro.
 
-- dashboard com InternalRemindersPanel;
-- agenda com lembretes de hoje/amanhã/atrasos;
-- painel de saúde do Google Calendar em /agenda/google/status;
-- memória e relatórios com indicadores de pendência;
-- transparência com status de snapshots e homologação.
+## Entregas implementadas
 
-Pendências já calculadas (pré-063):
+- Nova rota publica controlada: `/publico/transparencia-viva`.
+- Orquestrador de pagina publica com fetch exclusivo de `/api/public/transparencia-viva`.
+- Renderizacao de secoes agregadas:
+	- cabecalho e resumo publico;
+	- metricas agregadas;
+	- temas mais citados;
+	- separacao entre territorio de acao e territorio de referencia;
+	- palavras recorrentes com filtro adicional;
+	- linha do tempo de acoes;
+	- devolutivas aprovadas;
+	- nota metodologica territorial com estado boa/atencao/critica;
+	- aviso fixo de protecao de dados.
+- Estado vazio institucional quando nao existe snapshot publicado.
+- Teste automatizado de privacidade para filtro de palavras publicas.
+- Documentacao dedicada da pagina publica e atualizacao dos docs de governanca.
+- Atualizacao da pagina de ajuda com secao especifica da pagina publica.
 
-- eventos atrasados;
-- relatórios semanais pendentes;
-- devolutivas e dossiês sem fechamento;
-- drift local do Google e sync_error.
+## Privacidade e governanca
 
-Lacuna principal:
+A implementacao manteve as regras centrais:
 
-- faltava centralização em uma única Central de Avisos com preferência por usuário, deduplicação e fluxo explícito de leitura/dispensa/arquivamento.
+- sem escuta bruta no frontend publico;
+- sem fala original, entrevistador, e-mail, CPF, telefone, endereco/CEP, saude individual;
+- sem IDs internos ou trilha de auditoria interna na pagina publica;
+- sem uso de service_role no frontend;
+- fallback seguro para ausencia de publicacao.
 
-## Migrations criadas
+## Arquivos principais
 
-- supabase/migrations/20260509010000_add_in_app_notifications.sql
+- `app/publico/transparencia-viva/page.tsx`
+- `components/public/transparency/public-transparency-page.tsx`
+- `components/public/transparency/public-transparency-methodology-note.tsx`
+- `components/public/transparency/public-transparency-hero.tsx`
+- `components/public/transparency/public-transparency-metrics.tsx`
+- `components/public/transparency/public-transparency-themes.tsx`
+- `components/public/transparency/public-transparency-territories.tsx`
+- `components/public/transparency/public-transparency-words.tsx`
+- `components/public/transparency/public-transparency-timeline.tsx`
+- `lib/public-transparency-word-safety.ts`
+- `tests/transparencia/public-page-privacy.test.ts`
+- `docs/pagina-publica-transparencia-viva.md`
+- `docs/transparencia-viva-publica.md`
+- `docs/pacote-homologacao-transparencia-viva.md`
+- `app/ajuda/page.tsx`
 
-## Tabelas criadas
+## Validacao executada
 
-- in_app_notifications
-- notification_preferences
+Comandos rodados com sucesso:
 
-Campos e regras principais implementados:
+1. `npm run lint`
+2. `npm run build`
+3. `npm run test:transparencia`
+4. `npm run verify`
 
-- tipagem de aviso por notification_type;
-- prioridade por priority;
-- ciclo de status (unread, read, archived, dismissed);
-- action_url interna protegida;
-- deduplicação ativa por chave composta;
-- preferência única por profile_id.
+Resultado final: validacao completa verde, sem erros de lint, build ou testes de transparencia.
 
-## Rota /avisos
+## Riscos residuais
 
-Implementado:
+- A cobertura e qualidade da pagina publica dependem da disciplina editorial de snapshots publicados.
+- O filtro de palavras recorrentes no frontend e defesa adicional; a fonte oficial de seguranca continua sendo a sanitizacao no pipeline editorial e na API publica.
 
-- /avisos como Central de Avisos;
-- filtros por categoria e leitura;
-- seções de não lidos, urgentes, hoje, por categoria e arquivados/dispensados;
-- ações: marcar como lido, dispensar, arquivar e abrir origem;
-- botão Atualizar avisos;
-- botão Atualizar avisos do papel para coordenação/admin.
+## Proximo passo recomendado
 
-## Preferências criadas
-
-Implementado:
-
-- /avisos/preferencias;
-- toggles para agenda, Google Calendar, relatórios semanais, devolutiva/dossiê, escutas, transparência e memória;
-- modo silencioso;
-- persistência em notification_preferences.
-
-## Gerador de avisos
-
-Implementado:
-
-- lib/notifications/build-internal-notifications.ts
-
-Geração determinística, sem IA, usando:
-
-- agenda;
-- weekly_team_reports;
-- actions + action_debriefs + action_closures;
-- listening_records;
-- public_transparency_snapshots;
-- public_transparency_homologation_packages;
-- public_transparency_snapshot_review_comments.
-
-## Integrações
-
-### Dashboard
-
-- bloco Pendências e avisos com 3 itens prioritários;
-- botão natural para abrir /avisos.
-
-### Agenda
-
-- painel de avisos da agenda (agenda + Google);
-- /agenda/google/status com link para /avisos?categoria=google.
-
-### Memória e Relatórios
-
-- /memoria com painel de avisos de memória e relatórios;
-- /relatorios com painel de avisos de relatórios semanais.
-
-### Transparência
-
-- /transparencia/snapshots com painel de avisos de transparência;
-- /transparencia/homologacao com painel de avisos de homologação.
-
-### App Shell global
-
-- sino de avisos com badge de não lidos;
-- dropdown com 5 avisos recentes;
-- link para /avisos;
-- modo silencioso refletido no badge (somente urgentes).
-
-## Garantias de privacidade
-
-Mantido no tijolo 063:
-
-- sem fala original em aviso;
-- sem dado de entrevistado;
-- sem CPF, telefone, endereço;
-- sem anexo;
-- sem token;
-- sem conteúdo sensível completo de relatório;
-- action_url somente interna.
-
-## Confirmação de escopo
-
-Confirmado:
-
-- não há push notification;
-- não há e-mail automático;
-- não há webhook externo;
-- não há service_role no frontend;
-- RLS mantido e reforçado para avisos/preferências.
-
-## Riscos restantes
-
-1. O recalculo atual é sob demanda e pode depender da disciplina operacional para manter o painel sempre atualizado.
-2. A deduplicação ativa privilegia estado atual e não mantém histórico extenso de versões do mesmo aviso.
-3. Alguns avisos de revisão podem crescer em volume em ambientes com alto fluxo de escutas sem revisão.
-
-## Próximo tijolo recomendado
-
-Tijolo 064 - Orquestração de Avisos Internos por Rotina Segura
-
-Foco sugerido:
-
-- rotina interna opcional (sem automação externa) para recalcular avisos em horários de operação;
-- sumarização operacional por papel no início do dia;
-- telemetria interna de tempo de resolução de avisos (SLA interno).
+- Homologar com exemplos reais de snapshots publicados em ambientes de teste e registrar evidencias institucionais antes da integracao futura com o portal PWA.

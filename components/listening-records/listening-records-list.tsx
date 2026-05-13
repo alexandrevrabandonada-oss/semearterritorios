@@ -208,6 +208,10 @@ export function ListeningRecordsList() {
             <MapPinned className="h-4 w-4" aria-hidden="true" />
             Revisão territorial
           </Link>
+          <Link className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-semear-green/15 bg-white px-5 text-sm font-semibold text-semear-green hover:bg-semear-green/5" href="/escutas/falas">
+            <MessageSquareText className="h-4 w-4" aria-hidden="true" />
+            Fila de falas
+          </Link>
         </div>
       </div>
 

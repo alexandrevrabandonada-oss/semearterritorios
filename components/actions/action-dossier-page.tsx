@@ -29,6 +29,8 @@ import {
 import type {
   ActionClosure,
   ActionDebrief,
+  ListeningRecordPublicQuote,
+  ListeningRecordPublicQuoteAudit,
   ActionTeamMember,
   ClosureStatus,
   Json,
@@ -65,6 +67,8 @@ export function ActionDossierPage({ actionId }: Props) {
   const [records, setRecords] = useState<ListeningRecordForPilot[]>([]);
   const [debrief, setDebrief] = useState<ActionDebrief | null>(null);
   const [participants, setParticipants] = useState<(ActionTeamMember & { team_members: Pick<TeamMember, "id" | "display_name" | "role_label"> | null })[]>([]);
+  const [publicQuotes, setPublicQuotes] = useState<ListeningRecordPublicQuote[]>([]);
+  const [quoteAudits, setQuoteAudits] = useState<ListeningRecordPublicQuoteAudit[]>([]);
   const [closure, setClosure] = useState<ActionClosure | null>(null);
   const [profile, setProfile] = useState<Pick<Profile, "id" | "role"> | null>(null);
   const [form, setForm] = useState<ClosureForm>(emptyForm);
@@ -87,7 +91,7 @@ export function ActionDossierPage({ actionId }: Props) {
 
       const userResult = await supabase.auth.getUser();
       const userId = userResult.data.user?.id;
-      const [actionResult, recordsResult, participantsResult, debriefResult, closureResult, profileResult] = await Promise.all([
+      const [actionResult, recordsResult, participantsResult, debriefResult, closureResult, quotesResult, quoteAuditsResult, profileResult] = await Promise.all([
         supabase.from("actions").select("*, neighborhoods:neighborhood_id(id, name)").eq("id", actionId).single(),
         supabase.from("listening_records").select("*, listening_record_themes(themes:theme_id(id, name))").eq("action_id", actionId).order("created_at", { ascending: true }),
         supabase
@@ -97,17 +101,26 @@ export function ActionDossierPage({ actionId }: Props) {
           .order("created_at", { ascending: true }),
         supabase.from("action_debriefs").select("*").eq("action_id", actionId).maybeSingle(),
         supabase.from("action_closures").select("*").eq("action_id", actionId).maybeSingle(),
+        supabase
+          .from("listening_record_public_quotes")
+          .select("*")
+          .eq("action_id", actionId)
+          .in("status", ["draft", "needs_review", "approved_internal", "approved_public", "rejected", "archived"])
+          .order("updated_at", { ascending: false }),
+        supabase.from("listening_record_public_quote_audits").select("*").eq("action_id", actionId).order("changed_at", { ascending: false }),
         userId ? supabase.from("profiles").select("id, role").eq("id", userId).maybeSingle() : Promise.resolve({ data: null, error: null })
       ]);
 
       if (ignore) return;
-      if (actionResult.error || recordsResult.error || participantsResult.error || debriefResult.error || closureResult.error || profileResult.error) {
+      if (actionResult.error || recordsResult.error || participantsResult.error || debriefResult.error || closureResult.error || quotesResult.error || quoteAuditsResult.error || profileResult.error) {
         setError(
           actionResult.error?.message ??
             recordsResult.error?.message ??
             participantsResult.error?.message ??
             debriefResult.error?.message ??
             closureResult.error?.message ??
+            quotesResult.error?.message ??
+            quoteAuditsResult.error?.message ??
             profileResult.error?.message ??
             "Erro ao carregar dossiê."
         );
@@ -137,6 +150,8 @@ export function ActionDossierPage({ actionId }: Props) {
       setParticipants((participantsResult.data ?? []) as (ActionTeamMember & { team_members: Pick<TeamMember, "id" | "display_name" | "role_label"> | null })[]);
       setDebrief(debriefResult.data as ActionDebrief | null);
       setClosure(loadedClosure);
+      setPublicQuotes((quotesResult.data ?? []) as ListeningRecordPublicQuote[]);
+      setQuoteAudits((quoteAuditsResult.data ?? []) as ListeningRecordPublicQuoteAudit[]);
       setProfile(profileResult.data as Pick<Profile, "id" | "role"> | null);
 
       // Build analytics
@@ -194,6 +209,27 @@ export function ActionDossierPage({ actionId }: Props) {
   const respondentTerritoryNote = buildTerritorialQualityMethodologyNote(respondentTerritoryMetrics);
   const canCoordinate = profile?.role === "admin" || profile?.role === "coordenacao";
   const virtualClosure = closure ? { ...closure, ...form, documentation_checklist: form.documentation_checklist as unknown as Json } : null;
+  const quotesByStatus = {
+    draft: publicQuotes.filter((quote) => quote.status === "draft").length,
+    needs_review: publicQuotes.filter((quote) => quote.status === "needs_review").length,
+    approved_internal: publicQuotes.filter((quote) => quote.status === "approved_internal").length,
+    approved_public: publicQuotes.filter((quote) => quote.status === "approved_public").length,
+    rejected: publicQuotes.filter((quote) => quote.status === "rejected").length,
+    archived: publicQuotes.filter((quote) => quote.status === "archived").length
+  };
+  const quotesWithRisk = publicQuotes.filter((quote) => quote.sensitive_risk).length;
+  const quoteIdsWithAudit = new Set(quoteAudits.map((audit) => audit.quote_id));
+  const editedAfterApproval = quoteAudits.filter(
+    (audit) =>
+      audit.event_type === "sanitized_text_changed" &&
+      (audit.old_status === "approved_internal" || audit.old_status === "approved_public")
+  ).length;
+  const pendingJustification = publicQuotes.filter((quote) => {
+    if (quote.status === "approved_public") return !(quote.public_approval_reason ?? "").trim();
+    if (quote.status === "rejected") return !(quote.rejection_reason ?? "").trim();
+    if (quote.status === "archived") return !(quote.archive_reason ?? "").trim();
+    return false;
+  }).length;
   const markdown = buildClosureMarkdown({
     action: loadedAction,
     records,
@@ -201,6 +237,44 @@ export function ActionDossierPage({ actionId }: Props) {
     closure: virtualClosure as ActionClosure | null,
     territorialAuditCount
   });
+  const enhancedMarkdown = analytics
+    ? `${markdown}
+
+## Resumo executivo
+
+- Escutas: ${analytics.totalRecords}
+- Revisadas: ${analytics.reviewedCount}
+- Cobertura territorial: ${analytics.territorialQuality.coveragePercent}% (${analytics.territorialQuality.recordsWithTerritory}/${analytics.territorialQuality.totalRecords})
+- Status territorial: ${analytics.territorialQuality.status}
+- Status da devolutiva: ${debrief?.status ?? "não criada"}
+
+## Sinais fortes da escuta
+
+${analytics.topSignals.length > 0 ? analytics.topSignals.map((signal) => `- ${signal.title}: ${signal.description}`).join("\n") : "- Sem sinais fortes detectados no momento."}
+
+## Encaminhamentos sugeridos
+
+${analytics.suggestedNextSteps.length > 0 ? analytics.suggestedNextSteps.map((step) => `- ${step.title}: ${step.description}`).join("\n") : "- Sem encaminhamentos sugeridos no momento."}
+
+## Falas representativas revisadas
+
+${publicQuotes.length > 0 ? publicQuotes.map((quote) => `- [${quote.status}] ${(quote.sanitized_text?.trim() || quote.quote_text).trim()}${quote.theme_label ? ` (tema: ${quote.theme_label})` : ""}${quote.context_note ? ` — ${quote.context_note}` : ""}`).join("\n") : "- Sem falas revisadas nesta ação."}
+
+## Governança editorial das falas
+
+- Total de falas na ação: ${publicQuotes.length}
+- Draft: ${quotesByStatus.draft}
+- Em revisão: ${quotesByStatus.needs_review}
+- Aprovadas internas: ${quotesByStatus.approved_internal}
+- Aprovadas públicas: ${quotesByStatus.approved_public}
+- Rejeitadas: ${quotesByStatus.rejected}
+- Arquivadas: ${quotesByStatus.archived}
+- Com risco crítico: ${quotesWithRisk}
+- Cobertura de auditoria: ${publicQuotes.length > 0 ? Math.round((quoteIdsWithAudit.size / publicQuotes.length) * 100) : 0}%
+- Edições após aprovação: ${editedAfterApproval}
+- Pendências de justificativa: ${pendingJustification}
+`
+    : markdown;
   const canClose = getClosureCanClose({ records, debrief, closure: virtualClosure });
 
   function updateField<TField extends keyof ClosureForm>(field: TField, value: ClosureForm[TField]) {
@@ -306,7 +380,7 @@ export function ActionDossierPage({ actionId }: Props) {
   }
 
   async function copyMarkdown() {
-    await navigator.clipboard.writeText(markdown);
+    await navigator.clipboard.writeText(enhancedMarkdown);
     setFeedback("Markdown do dossiê copiado.");
   }
 
@@ -471,6 +545,70 @@ export function ActionDossierPage({ actionId }: Props) {
                 <SuggestedNextStepsPanel steps={analytics.suggestedNextSteps} />
               </div>
             )}
+
+            <div className="mt-6 grid gap-5 lg:grid-cols-2">
+              <Panel title="Falas representativas revisadas (internas)" icon={<FileText className="h-5 w-5" />}>
+                {publicQuotes.filter((quote) => quote.status === "approved_internal").length === 0 ? (
+                  <p className="text-sm text-stone-600">Ainda nao ha falas aprovadas internamente para esta acao.</p>
+                ) : (
+                  <ul className="space-y-3 text-sm leading-6 text-stone-700">
+                    {publicQuotes
+                      .filter((quote) => quote.status === "approved_internal")
+                      .map((quote) => (
+                        <li className="rounded-xl border border-semear-gray bg-semear-offwhite p-3" key={quote.id}>
+                          <p>{(quote.sanitized_text?.trim() || quote.quote_text).trim()}</p>
+                          <p className="mt-1 text-xs text-stone-500">
+                            {quote.theme_label ? `Tema: ${quote.theme_label}. ` : ""}
+                            {quote.context_note ? `Contexto: ${quote.context_note}.` : ""}
+                            {quote.sensitive_risk ? " Alerta de risco registrado." : ""}
+                          </p>
+                        </li>
+                      ))}
+                  </ul>
+                )}
+              </Panel>
+              <Panel title="Falas representativas aprovadas para o público" icon={<FileText className="h-5 w-5" />}>
+                {publicQuotes.filter((quote) => quote.status === "approved_public").length === 0 ? (
+                  <p className="text-sm text-stone-600">Ainda nao ha falas aprovadas para uso publico nesta acao.</p>
+                ) : (
+                  <ul className="space-y-3 text-sm leading-6 text-stone-700">
+                    {publicQuotes
+                      .filter((quote) => quote.status === "approved_public")
+                      .map((quote) => (
+                        <li className="rounded-xl border border-green-200 bg-green-50 p-3" key={quote.id}>
+                          <p>{(quote.sanitized_text?.trim() || quote.quote_text).trim()}</p>
+                          <p className="mt-1 text-xs text-green-800">
+                            {quote.theme_label ? `Tema: ${quote.theme_label}. ` : ""}
+                            {quote.context_note ? `Contexto: ${quote.context_note}.` : ""}
+                            Status: aprovado_public.
+                          </p>
+                        </li>
+                      ))}
+                  </ul>
+                )}
+                <Link className="no-print mt-3 inline-flex min-h-10 items-center rounded-full border border-semear-green/20 bg-white px-4 text-xs font-semibold text-semear-green" href="/escutas/falas">
+                  Abrir fila editorial de falas
+                </Link>
+              </Panel>
+            </div>
+
+            <div className="mt-6">
+              <Panel title="Governança editorial das falas" icon={<AlertTriangle className="h-5 w-5" />}>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <Mini title="Total" items={[String(publicQuotes.length)]} />
+                  <Mini title="Draft / Revisão" items={[`${quotesByStatus.draft} / ${quotesByStatus.needs_review}`]} />
+                  <Mini title="Aprovadas" items={[`Interna: ${quotesByStatus.approved_internal}`, `Pública: ${quotesByStatus.approved_public}`]} />
+                  <Mini title="Rejeitadas / Arquivadas" items={[`${quotesByStatus.rejected} / ${quotesByStatus.archived}`]} />
+                  <Mini title="Com risco crítico" items={[String(quotesWithRisk)]} />
+                  <Mini title="Cobertura de auditoria" items={[`${publicQuotes.length > 0 ? Math.round((quoteIdsWithAudit.size / publicQuotes.length) * 100) : 0}%`]} />
+                  <Mini title="Edição pós-aprovação" items={[String(editedAfterApproval)]} />
+                  <Mini title="Pendências de justificativa" items={[String(pendingJustification)]} />
+                </div>
+                <Link className="no-print mt-4 inline-flex min-h-10 items-center rounded-full border border-semear-green/20 bg-white px-4 text-xs font-semibold text-semear-green" href={`/escutas/falas?actionId=${loadedAction.id}`}>
+                  Abrir fila desta ação
+                </Link>
+              </Panel>
+            </div>
           </>
         )}
 

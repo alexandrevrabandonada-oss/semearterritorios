@@ -59,6 +59,14 @@ export async function updateSession(request: NextRequest) {
   const hasAuthorizedProfile = !!profile?.role && AUTHORIZED_ROLES.includes(profile.role);
 
   if (!hasAuthorizedProfile && !pathname.startsWith("/aguardando-liberacao") && !isPublicRoute) {
+    // Audit-friendly diagnostic to investigate unexpected access gating.
+    console.warn("[auth-gate] redirecting user to /aguardando-liberacao", {
+      userId: user.id,
+      userEmail: user.email ?? null,
+      profileRole: profile?.role ?? null,
+      pathname,
+      authorizedRoles: AUTHORIZED_ROLES,
+    });
     const url = request.nextUrl.clone();
     url.pathname = "/aguardando-liberacao";
     return NextResponse.redirect(url);

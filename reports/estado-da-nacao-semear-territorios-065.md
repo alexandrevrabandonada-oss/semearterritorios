@@ -1,44 +1,139 @@
-# Estado da Nação - SEMEAR Territórios - Tijolo 065
-**Data:** 08 de Maio de 2026
-**Status:** ✅ Green Build
+# Estado da Nacao - SEMEAR Territorios - Tijolo 065
 
-## 1. Diagnóstico do Tijolo 065
-O objetivo deste tijolo foi estabilizar a Central de Avisos através de uma camada de **Limpeza Inteligente** e acolher novos membros com um **Onboarding Operacional** estruturado. Com a implementação da orquestração no Tijolo 064, o sistema começou a gerar muitos alertas; o Tijolo 065 resolve o risco de ruído excessivo e a falta de orientação para novos integrantes.
+## Diagnostico inicial
+O Tijolo 064 deixou um risco explicito: faltava schema e fluxo editorial para transformar falas brutas em trechos representativos seguros para uso no dossie e na devolutiva publica.
 
-## 2. Implementações Realizadas
+## Migration criada
+- Arquivo: supabase/migrations/20260511150000_create_listening_record_public_quotes.sql
+- Escopo:
+  - tabela listening_record_public_quotes
+  - indices por action_id, listening_record_id e status
+  - trigger de updated_at
+  - trigger de guarda editorial e privacidade
+  - funcao SQL public_quote_has_critical_risk
 
-### 2.1. Limpeza Inteligente de Avisos
-- **Detector de Resolução (`lib/notifications/notification-resolution.ts`)**: Criamos uma camada de validação que verifica se a causa de um aviso ainda persiste no banco de dados.
-- **Sugestão Assistida**: Em vez de deleção silenciosa, o sistema marca avisos como `auto_resolution_suggested`. Isso permite que o usuário veja *por que* o aviso deve ser arquivado (ex: "A devolutiva já foi aprovada").
-- **Arquivamento em Lote**: Implementada funcionalidade na UI para arquivar todos os itens resolvidos na origem com um único clique.
+## Tabela criada
+Tabela listening_record_public_quotes com campos:
+- listening_record_id, action_id
+- quote_text, sanitized_text
+- theme_label, context_note
+- status: draft, needs_review, approved_internal, approved_public, rejected, archived
+- sensitive_risk, risk_notes
+- reviewed_by/reviewed_at
+- approved_by/approved_at
+- created_by/created_at/updated_at
 
-### 2.2. Onboarding Operacional
-- **Tabela `user_onboarding_state`**: Criada infraestrutura para rastrear o progresso individual de cada membro da equipe.
-- **Componente `OperationalOnboardingCard`**: Checklist interativo integrado ao Dashboard e à Central de Avisos.
-- **Checklist de 5 Passos**:
-  1. Perfil operacional vinculado.
-  2. Agenda consultada.
-  3. Guia de Escutas lido.
-  4. Central de Avisos compreendida.
-  5. **Privacidade Primeiro** (Confirmação obrigatória).
+## RLS e seguranca
+- anon: sem acesso
+- authenticated: leitura para perfis autorizados
+- equipe: cria/edita rascunhos e revisao em fluxo proprio
+- coordenacao/admin: aprovam, rejeitam e aprovam para publico
+- approved_public bloqueado se:
+  - sanitized_text vazio
+  - papel sem permissao
+  - detector com risco critico
 
-### 2.3. Documentação e Governança
-- Criada a documentação [limpeza-e-onboarding-avisos.md](file:///c:/Projetos/SEMEAR%20TERRITORIOS/docs/limpeza-e-onboarding-avisos.md).
-- Atualizada a página de `/ajuda` com a seção "Primeiros passos no SEMEAR".
-- Reforço dos guardrails de privacidade dentro do fluxo de boas-vindas.
+## Detector de privacidade
+- Arquivo: lib/public-quote-privacy.ts
+- Detecta:
+  - CPF
+  - telefone
+  - e-mail
+  - CEP
+  - endereco especifico (rua + numero)
+  - moradia especifica
+  - nome completo provavel
+  - local de trabalho/escola especifico
+  - saude identificavel
+- Regras:
+  - CPF/telefone/e-mail/endereco/CEP bloqueiam approved_public
+  - demais categorias geram alerta para revisao
 
-## 3. Estado Técnico
-- **Build**: ✅ Estável.
-- **Lint**: ✅ Sem erros.
-- **Banco de Dados**: ✅ Migration 065 aplicada com sucesso (colunas de resolução e tabela de onboarding).
-- **RLS**: ✅ Políticas aplicadas na nova tabela `user_onboarding_state`.
+## Selecao por escuta
+- Arquivos:
+  - components/listening-records/public-quote-candidate-panel.tsx
+  - components/listening-records/listening-record-detail.tsx
+- Entrega:
+  - bloco "Fala candidata a devolutiva" em /escutas/[id]
+  - selecao de trecho curto
+  - edicao sanitizada
+  - tema e nota de contexto
+  - salvar rascunho / enviar para revisao
 
-## 4. Próximos Passos
-- Monitorar a taxa de arquivamento dos avisos resolvidos na origem.
-- Validar com a equipe se o checklist de onboarding é suficiente para a primeira semana de campo.
-- Iniciar o planejamento do próximo tijolo focado em **Análise Geoespacial de Escutas** (se aplicável no roadmap).
+## Fila de revisao
+- Arquivos:
+  - app/escutas/falas/page.tsx
+  - components/listening-records/public-quotes-queue.tsx
+  - components/listening-records/listening-records-list.tsx
+- Entrega:
+  - nova rota /escutas/falas
+  - filtros por acao, status, tema e risco
+  - cards com trecho original interno, versao sanitizada, alertas e acoes editoriais
 
----
-**Antigravity**
-Assistente de Codificação Agentica
-Google DeepMind
+## Workflow editorial
+Estados implementados:
+- draft
+- needs_review
+- approved_internal
+- approved_public
+- rejected
+- archived
+
+Regras implementadas:
+- approved_public exige sanitized_text e permissao de coordenacao/admin
+- approved_public bloqueado por risco critico
+- edicao de sanitized_text apos aprovacao retorna para needs_review (trigger)
+
+## Integracao com dossie
+- Arquivo: components/actions/action-dossier-page.tsx
+- Entrega:
+  - secao "Falas representativas revisadas" separada em internas e publicas
+  - exibicao de tema, contexto, status e alertas
+  - markdown do dossie inclui falas approved_internal e approved_public
+
+## Integracao com devolutiva
+- Arquivo: components/actions/action-debrief-page.tsx
+- Entrega:
+  - bloco "Vozes do territorio" no modo publico
+  - exibe apenas approved_public
+  - mensagem de ausencia quando nao ha falas aprovadas
+
+## Markdown e impressao
+- Arquivos:
+  - lib/action-debriefs.ts
+  - components/actions/action-dossier-page.tsx
+- Entrega:
+  - markdown da devolutiva inclui "Vozes do territorio" apenas com approved_public
+  - markdown do dossie inclui falas revisadas internas/publicas com status
+
+## Transparencia Viva (preparacao)
+- Arquivo: lib/transparency-snapshots.ts
+- Entrega:
+  - helper countApprovedPublicQuotesByAction para integracao futura
+  - sem publicacao automatica de falas neste tijolo
+
+## Documentacao
+- Atualizado: app/ajuda/page.tsx
+  - nova secao "Falas representativas sanitizadas"
+- Criado: docs/testes-falas-representativas-sanitizadas-065.md
+
+## Testes realizados
+- Cenarios documentados:
+  1. fala segura aprovada publica
+  2. CPF bloqueia approved_public
+  3. telefone bloqueia approved_public
+  4. endereco bloqueia approved_public
+  5. edicao apos aprovacao volta para revisao
+  6. dossie exibe approved_internal e approved_public
+  7. devolutiva publica exibe apenas approved_public
+- Validacao tecnica:
+  - npm run lint: OK
+  - npm run build: OK
+  - npm run verify: OK
+
+## Riscos restantes
+- Falta auditoria dedicada por transicao de status da fala (historico fino por etapa editorial).
+- Teste ponta a ponta depende de massa de homologacao para exercitar todos os cenarios de negocio com dados reais.
+
+## Proximo tijolo recomendado
+Tijolo 066: trilha de auditoria editorial de falas (historico por alteracao de status/texto, justificativa obrigatoria e painel de governanca de risco por acao).

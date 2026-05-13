@@ -1,0 +1,3 @@
+alter table public.listening_record_public_quote_audits
+  alter constraint listening_record_public_quote_audits_quote_id_fkey
+  deferrable initially deferred;

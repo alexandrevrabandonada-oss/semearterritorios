@@ -6,6 +6,7 @@ import { ArrowLeft, CheckCircle2, Edit3 } from "lucide-react";
 import { ListeningRecordForm } from "@/components/listening-records/listening-record-form";
 import { ListeningQualityChecklist } from "@/components/listening-records/listening-quality-checklist";
 import { TerritorialReviewPanel } from "@/components/listening-records/territorial-review-panel";
+import { PublicQuoteCandidatePanel } from "@/components/listening-records/public-quote-candidate-panel";
 import type {
   Action,
   ListeningRecord,
@@ -147,6 +148,17 @@ export function ListeningRecordDetail({ recordId }: { recordId: string }) {
 
         <div className="mt-6">
           <TerritorialReviewPanel record={record} neighborhoods={neighborhoods} onSaved={() => void load()} />
+        </div>
+
+        <div className="mt-6">
+          <PublicQuoteCandidatePanel
+            record={{
+              id: record.id,
+              action_id: record.action_id,
+              free_speech_text: record.free_speech_text,
+              team_summary: record.team_summary
+            }}
+          />
         </div>
       </article>
     </section>

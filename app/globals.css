@@ -41,10 +41,19 @@ a {
 }
 
 @media print {
+  @page {
+    margin: 14mm;
+  }
+
   :root,
   body {
     background: #ffffff !important;
     color: #1d2b25 !important;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .no-print {
@@ -60,6 +69,21 @@ a {
     box-shadow: none !important;
     background: #ffffff !important;
     padding: 0 !important;
+  }
+
+  .print-sheet section,
+  .print-sheet article,
+  .print-sheet .rounded-2xl,
+  .print-sheet .rounded-\[2rem\] {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  h2,
+  h3,
+  h4 {
+    break-after: avoid;
+    page-break-after: avoid;
   }
 
   textarea,

@@ -160,6 +160,7 @@ export default function AjudaPage() {
           <QuickLink href="/territorios/normalizacao/qualidade" icon={<ShieldCheck className="h-5 w-5" />} title="Qualidade da normalização" text="Detectar duplicidades, ambiguidade e sensíveis antes do mapa." />
           <QuickLink href="/mapa/interno" icon={<MapPinned className="h-5 w-5" />} title="Portão do mapa" text="Verificar se o protótipo interno está liberado pela homologação persistente." />
           <QuickLink href="/transparencia/snapshots" icon={<ShieldCheck className="h-5 w-5" />} title="Transparência Viva" text="Gerar snapshots agregados para futura camada pública." />
+          <QuickLink href="/publico/transparencia-viva" icon={<BarChart3 className="h-5 w-5" />} title="Página pública" text="Visualizar a rota pública controlada com dados agregados publicados." />
           <QuickLink href="/transparencia/homologacao" icon={<ShieldCheck className="h-5 w-5" />} title="Homologação institucional" text="Congelar versão, assinar internamente e preparar integração pública segura." />
         </div>
 
@@ -214,6 +215,15 @@ export default function AjudaPage() {
               <p>Não registre CPF, telefone, endereço pessoal, e-mail ou nome completo de pessoa escutada.</p>
               <p>Fala original completa é material interno de revisão. Devolutiva e dossiê impresso usam sínteses agregadas.</p>
               <p>Se aparecer alerta de possível dado sensível, revise antes de aprovar devolutiva ou fechar dossiê.</p>
+            </div>
+          </Panel>
+
+          <Panel icon={<ClipboardList className="h-5 w-5" />} title="Auditoria das falas representativas">
+            <div className="space-y-3 text-sm leading-6 text-stone-700">
+              <p>A fila em <strong>/escutas/falas</strong> mostra o último evento editorial por fala e exige justificativa para aprovação pública, rejeição, arquivamento e edições sensíveis.</p>
+              <p>Use <strong>/escutas/falas/[id]</strong> para abrir o histórico completo com quem alterou, quando alterou, status anterior/novo e motivo registrado.</p>
+              <p>Falas aprovadas para público precisam de texto sanitizado, sem risco crítico de privacidade e com justificativa da aprovação pública.</p>
+              <p>Dossiê e modo técnico da devolutiva exibem indicadores de governança para apoiar decisão da coordenação.</p>
             </div>
           </Panel>
 
@@ -398,6 +408,19 @@ export default function AjudaPage() {
           <div className="mt-4 flex flex-wrap gap-2">
             <Link className="inline-flex min-h-11 items-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/transparencia/snapshots">Abrir snapshots</Link>
             <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/transparencia/preview">Preview interno</Link>
+          </div>
+        </Panel>
+
+        <Panel className="mt-6" icon={<BarChart3 className="h-5 w-5" />} title="Página pública da Transparência Viva">
+          <div className="space-y-3 text-sm leading-6 text-stone-700">
+            <p>A página pública controlada desta fase está em <strong>/publico/transparencia-viva</strong>.</p>
+            <p>Ela mostra somente sínteses agregadas aprovadas e publicadas: métricas, temas, territórios agregados, linha do tempo e devolutivas aprovadas.</p>
+            <p>Não exibe escuta bruta, fala original, entrevistador, e-mail, CPF, telefone, endereço, anexos, IDs internos ou relatórios internos.</p>
+            <p>Quando não existir snapshot publicado, a página entra em estado de preparação institucional, sem erro técnico exposto ao público.</p>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link className="inline-flex min-h-11 items-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/publico/transparencia-viva">Abrir página pública</Link>
+            <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/docs/pagina-publica-transparencia-viva.md">Ler guia da página pública</Link>
           </div>
         </Panel>
 
@@ -674,6 +697,10 @@ export default function AjudaPage() {
                 manchas de calor e intensidades agregadas por bairro oficial.
               </p>
               <p>
+                <strong>Preparar snapshot da Transparência Viva:</strong> o botão em <strong>/leituras</strong> cria apenas rascunho interno,
+                com checklist obrigatório e revisão editorial antes de qualquer publicação.
+              </p>
+              <p>
                 <strong>Silêncios:</strong> Áreas brancas no painel indicam que precisamos de mais ações de campo nesses locais. 
                 Não ignore o silêncio; ele é um guia operacional.
               </p>
@@ -681,6 +708,35 @@ export default function AjudaPage() {
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link className="inline-flex min-h-11 items-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/leituras">Abrir Leituras Coletivas</Link>
+            <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/transparencia/snapshots">Abrir snapshots</Link>
+          </div>
+        </Panel>
+
+        <Panel className="mt-6" icon={<FileText className="h-5 w-5" />} title="Dossie e devolutiva avancados">
+          <div className="space-y-3 text-sm leading-6 text-stone-700">
+            <p><strong>Dossie (/acoes/[id]/dossie):</strong> agora inclui sinais analiticos, matriz de temas, coocorrencias, leitura territorial responsavel, leitura por ocupacao e encaminhamentos sugeridos.</p>
+            <p><strong>Devolutiva (/acoes/[id]/devolutiva):</strong> possui dois modos. O modo tecnico interno ajuda a registrar leitura da equipe; o modo publico prepara texto seguro para circulacao.</p>
+            <p><strong>Regra de privacidade:</strong> a versao publica nao deve conter fala bruta, nome de pessoa, endereco ou ocupacao rara que possa reidentificar alguem.</p>
+            <p><strong>Regra metodologica:</strong> quando a cobertura territorial estiver critica, use linguagem agregada e evite conclusoes por bairro especifico.</p>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link className="inline-flex min-h-11 items-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/acoes">Abrir Acoes</Link>
+            <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/20 bg-white px-4 text-sm font-semibold text-semear-green" href="/ajuda">Revisar regras de privacidade</Link>
+          </div>
+        </Panel>
+
+        <Panel className="mt-6" icon={<FileText className="h-5 w-5" />} title="Falas representativas sanitizadas">
+          <div className="space-y-3 text-sm leading-6 text-stone-700">
+            <p><strong>Por que usar trechos curtos:</strong> reduz risco de identificação e facilita leitura coletiva do território.</p>
+            <p><strong>Fala original x fala publica:</strong> a fala original fica no fluxo interno. A fala publica usa versao sanitizada, revisada e aprovada.</p>
+            <p><strong>Quem aprova:</strong> equipe pode sugerir e enviar para revisao; aprovacao publica e responsabilidade de coordenacao/admin.</p>
+            <p><strong>O que remover:</strong> nomes completos, CPF, telefone, e-mail, endereco, CEP, entrevistador e dado de saude identificavel.</p>
+            <p><strong>Quando rejeitar:</strong> quando o trecho mantem risco de reidentificacao, mesmo apos tentativa de sanitizacao.</p>
+            <p><strong>Como usar na devolutiva:</strong> o bloco Vozes do territorio aceita somente falas com status approved_public.</p>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link className="inline-flex min-h-11 items-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/escutas/falas">Abrir fila de falas</Link>
+            <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/20 bg-white px-4 text-sm font-semibold text-semear-green" href="/escutas">Abrir escutas</Link>
           </div>
         </Panel>
 

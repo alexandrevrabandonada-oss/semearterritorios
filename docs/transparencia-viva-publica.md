@@ -4,6 +4,16 @@
 
 A Transparência Viva é a camada pública futura do SEMEAR Territórios para apresentar sínteses agregadas, sanitizadas e aprovadas pela coordenação. Ela não substitui o painel interno, não expõe dados brutos e não usa IA como fonte oficial.
 
+## Primeira página pública controlada (Tijolo 063)
+
+Nesta etapa, a primeira página pública controlada já está disponível em:
+
+- `/publico/transparencia-viva`
+
+Ela consome apenas `/api/public/transparencia-viva` e exibe exclusivamente o último snapshot `published`.
+
+Se não houver snapshot publicado, a rota mostra somente o estado de preparação institucional, sem detalhes técnicos internos.
+
 ## Painel interno x transparência pública
 
 O painel interno acessa ações, escutas, temas, territórios, equipe operacional, devolutivas, dossiês e relatórios conforme o papel do usuário.
@@ -13,7 +23,8 @@ A transparência pública só deve ler `public_transparency_snapshots` com `stat
 ## Fluxo editorial
 
 1. Gerar rascunho determinístico em `/transparencia/snapshots`.
-2. Abrir o editor em `/transparencia/snapshots/[id]`.
+2. Alternativamente, gerar rascunho interno a partir de `/leituras` com o botão `Preparar snapshot da Transparência Viva`.
+3. Abrir o editor em `/transparencia/snapshots/[id]`.
 3. Revisar conteúdo e bloco metodológico.
 4. Conferir checklist de privacidade.
 5. Registrar comentários e resolver pendências críticas.
@@ -120,6 +131,16 @@ Territórios com menos de 5 escutas revisadas devem aparecer como `dados insufic
 
 Ocupação só pode entrar de forma agregada. Ocupações com contagem menor que 3 devem ser agrupadas como `outras ocupações`.
 
+## Origem coletiva (source_type)
+
+Snapshots criados a partir de `/leituras` recebem metadados de origem:
+
+- `source_type = collective_reading`
+- `source_filters` com filtros usados na geração
+- `source_generated_at` com data/hora da geração
+
+Esse registro não altera as regras de publicação: continua obrigatório revisar checklist, comentários e privacidade antes de aprovar/publicar.
+
 ## Versões e pacote institucional
 
 - snapshot: peça editorial viva;
@@ -136,8 +157,22 @@ O pacote de homologação inclui metadados, checklist, alertas, versões, coment
 
 A rota `/api/public/transparencia-viva` retorna apenas o último snapshot com `status = published`, sem campos brutos e sem dados internos.
 
+Antes da integração com PWA, manter a página controlada local como referência de UX e governança em `/publico/transparencia-viva`.
+
 Quando houver integração com o Portal PWA:
 
 - consumir apenas snapshot `published`;
 - usar pacote `signed` como referência institucional;
 - validar novamente RLS, payload, cache, logs e ausência de `service_role` no bundle público.
+
+## Testes automatizados e smoke (Tijolo 048)
+
+Para evitar regressões de segurança e governança, manter a suíte ativa:
+
+- `npm run test:transparencia` para testes automatizados locais;
+- `npm run smoke:transparencia` para smoke remoto de triggers/versionamento/assinatura.
+
+Referências:
+
+- [docs/testes-transparencia-viva.md](docs/testes-transparencia-viva.md)
+- [scripts/smoke-transparencia-rls.md](scripts/smoke-transparencia-rls.md)
