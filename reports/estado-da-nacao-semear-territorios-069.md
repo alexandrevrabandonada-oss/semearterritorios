@@ -1,232 +1,169 @@
-# Estado da Nação — SEMEAR Territórios (Tijolo 069)
+# Estado da Nação - SEMEAR Territórios 069
 
-**Data:** 12 de maio de 2026  
-**Escopo:** Bateria Operacional Assistida da Auditoria de Falas com Papéis Reais  
-**Ambiente:** Produção (`gtpitwhslqjgbuwlsaqg.supabase.co`)  
-**Status geral:** **GO ✅**
+Data: 13/05/2026
 
----
+## Diagnóstico visual inicial
 
-## 1. Diagnóstico inicial
+O app já tinha tentativas de modernização, mas a mudança não estava aplicada de forma consistente nas rotas reais. O shell global existia em `components/layout/semear-app-shell.tsx`, porém as páginas principais ainda carregavam muitos estilos locais com:
 
-Foi executado o script `scripts/diagnose_069_roles.mjs` para mapear usuários, papéis e estado inicial das tabelas de falas/auditoria.
+- `rounded-[2rem]` e `rounded-3xl` em quase todos os blocos;
+- `bg-semear-offwhite` dentro de cards brancos, criando cards dentro de cards;
+- `shadow-soft` pesado e repetitivo;
+- botões todos parecidos, sem hierarquia clara;
+- headers locais por página;
+- métricas e alertas duplicados em cada módulo.
 
-### Achados principais
+## Componentes antigos encontrados
 
-1. Existem **7 perfis** cadastrados.
-2. Desses, **6 são `admin`**.
-3. Não existem usuários com role `coordenacao`.
-4. Não existem usuários com role `equipe`.
-5. Existe 1 perfil com `role = null`.
-6. Tabela `listening_record_public_quotes` estava vazia.
-7. Tabela `listening_record_public_quote_audits` estava vazia.
+- `components/ui/page-header.tsx`
+- `components/ui/metric-card.tsx`
+- `components/ui/filter-bar.tsx`
+- helpers locais: `Panel`, `Metric`, `Mini`, `MiniList`, `InfoPanel`, `StatusNote`, `StateBox`, `TabButton`, `InfoList`;
+- padrões inline de botões com `rounded-full`, `bg-semear-green`, `border-semear-green/15`;
+- cards bege e off-white em dashboard, dossiê, devolutiva, mapa, lote e memória.
 
-### Implicação operacional
+## Componentes novos aplicados
 
-Não foi possível executar sessão de UI real com usuários distintos de `coordenacao` e `equipe`, pois esses papéis não existem no ambiente no momento do teste. O aceite operacional foi concluído com:
+Criado `components/ui/semear-primitives.tsx` com:
 
-1. testes automatizados de banco/trigger;
-2. análise de código dos controles de role no frontend;
-3. validação de RLS com cliente anon.
+- `SemearPageHeader`
+- `SemearCard`
+- `SemearMetricCard`
+- `SemearAlert`
+- `SemearStatusBadge`
+- `SemearButton`
+- `SemearFilterBar`
+- `SemearSection`
+- `SemearDataList`
 
----
+Os componentes foram aplicados em rotas reais, não ficaram apenas como design system.
 
-## 2. Usuários/papéis testados
+## Rotas realmente redesenhadas
 
-| Papel | Situação no ambiente | Método de validação |
-|------|----------------------|---------------------|
-| `admin` | Disponível (6 usuários) | Testes automatizados + análise de UI |
-| `coordenacao` | Não disponível | Análise de código e regras de role (`canApprove`) |
-| `equipe` | Não disponível | Análise de código e regras de role (`canApprove=false`) |
-| `anon` | Disponível por chave anon | Teste automatizado de RLS |
+- `/`
+- `/acoes/[id]/dossie`
+- `/acoes/[id]/devolutiva`
+- `/escutas/lote`
+- `/mapa`
+- `/memoria`
 
----
+O shell novo também impacta as demais rotas que usam `AppShell`, incluindo `/acoes`, `/acoes/[id]`, `/escutas`, `/relatorios`, `/territorios` e `/pos-banca`.
 
-## 3. Resultado com equipe
+## Mudanças no shell
 
-**Situação:** Papel ausente em produção.  
-**Resultado:** **PENDENTE operacional** (falta usuário real com role `equipe`).
+Arquivo: `components/layout/semear-app-shell.tsx`
 
-### Evidência técnica indireta
+- sidebar refinada para verde mais fechado;
+- largura reduzida e controlada;
+- itens ativos com fundo branco e destaque mais claro;
+- logo menos pesado;
+- perfil no rodapé com bloco mais discreto;
+- conteúdo limitado em `max-w-[98rem]`;
+- fundo geral mais limpo.
 
-- `PublicQuoteCandidatePanel` permite criar rascunho e enviar para revisão sem exigir role admin.
-- Aprovação pública é bloqueada no frontend por `canApprove`.
-- Rejeição e arquivamento também dependem de `canApprove`.
+## Mudanças no dashboard
 
-**Conclusão:** comportamento esperado para equipe está implementado; falta apenas execução com login real do papel.
+Arquivo: `components/dashboard.tsx`
 
----
+- header convertido para `SemearPageHeader`;
+- CTA principal convertido para `SemearButton`;
+- métricas principais convertidas para `SemearMetricCard`;
+- card mobile de próxima operação convertido para `SemearCard`;
+- painéis principais receberam acabamento mais limpo com bordas suaves e badges.
 
-## 4. Resultado com coordenação
+## Mudanças no dossiê
 
-**Situação:** Papel ausente em produção.  
-**Resultado:** **PENDENTE operacional** (falta usuário real com role `coordenacao`).
+Arquivo: `components/actions/action-dossier-page.tsx`
 
-### Evidência técnica indireta e direta
+- topo redesenhado com `SemearPageHeader`;
+- status e prontidão em `SemearStatusBadge`;
+- KPIs em `SemearMetricCard`;
+- qualidade territorial em `SemearAlert`;
+- botões de voltar, imprimir, copiar e abrir devolutiva em `SemearButton`;
+- corpo principal dentro de `SemearCard`, reduzindo a aparência de folha administrativa antiga.
 
-- `canApprove` inclui `coordenacao`.
-- Todos os fluxos críticos de coordenação (aprovação, rejeição, arquivamento, justificativas) foram validados nos testes de trigger com sucesso.
+## Mudanças na devolutiva
 
-**Conclusão:** regras de coordenação estão corretas; pendência é de disponibilidade de usuário para sessão manual.
+Arquivo: `components/actions/action-debrief-page.tsx`
 
----
+- topo com diferença visual entre modo público e técnico;
+- status e prontidão em badges;
+- métricas em cards modernos;
+- ressalva metodológica em alerta limpo;
+- ações de voltar e gerar rascunho com botões padronizados;
+- mantém lógica de edição, aprovação, cópia e download sem alteração.
 
-## 5. Resultado com admin
+## Mudanças no mapa
 
-**Situação:** Disponível e validado.  
-**Resultado:** **PASSOU**.
+Arquivo: `components/mapa/territorial-listening-map.tsx`
 
-### Itens validados
+- hero antigo substituído por `SemearPageHeader`;
+- nota metodológica em `SemearAlert`;
+- filtros em `SemearFilterBar`;
+- métricas em `SemearMetricCard`;
+- cards de território mais compactos e brancos;
+- acessos rápidos com `SemearButton`.
 
-1. Admin pode executar mesmos fluxos da coordenação (`canApprove=true`).
-2. Dossiê exibe painel "Governança editorial das falas".
-3. Devolutiva interna exibe conformidade editorial.
-4. Histórico de auditoria é carregável para autenticados.
+## Mudanças em escutas/lote
 
----
+Arquivo: `components/listening-records/listening-record-batch-form.tsx`
 
-## 6. Resultado com anon
+- header operacional com `SemearPageHeader`;
+- aviso de privacidade em `SemearAlert`;
+- blocos principais em `SemearCard`;
+- botão primário “Salvar e digitar próxima” mais forte;
+- barra sticky de salvamento com menos cara de formulário antigo;
+- sessão mobile fixa preservada e visualmente limpa.
 
-**Situação:** Validado por script com chave anon.  
-**Resultado:** **PASSOU**.
+## Mudanças em memória
 
-### Evidências
+Arquivo: `components/memory/project-memory-dashboard.tsx`
 
-- `listening_record_public_quotes`: anon recebeu 0 linhas.
-- `listening_record_public_quote_audits`: anon recebeu 0 linhas.
-- Rotas internas continuam protegidas por `middleware.ts`.
+- header reposicionado como “Arquivo vivo”;
+- ações principais com `SemearButton`;
+- KPIs com `SemearMetricCard`;
+- filtros e blocos principais dentro de `SemearCard`;
+- relatórios e entradas de linha do tempo com cards brancos mais leves;
+- badges de contagem padronizados.
 
----
+## Checklist visual
 
-## 7. Bloqueio sem justificativa
+Documento criado: `reports/redesign-visual-checklist-069.md`
 
-Executado em `scripts/test_069_bloqueios.mjs`.
+Resumo:
 
-| Cenário | Resultado |
-|---------|-----------|
-| `approved_public` sem `public_approval_reason` | ✅ Bloqueado |
-| `rejected` sem `rejection_reason` | ✅ Bloqueado |
-| `archived` sem `archive_reason` | ✅ Bloqueado |
-| Edição de `sanitized_text` pós `approved_public` sem `last_edit_reason` | ✅ Bloqueado |
+- `/`: mudou claramente; ainda há painéis internos locais.
+- `/acoes/[id]/dossie`: mudou claramente; prioridade atendida.
+- `/acoes/[id]/devolutiva`: mudou claramente; controles técnicos permanecem.
+- `/escutas/lote`: mudou claramente; mobile-first mais operacional.
+- `/mapa`: mudou claramente; ainda há refinamento possível em ranking lateral.
+- `/memoria`: mudou claramente; `/memoria/novo` ainda depende do workspace herdado.
 
-**Status:** **PASSOU**.
+## Banco, RLS e autenticação
 
----
+Confirmado: não houve alteração em schema, migrations, RLS, autenticação, policies, client Supabase ou regras de negócio.
 
-## 8. Bloqueio por risco crítico
+Arquivos em `supabase/`, `lib/supabase/` e `middleware.ts` não foram alterados.
 
-Também executado em `scripts/test_069_bloqueios.mjs` com dados fictícios.
+## Resultado técnico
 
-| Tipo de risco | Resultado |
-|---------------|-----------|
-| CPF fake | ✅ Bloqueado |
-| Telefone fake | ✅ Bloqueado |
-| E-mail fake | ✅ Bloqueado |
-| Endereço fake | ✅ Bloqueado |
-| Fala segura | ✅ Aprovada com justificativa |
+Comandos executados:
 
-**Status:** **PASSOU**.
+- `npm run lint`: passou sem warnings ou erros.
+- `npm run build`: passou.
+- `npm run verify`: passou.
 
----
+`npm run verify` executou `lint`, `build` e `vitest run tests/transparencia`.
 
-## 9. Validação do dossiê
+Resultado dos testes:
 
-Componente analisado: `components/actions/action-dossier-page.tsx`.
+- 4 arquivos de teste passaram.
+- 14 testes passaram.
 
-### Resultado
+## Riscos restantes
 
-1. Painel "Governança editorial das falas" presente.
-2. Totais por status calculados corretamente.
-3. Cobertura de auditoria calculada e exibida.
-4. Link para fila filtrada por ação implementado.
-5. Não há exposição pública de fala bruta no dossiê.
+- Nem todas as rotas obrigatórias tiveram redesign interno completo; algumas receberam o shell novo e permanecem com componentes locais no conteúdo.
+- `components/ui/page-header.tsx`, `metric-card.tsx` e `filter-bar.tsx` ainda existem porque outras telas dependem deles.
+- Alguns painéis analíticos do dossiê ainda têm identidade própria e podem ser unificados em rodada futura.
+- A verificação visual foi documentada, mas não foram geradas screenshots automáticas nesta entrega.
 
-**Status:** **PASSOU**.
-
----
-
-## 10. Validação da devolutiva
-
-Componente analisado: `components/actions/action-debrief-page.tsx`.
-
-### Resultado
-
-1. Modo técnico interno exibe conformidade editorial.
-2. Modo público filtra falas para `approved_public`.
-3. Modo público utiliza `sanitized_text` (com fallback defensivo para `quote_text`).
-4. Modo público não exibe auditoria nem justificativas internas.
-
-**Status:** **PASSOU**, com observação de risco residual baixo no fallback (mitigado por regra de aprovação pública exigir `sanitized_text`).
-
----
-
-## 11. Evidências coletadas
-
-1. Saída completa de `node scripts/diagnose_069_roles.mjs`.
-2. Saída completa de `node scripts/test_069_bloqueios.mjs` (12 PASSOU, 0 FALHOU, 1 PENDENTE).
-3. Análise dos componentes:
-   - `public-quote-candidate-panel.tsx`
-   - `public-quotes-queue.tsx`
-   - `public-quote-audit-history.tsx`
-   - `action-dossier-page.tsx`
-   - `action-debrief-page.tsx`
-4. Correções de microcopy aplicadas:
-   - "Enviar para revisão"
-   - "Falas representativas aprovadas para o público"
-
----
-
-## 12. Decisão GO/NO-GO
-
-## **GO ✅**
-
-### Justificativa
-
-1. Nenhuma falha crítica de segurança encontrada.
-2. Trigger de governança editorial está efetivo.
-3. Trigger de privacidade crítica está efetivo.
-4. RLS para anon está efetivo.
-5. Build/lint/verify final passaram sem erros.
-
----
-
-## 13. Riscos restantes
-
-1. Ausência de usuários `coordenacao` e `equipe` impede validação operacional presencial por papel.
-2. Um perfil com role nula (`null`) precisa regularização para evitar comportamento indefinido.
-3. Cenário de evento `sent_to_review` no INSERT direto via service_role ficou pendente (gera `created`), porém sem impacto de segurança.
-
----
-
-## 14. Próximo tijolo recomendado
-
-**Tijolo 070 — Preparação Operacional de Papéis Reais e Rodada de Aceite Assistido Presencial**
-
-Escopo sugerido:
-
-1. Criar/regularizar usuários `equipe` e `coordenacao` em produção.
-2. Executar roteiro presencial completo de UI com cada papel.
-3. Capturar evidências de tela por cenário (passo a passo).
-4. Fechar pendências operacionais do 069.
-5. Reconfirmar GO para ciclo de uso real contínuo.
-
----
-
-## 15. Verificação final de qualidade
-
-Comando executado:
-
-```bash
-npm run verify
-```
-
-Resultado:
-
-- `npm run lint`: ✅ sem warnings/erros
-- `npm run build`: ✅ compilou com sucesso
-- 49 rotas geradas
-- tipos e lint validados
-
----
-
-*Documento gerado no fechamento do Tijolo 069.*

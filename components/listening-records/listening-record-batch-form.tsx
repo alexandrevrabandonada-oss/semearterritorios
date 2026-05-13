@@ -8,6 +8,7 @@ import { respondentTerritoryRelationOptions } from "@/lib/listening-records";
 import { hasPossibleSensitiveOccupation } from "@/lib/action-pilot";
 import { formatNeighborhoodOption, getOfficialNeighborhoodsForSelect } from "@/lib/neighborhoods";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { SemearAlert, SemearButton, SemearCard, SemearPageHeader, SemearStatusBadge } from "@/components/ui/semear-primitives";
 
 type BatchFormValues = {
   free_speech_text: string;
@@ -242,12 +243,19 @@ export function ListeningRecordBatchForm() {
 
   return (
     <section className="pb-10 max-w-6xl mx-auto">
-      <Link className="mb-5 inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white/70 px-4 text-sm font-semibold text-semear-green" href="/escutas">
+      <SemearButton className="mb-5" href="/escutas" variant="secondary">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         Voltar para escutas
-      </Link>
+      </SemearButton>
 
-      <div className="lg:hidden sticky top-[4.75rem] z-20 mb-5 rounded-[1.5rem] border border-semear-green/15 bg-white/95 p-4 shadow-soft backdrop-blur">
+      <SemearPageHeader
+        eyebrow="Digitação operacional"
+        title="Escutas em lote"
+        description="Fluxo mobile-first para registrar fichas de campo com ação e entrevistador fixos no topo."
+        meta={<SemearStatusBadge tone="yellow">Privacidade: sem CPF, telefone ou endereço</SemearStatusBadge>}
+      />
+
+      <div className="lg:hidden sticky top-[4.75rem] z-20 mb-5 rounded-2xl border border-semear-green/15 bg-white/95 p-4 shadow-[0_12px_30px_rgba(23,74,55,0.1)] backdrop-blur">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">Sessão em campo</p>
@@ -256,13 +264,13 @@ export function ListeningRecordBatchForm() {
               {selectedAction ? `${selectedAction.action_date} · ${selectedAction.neighborhoods?.name || "Sem bairro"}` : "Escolha a ação, o entrevistador e depois digite ficha por ficha."}
             </p>
           </div>
-          <div className="rounded-2xl bg-semear-green-soft px-3 py-2 text-right">
+          <div className="rounded-xl bg-semear-green-soft px-3 py-2 text-right">
             <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-semear-earth">Sessão</p>
             <p className="text-2xl font-semibold text-semear-green">{sessionCount}</p>
           </div>
         </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          <div className="rounded-xl bg-semear-offwhite px-3 py-2 text-xs text-stone-600">
+          <div className="rounded-xl bg-white px-3 py-2 text-xs text-stone-600">
             <strong className="text-semear-green">Entrevistador:</strong> {values.interviewer_name || "Selecione acima"}
           </div>
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-950">
@@ -274,7 +282,7 @@ export function ListeningRecordBatchForm() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
         <div>
           {/* TRAVA DE AÇÃO */}
-          <div className="rounded-[2rem] border border-white/80 bg-white/78 p-6 shadow-soft mb-6">
+          <SemearCard className="mb-6">
             <h2 className="text-xl font-semibold tracking-tight text-semear-green mb-4">1. Ação e sessão</h2>
             <p className="mb-4 text-sm leading-6 text-stone-600">Selecione primeiro a ação, a origem e o entrevistador. Esses dados ficam fixos para acelerar a digitação em campo.</p>
             <div className="grid gap-4 md:grid-cols-2">
@@ -314,15 +322,17 @@ export function ListeningRecordBatchForm() {
                 <span><strong>Bairro:</strong> {selectedAction.neighborhoods?.name || "Sem bairro"}</span>
               </div>
             )}
-          </div>
+          </SemearCard>
 
           {/* FORMULÁRIO */}
           <form className={`transition-opacity ${!lockedActionId ? 'opacity-50 pointer-events-none' : ''}`} onSubmit={handleSubmit}>
-            <div className="rounded-[2rem] border border-white/80 bg-white/78 p-6 shadow-soft">
-              <div className="mb-6 flex gap-3 rounded-2xl border border-semear-yellow/40 bg-semear-yellow/20 p-4 text-sm leading-6 text-semear-green">
+            <SemearCard>
+              <SemearAlert tone="yellow">
+                <div className="flex gap-3">
                 <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
                 Não registre CPF, telefone, endereço pessoal ou relato médico individual. Preserve a fala da pessoa, mas remova identificadores.
-              </div>
+                </div>
+              </SemearAlert>
 
               {error && <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div>}
               {sensitiveAlert && <div className="mb-6 rounded-2xl border border-orange-300 bg-orange-50 p-4 text-sm text-orange-800 font-medium">{sensitiveAlert}</div>}
@@ -334,7 +344,7 @@ export function ListeningRecordBatchForm() {
                     <h3 className="mt-1 text-lg font-semibold text-semear-green">Registre a fala com conforto no celular</h3>
                   </div>
                   <div className="grid gap-5 md:grid-cols-2">
-                    <label className="md:col-span-2 rounded-[1.5rem] border-2 border-semear-green/35 bg-semear-green-soft/70 p-4">
+                    <label className="md:col-span-2 rounded-2xl border border-semear-green/25 bg-semear-green-soft/45 p-4">
                   <span className="text-sm font-bold text-semear-green">Fala original / síntese livre</span>
                   <textarea className="mt-3 min-h-48 w-full rounded-2xl border border-semear-green/20 bg-white px-4 py-3 text-base leading-7 outline-none focus:border-semear-green" required value={values.free_speech_text} onChange={e => updateField("free_speech_text", e.target.value)} />
                     </label>
@@ -353,7 +363,7 @@ export function ListeningRecordBatchForm() {
                   </div>
                 </section>
 
-                <section className="rounded-[1.5rem] border border-semear-green/20 bg-semear-green-soft/40 p-5">
+                <section className="rounded-2xl border border-semear-green/20 bg-semear-green-soft/30 p-5">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">3. Território de referência</p>
                   <h3 className="mt-1 font-semibold text-semear-green">Território agregado da pessoa escutada</h3>
                   <p className="mt-1 text-xs leading-5 text-stone-600">Registre apenas município, bairro oficial e vínculo com o território. Não registre rua, número ou endereço.</p>
@@ -400,7 +410,7 @@ export function ListeningRecordBatchForm() {
 
                 <section>
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">4. Perfil opcional</p>
-                  <div className="mt-4 rounded-[1.5rem] border border-semear-gray bg-semear-offwhite p-5">
+                  <div className="mt-4 rounded-2xl border border-semear-gray bg-white p-5">
                     <label className="block">
                       <span className="text-sm font-semibold text-semear-green">Ocupação / atividade principal <span className="text-xs font-medium text-stone-500">(opcional)</span></span>
                       <input
@@ -419,7 +429,7 @@ export function ListeningRecordBatchForm() {
                   </div>
                 </section>
 
-                <section className="rounded-[1.5rem] border border-dashed border-semear-green/25 bg-semear-offwhite p-5">
+                <section className="rounded-2xl border border-dashed border-semear-green/25 bg-white p-5">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">5. Temas</p>
                   <h3 className="mt-1 font-semibold text-semear-green">Codificação preliminar</h3>
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -443,20 +453,20 @@ export function ListeningRecordBatchForm() {
                   </div>
                 </section>
 
-                <div className="sticky bottom-20 z-20 mt-8 rounded-[1.5rem] border border-semear-green/15 bg-white/95 p-4 shadow-soft backdrop-blur md:bottom-4">
+                <div className="sticky bottom-20 z-20 mt-8 rounded-2xl border border-semear-green/15 bg-white/95 p-4 shadow-[0_14px_36px_rgba(23,74,55,0.12)] backdrop-blur md:bottom-4">
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <button className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-semear-green px-5 text-base font-semibold text-white disabled:opacity-60" disabled={saving || !lockedActionId} onClick={() => setSubmitMode("next")} type="submit">
+                    <button className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-semear-green px-5 text-base font-semibold text-white disabled:opacity-60" disabled={saving || !lockedActionId} onClick={() => setSubmitMode("next")} type="submit">
                       <PlayCircle className="h-5 w-5" aria-hidden="true" />
                       {saving && submitMode === "next" ? "Salvando..." : "Salvar e digitar próxima"}
                     </button>
-                    <button className="inline-flex min-h-14 w-full items-center justify-center rounded-full border border-semear-green/20 bg-white px-5 text-base font-semibold text-semear-green disabled:opacity-60" disabled={saving || !lockedActionId} onClick={() => setSubmitMode("draft")} type="submit">
+                    <button className="inline-flex min-h-14 w-full items-center justify-center rounded-xl border border-semear-green/20 bg-white px-5 text-base font-semibold text-semear-green disabled:opacity-60" disabled={saving || !lockedActionId} onClick={() => setSubmitMode("draft")} type="submit">
                       {saving && submitMode === "draft" ? "Salvando..." : "Salvar rascunho"}
                     </button>
                   </div>
                   <p className="mt-3 text-center text-xs text-stone-500 uppercase tracking-widest font-semibold">No celular, digite agora e revise depois com calma.</p>
                 </div>
               </div>
-            </div>
+            </SemearCard>
           </form>
         </div>
 

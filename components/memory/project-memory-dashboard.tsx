@@ -5,8 +5,7 @@ import Link from "next/link";
 import { CheckCircle2, Clock3, FileSearch, FileText, FolderClock, LibraryBig, MapPinned, Plus, UsersRound } from "lucide-react";
 import type { Action, Neighborhood, Profile, ProjectMemoryEntry, TeamMember, WeeklyTeamReport, WeeklyTeamReportStatus } from "@/lib/database.types";
 import { FilterBar, FilterField, filterControlClassName } from "@/components/ui/filter-bar";
-import { MetricCard } from "@/components/ui/metric-card";
-import { PageHeader } from "@/components/ui/page-header";
+import { SemearButton, SemearCard, SemearMetricCard, SemearPageHeader, SemearStatusBadge } from "@/components/ui/semear-primitives";
 import {
   formatDateLabel,
   formatWeekLabel,
@@ -202,20 +201,20 @@ export function ProjectMemoryDashboard() {
 
   return (
     <section className="pb-10">
-      <PageHeader
-        eyebrow="Tijolo 051"
+      <SemearPageHeader
+        eyebrow="Arquivo vivo"
         title="Memória do Projeto"
         description="Relatórios semanais internos, anexos privados e linha do tempo da memória institucional. Não inclua CPF, telefone, endereço pessoal ou dado sensível desnecessário."
         actions={
           <>
-            <Link className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href={`/agenda/novo?eventType=relatorio_semanal&title=${encodeURIComponent(`Entrega dos relatórios semanais — ${formatWeekTitle(currentWeekStart)}`)}&startsAt=${currentWeekStart}T00:00&endsAt=${currentWeekStart}T23:59&allDay=1`}>
+            <SemearButton href={`/agenda/novo?eventType=relatorio_semanal&title=${encodeURIComponent(`Entrega dos relatórios semanais — ${formatWeekTitle(currentWeekStart)}`)}&startsAt=${currentWeekStart}T00:00&endsAt=${currentWeekStart}T23:59&allDay=1`} variant="secondary">
               <FileText className="h-4 w-4" aria-hidden="true" />
               Agendar prazo de relatório semanal
-            </Link>
-            <Link className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/memoria/novo">
+            </SemearButton>
+            <SemearButton href="/memoria/novo" variant="primary">
               <Plus className="h-4 w-4" aria-hidden="true" />
               Novo relatório
-            </Link>
+            </SemearButton>
           </>
         }
       />
@@ -248,13 +247,13 @@ export function ProjectMemoryDashboard() {
       )}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard icon={<FileText className="h-5 w-5" />} label="Desta semana" value={weekReports.length} note={referenceWeek ? formatDateLabel(referenceWeek) : "sem recorte"} />
-        <MetricCard icon={<FolderClock className="h-5 w-5" />} label="Pendentes" value={countsByStatus.draft + countsByStatus.submitted + countsByStatus.needs_changes} note="rascunho, enviado ou ajustes" tone="yellow" />
-        <MetricCard icon={<Clock3 className="h-5 w-5" />} label="Em revisão" value={countsByStatus.in_review} note="aguardando decisão" tone="earth" />
-        <MetricCard icon={<CheckCircle2 className="h-5 w-5" />} label="Aprovados" value={countsByStatus.approved} note="base para memória e prestação" />
+        <SemearMetricCard icon={<FileText className="h-5 w-5" />} label="Desta semana" value={weekReports.length} note={referenceWeek ? formatDateLabel(referenceWeek) : "sem recorte"} />
+        <SemearMetricCard icon={<FolderClock className="h-5 w-5" />} label="Pendentes" value={countsByStatus.draft + countsByStatus.submitted + countsByStatus.needs_changes} note="rascunho, enviado ou ajustes" tone="yellow" />
+        <SemearMetricCard icon={<Clock3 className="h-5 w-5" />} label="Em revisão" value={countsByStatus.in_review} note="aguardando decisão" tone="earth" />
+        <SemearMetricCard icon={<CheckCircle2 className="h-5 w-5" />} label="Aprovados" value={countsByStatus.approved} note="base para memória e prestação" />
       </div>
 
-      <div className="mt-5 rounded-[2rem] border border-white/80 bg-white/80 p-5 shadow-soft">
+      <SemearCard className="mt-5">
         <FilterBar
           title="Filtros"
           onClear={() =>
@@ -327,16 +326,16 @@ export function ProjectMemoryDashboard() {
             </select>
           </FilterField>
         </FilterBar>
-      </div>
+      </SemearCard>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-        <section className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
+        <SemearCard>
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Relatórios semanais</p>
               <h3 className="mt-2 text-2xl font-semibold text-semear-green">Acompanhamento da semana e do histórico</h3>
             </div>
-            <span className="rounded-full bg-semear-green-soft px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-semear-green">{filteredReports.length} relatório(s)</span>
+            <SemearStatusBadge tone="green">{filteredReports.length} relatório(s)</SemearStatusBadge>
           </div>
 
           <div className="mt-4 space-y-3">
@@ -346,7 +345,7 @@ export function ProjectMemoryDashboard() {
               const linkedNeighborhoods = reportNeighborhoods.filter((item) => item.report_id === report.id);
 
               return (
-                <article className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4" key={report.id}>
+                <article className="rounded-xl border border-semear-gray bg-white p-4" key={report.id}>
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -374,7 +373,7 @@ export function ProjectMemoryDashboard() {
             })}
             {filteredReports.length === 0 ? <EmptyCard text="Nenhum relatório encontrado para os filtros atuais." /> : null}
           </div>
-        </section>
+        </SemearCard>
 
         <section className="space-y-5">
           <NotificationsInlinePanel
@@ -385,7 +384,7 @@ export function ProjectMemoryDashboard() {
             limit={4}
           />
 
-          <section className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
+          <SemearCard>
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-full bg-semear-green-soft text-semear-green">
                 <UsersRound className="h-5 w-5" aria-hidden="true" />
@@ -405,9 +404,9 @@ export function ProjectMemoryDashboard() {
                 A coordenação acompanha a cobertura completa da semana. Aqui você vê seus próprios relatórios e a linha do tempo interna já consolidada.
               </div>
             )}
-          </section>
+          </SemearCard>
 
-          <section className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
+          <SemearCard>
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-full bg-semear-green-soft text-semear-green">
                 <LibraryBig className="h-5 w-5" aria-hidden="true" />
@@ -420,7 +419,7 @@ export function ProjectMemoryDashboard() {
 
             <div className="mt-4 space-y-3">
               {filteredEntries.map((entry) => (
-                <article className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4" key={entry.id}>
+                <article className="rounded-xl border border-semear-gray bg-white p-4" key={entry.id}>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-semear-earth">{getProjectMemoryTypeLabel(entry.memory_type)}</span>
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${getVisibilityStyle(entry.visibility)}`}>
@@ -438,7 +437,7 @@ export function ProjectMemoryDashboard() {
               ))}
               {filteredEntries.length === 0 ? <EmptyCard text="Nenhuma entrada de memória encontrada para os filtros atuais." /> : null}
             </div>
-          </section>
+          </SemearCard>
         </section>
       </div>
     </section>

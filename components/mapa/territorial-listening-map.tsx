@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Compass, Filter, MapPinned, MessageSquareText, Route, Tag } from "lucide-react";
+import { Compass, MapPinned, MessageSquareText, Route, Tag } from "lucide-react";
 import type { Action, ListeningRecord, Neighborhood, Theme } from "@/lib/database.types";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { SemearAlert, SemearButton, SemearCard, SemearFilterBar, SemearMetricCard, SemearPageHeader, semearControlClassName } from "@/components/ui/semear-primitives";
 
 type ActionWithNeighborhood = Action & {
   neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
@@ -135,27 +136,23 @@ export function TerritorialListeningMap() {
 
   return (
     <section className="pb-10">
-      <div className="rounded-[2rem] border border-white/80 bg-white/72 p-5 shadow-soft sm:p-7">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Mapa-lista V0</p>
-        <h2 className="mt-3 max-w-4xl text-3xl font-semibold tracking-tight text-semear-green sm:text-5xl">Leitura territorial sem ambiguidade</h2>
-        <p className="mt-4 max-w-3xl text-sm leading-6 text-stone-600">
-          Esta tela separa claramente território da ação e território de referência do entrevistado.
-        </p>
-        <div className="mt-4 rounded-2xl border border-semear-gray bg-semear-offwhite p-4 text-sm text-stone-700">
+      <SemearPageHeader
+        eyebrow="Mapa-lista territorial"
+        title="Leitura territorial sem ambiguidade"
+        description="Separação clara entre território da ação e território de referência das pessoas escutadas."
+      />
+      <SemearCard>
+        <SemearAlert tone="neutral">
           <strong>Mapa-lista sem precisão geográfica.</strong> Não há geocodificação nem ponto individual.
-        </div>
+        </SemearAlert>
         <div className="mt-5 flex flex-wrap gap-2">
           <TabButton active={mode === "operacao"} label="Onde realizamos ações" onClick={() => setMode("operacao")} />
           <TabButton active={mode === "escuta"} label="De onde vêm as pessoas escutadas" onClick={() => setMode("escuta")} />
         </div>
-      </div>
+      </SemearCard>
 
-      <section className="mt-5 rounded-[1.5rem] border border-white/80 bg-white/72 p-4 shadow-soft">
-        <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-semear-green">
-          <Filter className="h-4 w-4" aria-hidden="true" />
-          Filtros territoriais
-        </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <section className="mt-5">
+        <SemearFilterBar title="Filtros territoriais">
           <FilterInput label="Mês" value={filters.month} onChange={(value) => updateFilter("month", value)} />
           <FilterSelect label="Território da ação" value={filters.actionNeighborhoodId} onChange={(value) => updateFilter("actionNeighborhoodId", value)}>
             <option value="">Todos</option>
@@ -175,7 +172,7 @@ export function TerritorialListeningMap() {
               <option key={item.id} value={item.id}>{item.name}</option>
             ))}
           </FilterSelect>
-        </div>
+        </SemearFilterBar>
       </section>
 
       {loading ? <StateBox>Carregando mapa-lista territorial...</StateBox> : null}
@@ -185,17 +182,17 @@ export function TerritorialListeningMap() {
         mode === "operacao" ? (
           <>
             <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <MetricCard icon={<MapPinned className="h-5 w-5" />} label="Territórios com ação" value={operationCards.length} />
-              <MetricCard icon={<Route className="h-5 w-5" />} label="Total de ações" value={filteredActions.length} />
-              <MetricCard icon={<MessageSquareText className="h-5 w-5" />} label="Escutas coletadas nas ações" value={filteredRecords.length} />
-              <MetricCard icon={<Compass className="h-5 w-5" />} label="Territórios de referência alcançados" value={new Set(filteredRecords.map((item) => item.respondent_neighborhood_id).filter(Boolean)).size} />
+              <SemearMetricCard icon={<MapPinned className="h-5 w-5" />} label="Territórios com ação" value={operationCards.length} />
+              <SemearMetricCard icon={<Route className="h-5 w-5" />} label="Total de ações" value={filteredActions.length} />
+              <SemearMetricCard icon={<MessageSquareText className="h-5 w-5" />} label="Escutas coletadas nas ações" value={filteredRecords.length} />
+              <SemearMetricCard icon={<Compass className="h-5 w-5" />} label="Territórios de referência alcançados" value={new Set(filteredRecords.map((item) => item.respondent_neighborhood_id).filter(Boolean)).size} />
             </div>
 
-            <section className="mt-5 rounded-3xl border border-white/80 bg-white/78 p-5 shadow-soft">
+            <SemearCard className="mt-5">
               <h3 className="text-lg font-semibold text-semear-green">Cards por território da ação</h3>
               <div className="mt-4 grid gap-4 lg:grid-cols-2">
                 {operationCards.map((card) => (
-                  <article className="rounded-[1.5rem] border border-semear-gray bg-white p-4" key={card.neighborhoodId}>
+                  <article className="rounded-xl border border-semear-gray bg-white p-4" key={card.neighborhoodId}>
                     <h4 className="text-xl font-semibold text-semear-green">{card.neighborhoodName}</h4>
                     <p className="mt-2 text-sm text-stone-700">{card.actionsCount} ação(ões) realizada(s)</p>
                     <p className="text-sm text-stone-700">{card.recordsCollectedThere} escuta(s) coletada(s) em ações neste território</p>
@@ -205,22 +202,22 @@ export function TerritorialListeningMap() {
                 ))}
                 {operationCards.length === 0 ? <PedagogicEmpty text="Sem ações no recorte selecionado." /> : null}
               </div>
-            </section>
+            </SemearCard>
           </>
         ) : (
           <>
             <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <MetricCard icon={<MapPinned className="h-5 w-5" />} label="Bairros de referência" value={respondentCards.length} />
-              <MetricCard icon={<MessageSquareText className="h-5 w-5" />} label="Escutas por referência" value={filteredRecords.filter((record) => Boolean(record.respondent_neighborhood_id)).length} />
-              <MetricCard icon={<Tag className="h-5 w-5" />} label="Temas mapeados" value={countThemes(filteredRecords).length} />
-              <MetricCard icon={<AlertMarker />} label="Sem território informado" value={recordsWithoutRespondentNeighborhood} />
+              <SemearMetricCard icon={<MapPinned className="h-5 w-5" />} label="Bairros de referência" value={respondentCards.length} />
+              <SemearMetricCard icon={<MessageSquareText className="h-5 w-5" />} label="Escutas por referência" value={filteredRecords.filter((record) => Boolean(record.respondent_neighborhood_id)).length} />
+              <SemearMetricCard icon={<Tag className="h-5 w-5" />} label="Temas mapeados" value={countThemes(filteredRecords).length} />
+              <SemearMetricCard icon={<AlertMarker />} label="Sem território informado" value={recordsWithoutRespondentNeighborhood} tone={recordsWithoutRespondentNeighborhood > 0 ? "yellow" : "green"} />
             </div>
 
-            <section className="mt-5 rounded-3xl border border-white/80 bg-white/78 p-5 shadow-soft">
+            <SemearCard className="mt-5">
               <h3 className="text-lg font-semibold text-semear-green">Cards por território de referência do entrevistado</h3>
               <div className="mt-4 grid gap-4 lg:grid-cols-2">
                 {respondentCards.map((card) => (
-                  <article className="rounded-[1.5rem] border border-semear-gray bg-white p-4" key={card.neighborhoodId}>
+                  <article className="rounded-xl border border-semear-gray bg-white p-4" key={card.neighborhoodId}>
                     <h4 className="text-xl font-semibold text-semear-green">{card.neighborhoodName}</h4>
                     <p className="mt-2 text-sm text-stone-700">{card.recordsCount} escuta(s) de pessoas deste território</p>
                     <p className="text-sm text-stone-700">temas mais citados: {card.topThemes.length > 0 ? card.topThemes.map((item) => `${item.name} (${item.count})`).join(", ") : "não informado"}</p>
@@ -230,22 +227,22 @@ export function TerritorialListeningMap() {
                 ))}
                 {respondentCards.length === 0 ? <PedagogicEmpty text="Sem territórios de referência no recorte selecionado." /> : null}
               </div>
-            </section>
+            </SemearCard>
           </>
         )
       ) : null}
 
-      <section className="mt-5 rounded-2xl border border-white/80 bg-white p-5 shadow-soft">
+      <SemearCard className="mt-5">
         <h3 className="font-semibold text-semear-green">Acessos rápidos</h3>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/escutas">
+          <SemearButton href="/escutas" variant="secondary">
             Abrir escutas
-          </Link>
-          <Link className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/territorios">
+          </SemearButton>
+          <SemearButton href="/territorios" variant="secondary">
             Abrir territórios
-          </Link>
+          </SemearButton>
         </div>
-      </section>
+      </SemearCard>
     </section>
   );
 }
@@ -356,11 +353,11 @@ function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; va
 }
 
 function FilterInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label><span className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{label}</span><input className="mt-2 min-h-11 w-full rounded-2xl border border-semear-gray bg-white px-3 text-sm outline-none focus:border-semear-green" onChange={(event) => onChange(event.target.value)} type="month" value={value} /></label>;
+  return <label><span className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{label}</span><input className={semearControlClassName} onChange={(event) => onChange(event.target.value)} type="month" value={value} /></label>;
 }
 
 function FilterSelect({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: ReactNode }) {
-  return <label><span className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{label}</span><select className="mt-2 min-h-11 w-full rounded-2xl border border-semear-gray bg-white px-3 text-sm outline-none focus:border-semear-green" onChange={(event) => onChange(event.target.value)} value={value}>{children}</select></label>;
+  return <label><span className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{label}</span><select className={semearControlClassName} onChange={(event) => onChange(event.target.value)} value={value}>{children}</select></label>;
 }
 
 function StateBox({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "error" }) {

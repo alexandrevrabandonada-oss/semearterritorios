@@ -38,6 +38,7 @@ import type {
   TeamMember
 } from "@/lib/database.types";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { SemearAlert, SemearButton, SemearCard, SemearMetricCard, SemearPageHeader, SemearStatusBadge } from "@/components/ui/semear-primitives";
 
 type Props = {
   actionId: string;
@@ -392,62 +393,62 @@ ${publicQuotes.length > 0 ? publicQuotes.map((quote) => `- [${quote.status}] ${(
   return (
     <section className="pb-10">
       <div className="no-print mb-5 flex flex-wrap gap-3">
-        <Link className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white/70 px-4 text-sm font-semibold text-semear-green" href={`/acoes/${actionId}`}>
+        <SemearButton href={`/acoes/${actionId}`} variant="secondary">
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Voltar para ação
-        </Link>
-        <button className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" onClick={() => window.print()} type="button">
+        </SemearButton>
+        <SemearButton onClick={() => window.print()} variant="secondary">
           <Printer className="h-4 w-4" aria-hidden="true" />
           Imprimir dossiê
-        </button>
-        <button className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" onClick={() => void copySummary()} type="button">
+        </SemearButton>
+        <SemearButton onClick={() => void copySummary()} variant="secondary">
           <Copy className="h-4 w-4" aria-hidden="true" />
           Copiar resumo
-        </button>
-        <button className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" onClick={() => void copyMarkdown()} type="button">
+        </SemearButton>
+        <SemearButton onClick={() => void copyMarkdown()} variant="secondary">
           <FileText className="h-4 w-4" aria-hidden="true" />
           Copiar markdown
-        </button>
+        </SemearButton>
       </div>
 
-      <article className="print-sheet rounded-[2rem] border border-white/80 bg-white/82 p-5 shadow-soft sm:p-8">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Dossiê da ação</p>
-            <h2 className="mt-3 text-4xl font-semibold tracking-tight text-semear-green">{loadedAction.title}</h2>
-            <p className="mt-3 text-sm leading-6 text-stone-600">
+      <article className="print-sheet">
+        <SemearPageHeader
+          eyebrow="Dossiê da ação"
+          title={loadedAction.title}
+          description="Peça de inteligência interna para leitura executiva, fechamento da ação e encaminhamentos."
+          meta={(
+            <>
+              <SemearStatusBadge tone="green">{getClosureStatusLabel(form.status)}</SemearStatusBadge>
+              <SemearStatusBadge tone={canClose.ok ? "green" : "yellow"}>{getActionReadiness(records, form.coordination_sufficiency)}</SemearStatusBadge>
+            </>
+          )}
+        />
+        <SemearCard as="div" className="sm:p-7">
+          <p className="text-sm leading-6 text-stone-600">
               {new Date(`${loadedAction.action_date}T00:00:00`).toLocaleDateString("pt-BR")} · {loadedAction.neighborhoods?.name ?? "Sem bairro"} · {getActionTypeLabel(loadedAction.action_type)} · {getActionStatusLabel(loadedAction.status)}
             </p>
             <p className="mt-2 text-sm leading-6 text-stone-600">
               Dossiê aberto organiza pendências; fechado registra decisão operacional e memória interna da ação.
             </p>
-            <p className="mt-2 text-sm leading-6 text-stone-600">
-              O relatório pós-banca é documento interno para decidir se o próximo passo é mapa, melhoria operacional ou relatório institucional.
-            </p>
-          </div>
-          <div className="rounded-2xl bg-semear-green-soft px-4 py-3 text-sm font-semibold text-semear-green">
-            {getClosureStatusLabel(form.status)} · {getActionReadiness(records, form.coordination_sufficiency)}
-          </div>
-        </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <Metric label="Escutas" value={metrics.total} />
-          <Metric label="Revisadas" value={metrics.reviewed} />
-          <Metric label="Rascunhos" value={metrics.draft} danger={metrics.draft > 0} />
-          <Metric label="% revisado" value={reviewedPercent} />
-          <Metric label="Dado sensível" value={metrics.possibleSensitive} danger={metrics.possibleSensitive > 0} />
+          <SemearMetricCard label="Escutas" value={metrics.total} />
+          <SemearMetricCard label="Revisadas" value={metrics.reviewed} />
+          <SemearMetricCard label="Rascunhos" value={metrics.draft} tone={metrics.draft > 0 ? "red" : "green"} />
+          <SemearMetricCard label="% revisado" value={`${reviewedPercent}%`} />
+          <SemearMetricCard label="Dado sensível" value={metrics.possibleSensitive} tone={metrics.possibleSensitive > 0 ? "red" : "green"} />
         </div>
 
-        <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${respondentTerritoryNote.status === "boa" ? "border-green-200 bg-green-50 text-green-900" : respondentTerritoryNote.status === "atenção" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-red-200 bg-red-50 text-red-900"}`}>
+        <SemearAlert tone={respondentTerritoryNote.status === "boa" ? "green" : respondentTerritoryNote.status === "atenção" ? "yellow" : "red"}>
           <p><strong>Qualidade territorial do dossiê:</strong> cobertura {respondentTerritoryMetrics.coveragePercent}% ({respondentTerritoryMetrics.recordsWithRespondentTerritory}/{respondentTerritoryMetrics.totalRecords}) · status {respondentTerritoryNote.status}</p>
           <p className="mt-1">Escutas sem território de referência: {respondentTerritoryMetrics.recordsWithoutRespondentTerritory}. Correções auditadas em listening_record_field_audits: {territorialAuditCount}.</p>
           <p className="mt-1">{respondentTerritoryNote.shortText}</p>
           {respondentTerritoryNote.status !== "boa" ? (
-            <Link className="mt-2 inline-flex min-h-10 items-center rounded-lg bg-semear-green px-3 text-xs font-semibold text-white" href={`/escutas/revisao-territorial?tab=qualidade&actionId=${loadedAction.id}`}>
+            <SemearButton className="mt-2 min-h-10 px-3 text-xs" href={`/escutas/revisao-territorial?tab=qualidade&actionId=${loadedAction.id}`} variant="primary">
               Revisar cobertura territorial antes da publicação
-            </Link>
+            </SemearButton>
           ) : null}
-        </div>
+        </SemearAlert>
 
         <div className="mt-6 grid gap-5 lg:grid-cols-2">
           <Panel title="Checklist documental" icon={<FolderCheck className="h-5 w-5" />}>
@@ -467,9 +468,9 @@ ${publicQuotes.length > 0 ? publicQuotes.map((quote) => `- [${quote.status}] ${(
             <p className="text-sm leading-6 text-stone-700">Status: <strong>{debrief ? debrief.status : "não criada"}</strong></p>
             <p className="mt-2 text-sm leading-6 text-stone-700">Aprovação: {debrief?.approved_at ? new Date(debrief.approved_at).toLocaleString("pt-BR") : "não aprovada"}</p>
             <p className="mt-2 text-sm leading-6 text-stone-700">Atualizada em: {debrief?.updated_at ? new Date(debrief.updated_at).toLocaleString("pt-BR") : "sem registro"}</p>
-            <Link className="no-print mt-4 inline-flex min-h-11 items-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href={`/acoes/${actionId}/devolutiva`}>
+            <SemearButton className="no-print mt-4" href={`/acoes/${actionId}/devolutiva`} variant="primary">
               Abrir devolutiva
-            </Link>
+            </SemearButton>
             {debrief?.status !== "approved" ? <Warning text="A devolutiva ainda não está aprovada." /> : null}
           </Panel>
         </div>
@@ -629,6 +630,7 @@ ${publicQuotes.length > 0 ? publicQuotes.map((quote) => `- [${quote.status}] ${(
         <footer className="print-only mt-10 border-t border-semear-gray pt-4 text-sm font-semibold text-semear-green">
           Projeto SEMEAR — UFF + APS
         </footer>
+        </SemearCard>
       </article>
 
       <div className="no-print mt-5 rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">

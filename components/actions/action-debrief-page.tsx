@@ -37,6 +37,7 @@ import type {
 } from "@/lib/database.types";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { MethodologicalWarningsPanel } from "@/components/actions/analytical-panels";
+import { SemearAlert, SemearButton, SemearCard, SemearMetricCard, SemearPageHeader, SemearStatusBadge } from "@/components/ui/semear-primitives";
 
 type Props = {
   actionId: string;
@@ -377,14 +378,14 @@ export function ActionDebriefPage({ actionId }: Props) {
   return (
     <section className="pb-10">
       <div className="no-print mb-5 flex flex-wrap gap-3">
-        <Link className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white/70 px-4 text-sm font-semibold text-semear-green" href={`/acoes/${actionId}`}>
+        <SemearButton href={`/acoes/${actionId}`} variant="secondary">
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Voltar para ação
-        </Link>
-        <button className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" onClick={generateDraft} type="button">
+        </SemearButton>
+        <SemearButton onClick={generateDraft} variant="secondary">
           <Sparkles className="h-4 w-4" aria-hidden="true" />
           Gerar rascunho determinístico
-        </button>
+        </SemearButton>
         {draftRefreshLabel ? <p className="inline-flex min-h-11 items-center text-sm font-semibold text-semear-green">{draftRefreshLabel}</p> : null}
         <div className="inline-flex rounded-full border border-semear-green/20 bg-white p-1">
           <button
@@ -404,28 +405,20 @@ export function ActionDebriefPage({ actionId }: Props) {
         </div>
       </div>
 
-      <article className="print-sheet rounded-[2rem] border border-white/80 bg-white/82 p-5 shadow-soft sm:p-8">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">O que ouvimos nesta ação</p>
-            <h2 className="mt-3 text-4xl font-semibold tracking-tight text-semear-green">{form.title}</h2>
-            <p className="mt-3 text-sm leading-6 text-stone-600">
-              {loadedAction.title} · {new Date(`${loadedAction.action_date}T00:00:00`).toLocaleDateString("pt-BR")} · {loadedAction.neighborhoods?.name ?? "Sem bairro definido"} · {getActionTypeLabel(loadedAction.action_type)}
-            </p>
-            <p className="mt-2 text-sm leading-6 text-stone-600">
-              Rascunho é preparação interna; revisada ainda precisa de aprovação; aprovada é a versão pronta para circular.
-            </p>
-          </div>
-          <div className="rounded-2xl bg-semear-green-soft px-4 py-3 text-sm font-semibold text-semear-green">
-            {statusLabels[currentStatus]} · {readiness}
-          </div>
-        </div>
+      <article className="print-sheet">
+        <SemearPageHeader
+          eyebrow={mode === "publico" ? "Devolutiva pública" : "Devolutiva técnica"}
+          title={form.title}
+          description={`${loadedAction.title} · ${new Date(`${loadedAction.action_date}T00:00:00`).toLocaleDateString("pt-BR")} · ${loadedAction.neighborhoods?.name ?? "Sem bairro definido"} · ${getActionTypeLabel(loadedAction.action_type)}`}
+          meta={<><SemearStatusBadge tone="green">{statusLabels[currentStatus]}</SemearStatusBadge><SemearStatusBadge tone="yellow">{readiness}</SemearStatusBadge></>}
+        />
+        <SemearCard as="div" className="sm:p-7">
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Metric label="Escutas" value={metrics.total} />
-          <Metric label="Revisadas" value={metrics.reviewed} />
-          <Metric label="Rascunhos" value={metrics.draft} danger={metrics.draft > 0} />
-          <Metric label="Possível dado sensível" value={metrics.possibleSensitive} danger={metrics.possibleSensitive > 0} />
+          <SemearMetricCard label="Escutas" value={metrics.total} />
+          <SemearMetricCard label="Revisadas" value={metrics.reviewed} />
+          <SemearMetricCard label="Rascunhos" value={metrics.draft} tone={metrics.draft > 0 ? "red" : "green"} />
+          <SemearMetricCard label="Possível dado sensível" value={metrics.possibleSensitive} tone={metrics.possibleSensitive > 0 ? "red" : "green"} />
         </div>
 
         <div className="mt-6 grid gap-4 lg:grid-cols-2">
@@ -443,10 +436,10 @@ export function ActionDebriefPage({ actionId }: Props) {
                 <EditableBlock area label="Texto publico sugerido" value={form.public_summary} onChange={(value) => updateField("public_summary", value)} />
                 <EditableBlock area label="Principais achados" value={form.key_findings} onChange={(value) => updateField("key_findings", value)} />
                 <EditableBlock area label="Proximos passos" value={form.next_steps} onChange={(value) => updateField("next_steps", value)} />
-                <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <SemearAlert tone="yellow">
                   <p className="text-sm font-semibold text-amber-900">Ressalva metodologica automatica</p>
                   <p className="mt-1 text-sm text-amber-900">{publicCautionText}</p>
-                </section>
+                </SemearAlert>
                 <section className="rounded-2xl border border-semear-green/15 bg-semear-offwhite p-4">
                   <p className="text-sm font-semibold text-semear-green">Vozes do territorio</p>
                   <p className="mt-1 text-xs text-stone-600">Trechos curtos revisados e sem identificação pessoal.</p>
@@ -520,6 +513,7 @@ export function ActionDebriefPage({ actionId }: Props) {
         <footer className="print-only mt-10 border-t border-semear-gray pt-4 text-sm font-semibold text-semear-green">
           Projeto SEMEAR — UFF + APS
         </footer>
+        </SemearCard>
       </article>
 
       <div className="no-print mt-5 grid gap-4 lg:grid-cols-[1fr_420px]">

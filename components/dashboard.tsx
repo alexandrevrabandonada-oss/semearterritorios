@@ -29,9 +29,8 @@ import { actionTypeOptions } from "@/lib/actions";
 import { getReviewStatusLabel } from "@/lib/listening-records";
 import { buildClosureReminderItems, buildDebriefReminderItems, buildEventsWithoutAgendaForActions, buildOverdueEvents, buildWeeklyReportReminderItems, getActionScheduleLabel, getEventDateLabel } from "@/lib/team-calendar";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { PageHeader } from "@/components/ui/page-header";
-import { MetricCard } from "@/components/ui/metric-card";
 import { FilterBar, FilterField, filterControlClassName } from "@/components/ui/filter-bar";
+import { SemearButton, SemearCard, SemearMetricCard, SemearPageHeader, SemearStatusBadge } from "@/components/ui/semear-primitives";
 import { getStartOfWeekIso } from "@/lib/project-memory";
 import { TerritorialQualityByAction, type TerritorialQualityByActionItem } from "@/components/dashboard/territorial-quality-by-action";
 import { calculateRespondentTerritoryQuality, getRespondentQualityStatusLabel } from "@/lib/territorial-quality";
@@ -258,8 +257,8 @@ export function Dashboard() {
 
   return (
     <section className="pb-10">
-      <PageHeader
-        actions={<PrimaryAction href="/acoes/nova" icon={<Plus className="h-4 w-4" />} label="Nova ação" />}
+      <SemearPageHeader
+        actions={<SemearButton href="/acoes/nova" variant="primary"><Plus className="h-4 w-4" />Nova ação</SemearButton>}
         description="Sínteses territoriais para leitura coletiva"
         filters={(
           <>
@@ -281,10 +280,11 @@ export function Dashboard() {
             </select>
           </>
         )}
-        title="Dashboard de padrões"
+        eyebrow="Painel executivo"
+        title="Dashboard territorial"
       />
 
-      <section className="rounded-2xl border border-semear-gray/80 bg-white p-4 shadow-[0_12px_32px_rgba(23,74,55,0.06)] lg:hidden">
+      <SemearCard className="lg:hidden">
         <div className="flex items-start gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-semear-green text-semear-yellow">
             <CalendarDays className="h-5 w-5" aria-hidden="true" />
@@ -305,12 +305,12 @@ export function Dashboard() {
         </div>
 
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
-          <SecondaryAction href="/escutas/lote" icon={<Keyboard className="h-4 w-4" />} label="Digitar fichas" strong />
-          <SecondaryAction href="/escutas?status=draft" icon={<MessageSquareText className="h-4 w-4" />} label="Revisar escutas" strong />
+          <SemearButton href="/escutas/lote" variant="primary"><Keyboard className="h-4 w-4" />Digitar fichas</SemearButton>
+          <SemearButton href="/escutas?status=draft" variant="secondary"><MessageSquareText className="h-4 w-4" />Revisar escutas</SemearButton>
           <SecondaryAction href={nextEvent ? "/agenda" : nextAction ? `/acoes/${nextAction.id}` : "/acoes"} icon={<ClipboardList className="h-4 w-4" />} label={nextEvent ? "Abrir agenda" : "Abrir ação"} />
           <SecondaryAction href={actionsWithOpenDossier[0] ? `/acoes/${actionsWithOpenDossier[0].id}/dossie` : "/acoes"} icon={<FolderCheck className="h-4 w-4" />} label="Fechar dossiê" tone="yellow" />
         </div>
-      </section>
+      </SemearCard>
 
       <section className="mt-5 lg:hidden">
         <NotificationsInlinePanel 
@@ -362,10 +362,10 @@ export function Dashboard() {
       {!loading && !error ? (
         <>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <MetricCard icon={<ClipboardList className="h-5 w-5" />} label="Total de ações" note="Operação territorial" value={filteredActions.length} />
-            <MetricCard icon={<MapPinned className="h-5 w-5" />} label="Bairros onde houve ação" note="Território da ação" value={actionNeighborhoodIds.size} />
-            <MetricCard icon={<MessageSquareText className="h-5 w-5" />} label="Total de escutas" note="Escuta territorial" value={filteredRecords.length} />
-            <MetricCard icon={<MapPinned className="h-5 w-5" />} label="Bairros de referência dos entrevistados" note="Território de referência" value={respondentNeighborhoodIds.size} />
+            <SemearMetricCard icon={<ClipboardList className="h-5 w-5" />} label="Total de ações" note="Operação territorial" value={filteredActions.length} />
+            <SemearMetricCard icon={<MapPinned className="h-5 w-5" />} label="Bairros onde houve ação" note="Território da ação" value={actionNeighborhoodIds.size} />
+            <SemearMetricCard icon={<MessageSquareText className="h-5 w-5" />} label="Total de escutas" note="Escuta territorial" value={filteredRecords.length} />
+            <SemearMetricCard icon={<MapPinned className="h-5 w-5" />} label="Bairros de referência dos entrevistados" note="Território de referência" value={respondentNeighborhoodIds.size} />
           </div>
 
           <section className="mt-4 rounded-2xl border border-semear-gray/80 bg-white p-5 shadow-[0_12px_32px_rgba(23,74,55,0.06)]">
@@ -772,13 +772,13 @@ function CompactRanking({ title, items, empty }: { title: string; items: string[
 
 function Panel({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
   return (
-    <section className="rounded-2xl border border-semear-gray/80 bg-white p-4 shadow-[0_12px_32px_rgba(23,74,55,0.06)]">
+    <section className="rounded-2xl border border-semear-gray/80 bg-white p-5 shadow-[0_12px_30px_rgba(23,74,55,0.06)]">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-semear-green-soft text-semear-green">{icon}</div>
           <h3 className="font-semibold text-semear-green">{title}</h3>
         </div>
-        <span className="text-xs font-semibold text-semear-green">Ver todos</span>
+        <SemearStatusBadge tone="green">Ver todos</SemearStatusBadge>
       </div>
       {children}
     </section>
