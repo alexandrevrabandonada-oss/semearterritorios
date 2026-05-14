@@ -507,6 +507,11 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
           objective: event.description ?? null,
           status: "planejada" as ActionStatus,
           created_by: userId ?? null,
+          notes: null,
+          location_reference: null,
+          team: null,
+          estimated_public: null,
+          summary: null,
         })
         .select()
         .single();
