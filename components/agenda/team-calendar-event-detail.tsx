@@ -498,15 +498,15 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
         .from("actions")
         .insert({
           title: event.title,
-          action_type: actionTypeMap[event.event_type] || "outro",
+          action_type: (actionTypeMap[event.event_type] as ActionType) || "outro",
           action_date: event.starts_at.split("T")[0],
           starts_at: event.starts_at,
           ends_at: event.ends_at,
           all_day: event.all_day,
           neighborhood_id: event.neighborhood_id,
-          objective: event.description,
-          status: "planejada",
-          created_by: userId,
+          objective: event.description ?? null,
+          status: "planejada" as ActionStatus,
+          created_by: userId ?? null,
         })
         .select()
         .single();
@@ -519,7 +519,7 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
           action_id: newAction.id,
           team_member_id: m.team_member_id,
           responsibility: m.responsibility,
-          created_by: userId,
+          created_by: userId ?? null,
         }));
 
         const { error: membersError } = await supabase.from("action_team_members").insert(actionMembers);
