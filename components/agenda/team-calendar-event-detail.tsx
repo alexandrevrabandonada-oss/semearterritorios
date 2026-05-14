@@ -95,6 +95,7 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
   const [invitePolicyLoading, setInvitePolicyLoading] = useState<InvitePolicyAction | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [transforming, setTransforming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const canManage = currentProfile?.role === "admin" || currentProfile?.role === "coordenacao";
@@ -471,6 +472,76 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
     }
   }
 
+  async function handleTransformToAction() {
+    if (!event || !canManage) return;
+
+    if (!window.confirm(`Deseja transformar "${event.title}" em uma ação? Todos os participantes serão vinculados.`)) {
+      return;
+    }
+
+    setTransforming(true);
+    setError(null);
+
+    try {
+      const userResult = await supabase.auth.getUser();
+      const userId = userResult.data.user?.id;
+
+      // 1. Criar a Ação
+      const actionTypeMap: Record<string, any> = {
+        banca_escuta: "banca_escuta",
+        reuniao: "reuniao_institucional",
+        devolutiva: "devolutiva",
+      };
+
+      const { data: newAction, error: actionError } = await supabase
+        .from("actions")
+        .insert({
+          title: event.title,
+          action_type: actionTypeMap[event.event_type] || "outro",
+          action_date: event.starts_at.split("T")[0],
+          starts_at: event.starts_at,
+          ends_at: event.ends_at,
+          all_day: event.all_day,
+          neighborhood_id: event.neighborhood_id,
+          objective: event.description,
+          status: "planejada",
+          created_by: userId,
+        })
+        .select()
+        .single();
+
+      if (actionError) throw actionError;
+
+      // 2. Vincular Participantes
+      if (memberships.length > 0) {
+        const actionMembers = memberships.map((m) => ({
+          action_id: newAction.id,
+          team_member_id: m.team_member_id,
+          responsibility: m.responsibility,
+          created_by: userId,
+        }));
+
+        const { error: membersError } = await supabase.from("action_team_members").insert(actionMembers);
+        if (membersError) throw membersError;
+      }
+
+      // 3. Vincular o Evento à Ação
+      const { error: linkError } = await supabase
+        .from("team_calendar_events")
+        .update({ action_id: newAction.id })
+        .eq("id", event.id);
+
+      if (linkError) throw linkError;
+
+      setReloadToken((c) => c + 1);
+    } catch (err) {
+      console.error("Error transforming event to action:", err);
+      setError(err instanceof Error ? err.message : "Erro ao transformar evento em ação.");
+    } finally {
+      setTransforming(false);
+    }
+  }
+
   if (loading) {
     return <StateBox>Carregando evento...</StateBox>;
   }
@@ -512,7 +583,26 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
 
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           <InfoCard icon={<MapPin className="h-5 w-5" />} label="Território" value={event.neighborhoods?.name ?? "Sem território"} />
-          <InfoCard icon={<CalendarCheck2 className="h-5 w-5" />} label="Ação vinculada" value={event.actions?.title ?? "Sem ação vinculada"} />
+          <div className="flex flex-col gap-2">
+            <InfoCard icon={<CalendarCheck2 className="h-5 w-5" />} label="Ação vinculada" value={event.actions?.title ?? "Sem ação vinculada"} />
+            {!event.action_id && canManage && (
+              <button
+                className="mt-1 inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-semear-green/10 text-xs font-bold text-semear-green transition hover:bg-semear-green/20 disabled:opacity-50"
+                onClick={handleTransformToAction}
+                disabled={transforming}
+              >
+                {transforming ? "Transformando..." : "Transformar em ação"}
+              </button>
+            )}
+            {event.actions && (
+              <Link
+                href={`/acoes/${event.actions.id}`}
+                className="mt-1 inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-semear-green/10 text-xs font-bold text-semear-green transition hover:bg-semear-green/20"
+              >
+                Ver detalhes da ação
+              </Link>
+            )}
+          </div>
           <InfoCard icon={<UsersRound className="h-5 w-5" />} label="Participantes" value={memberships.length.toString()} />
         </div>
       </article>

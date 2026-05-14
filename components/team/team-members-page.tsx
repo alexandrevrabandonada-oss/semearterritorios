@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { Profile, TeamMember } from "@/lib/database.types";
 import { CheckCircle2, Pencil, Plus, UsersRound } from "lucide-react";
@@ -38,6 +38,7 @@ export function TeamMembersPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const canManage = currentProfile?.role === "admin" || currentProfile?.role === "coordenacao";
@@ -93,6 +94,8 @@ export function TeamMembersPage() {
   }
 
   function fillForm(member: TeamMember) {
+    setError(null);
+    setFeedback(null);
     setEditingId(member.id);
     setFormValues({
       display_name: member.display_name,
@@ -104,6 +107,7 @@ export function TeamMembersPage() {
       profile_id: member.profile_id ?? "",
       notes: member.notes ?? ""
     });
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function updateField<TField extends keyof TeamMemberFormValues>(field: TField, value: TeamMemberFormValues[TField]) {
@@ -153,6 +157,15 @@ export function TeamMembersPage() {
 
     if (result?.error) {
       setError(result.error.message);
+      setSaving(false);
+      return;
+    }
+
+    if (!result?.data) {
+      setError("Erro ao salvar dados: resposta vazia do servidor.");
+      setSaving(false);
+
+
       return;
     }
 
@@ -192,8 +205,17 @@ export function TeamMembersPage() {
           </div>
 
           <div className="space-y-3">
-            {filteredMembers.map((member) => (
-              <article className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4" key={member.id}>
+            {filteredMembers.map((member) => {
+              const isEditing = editingId === member.id;
+              return (
+                <article
+                  className={`rounded-2xl border p-4 transition-all ${
+                    isEditing
+                      ? "border-semear-green bg-semear-green-soft/30 shadow-md ring-1 ring-semear-green/20"
+                      : "border-semear-gray bg-semear-offwhite"
+                  }`}
+                  key={member.id}
+                >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold text-semear-green">{member.display_name}</p>
@@ -218,12 +240,14 @@ export function TeamMembersPage() {
                   ) : null}
                 </div>
               </article>
-            ))}
+            );
+          })}
             {filteredMembers.length === 0 ? <p className="text-sm text-stone-500">Nenhum membro para o filtro atual.</p> : null}
           </div>
         </div>
 
-        <form className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft" onSubmit={handleSave}>
+        <div className="lg:sticky lg:top-5 h-fit">
+          <form ref={formRef} className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft" onSubmit={handleSave}>
           <div className="flex items-center gap-2 text-semear-green">
             <UsersRound className="h-5 w-5" aria-hidden="true" />
             <h3 className="font-semibold">{editingId ? "Editar membro" : "Novo membro"}</h3>
@@ -284,7 +308,8 @@ export function TeamMembersPage() {
           <div className="mt-4 rounded-xl border border-semear-green/20 bg-semear-green-soft/40 p-3 text-xs leading-5 text-stone-600">
             Este cadastro é interno e operacional. Estar em team_members não concede acesso ao sistema.
           </div>
-        </form>
+          </form>
+        </div>
       </div>
     </section>
   );
