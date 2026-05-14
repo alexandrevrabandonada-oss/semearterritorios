@@ -483,6 +483,7 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
     setError(null);
 
     try {
+      if (!supabase) throw new Error("Cliente Supabase não inicializado.");
       const userResult = await supabase.auth.getUser();
       const userId = userResult.data.user?.id;
 
