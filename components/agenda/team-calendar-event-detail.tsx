@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ArrowLeft, CalendarCheck2, Edit3, FileText, LibraryBig, MapPin, UsersRound } from "lucide-react";
 import type {
   Action,
+  ActionType,
+  ActionStatus,
   GoogleCalendarSyncLog,
   Neighborhood,
   Profile,
@@ -488,7 +490,7 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
       const userId = userResult.data.user?.id;
 
       // 1. Criar a Ação
-      const actionTypeMap: Record<string, any> = {
+      const actionTypeMap: Partial<Record<string, ActionType>> = {
         banca_escuta: "banca_escuta",
         reuniao: "reuniao_institucional",
         devolutiva: "devolutiva",
@@ -498,7 +500,7 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
         .from("actions")
         .insert({
           title: event.title,
-          action_type: (actionTypeMap[event.event_type] as ActionType) || "outro",
+          action_type: actionTypeMap[event.event_type] || "outro",
           action_date: event.starts_at.split("T")[0],
           starts_at: event.starts_at,
           ends_at: event.ends_at,
