@@ -1,5 +1,5 @@
 import mammoth from "mammoth";
-import { PDFParse } from "pdf-parse";
+import pdfParse from "pdf-parse/lib/pdf-parse.js";
 
 /**
  * Extrai texto de um buffer DOCX usando mammoth.
@@ -18,16 +18,12 @@ export async function extractTextFromDocx(buffer: Buffer): Promise<string> {
  * Extrai texto de um buffer PDF usando pdf-parse.
  */
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
-  const parser = new PDFParse({ data: buffer });
-
   try {
-    const result = await parser.getText();
+    const result = await pdfParse(buffer);
     return result.text || "";
   } catch (error) {
     console.error("Erro na extração PDF:", error);
     throw new Error("Falha ao extrair texto do arquivo PDF.");
-  } finally {
-    await parser.destroy();
   }
 }
 

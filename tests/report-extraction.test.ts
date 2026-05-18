@@ -4,7 +4,7 @@ import { extractTextFromPdf, mapRawTextToReport } from "@/lib/report-extraction"
 import { calculateExtractionQuality } from "@/lib/report-extraction-quality";
 
 describe("extractTextFromPdf", () => {
-  it("extrai texto de um PDF textual usando a API atual do pdf-parse", async () => {
+  it("extrai texto de um PDF textual usando pdf-parse", async () => {
     const pdfBuffer = readFileSync("tests/fixtures/relatorio-semanal-07-05-a-14-05.pdf");
 
     const text = await extractTextFromPdf(pdfBuffer);
