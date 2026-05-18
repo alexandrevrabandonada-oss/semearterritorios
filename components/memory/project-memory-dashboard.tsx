@@ -52,7 +52,7 @@ export function ProjectMemoryDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState({
-    week: currentWeekStart,
+    week: "",
     teamMemberId: "",
     status: "",
     actionId: "",
@@ -258,7 +258,7 @@ export function ProjectMemoryDashboard() {
           title="Filtros"
           onClear={() =>
             setFilters({
-              week: currentWeekStart,
+              week: "",
               teamMemberId: "",
               status: "",
               actionId: "",
