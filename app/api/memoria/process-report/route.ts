@@ -15,7 +15,7 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest) {
   const authorization = req.headers.get("authorization");
   const bearerToken = authorization?.match(/^Bearer\s+(.+)$/i)?.[1] ?? null;
-  const supabase = bearerToken
+  const userSupabase = bearerToken
     ? createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -25,11 +25,19 @@ export async function POST(req: NextRequest) {
         }
       )
     : createSupabaseServerClient();
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabase = serviceRoleKey
+    ? createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        serviceRoleKey,
+        { auth: { persistSession: false } }
+      )
+    : userSupabase;
   
   // Verificar autenticação
   const { data: { user }, error: authError } = bearerToken
-    ? await supabase.auth.getUser(bearerToken)
-    : await supabase.auth.getUser();
+    ? await userSupabase.auth.getUser(bearerToken)
+    : await userSupabase.auth.getUser();
   if (authError || !user) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }

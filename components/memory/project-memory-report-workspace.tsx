@@ -426,6 +426,9 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
     try {
       const sessionResult = await supabase.auth.getSession();
       const accessToken = sessionResult.data.session?.access_token;
+      if (!accessToken) {
+        throw new Error("Sessão expirada. Entre novamente e tente importar o relatório.");
+      }
       const response = await fetch("/api/memoria/process-report", {
         method: "POST",
         headers: {
@@ -656,6 +659,9 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
     try {
       const sessionResult = await supabase.auth.getSession();
       const accessToken = sessionResult.data.session?.access_token;
+      if (!accessToken) {
+        throw new Error("Sessão expirada. Entre novamente e tente reprocessar o relatório.");
+      }
       const response = await fetch("/api/memoria/process-report", {
         method: "POST",
         headers: {
