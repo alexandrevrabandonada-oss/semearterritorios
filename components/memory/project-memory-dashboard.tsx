@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Clock3, FileSearch, FileText, FolderClock, LibraryBig, MapPinned, Plus, UsersRound } from "lucide-react";
+import { CheckCircle2, Clock3, FileSearch, FileText, FolderClock, LibraryBig, MapPinned, Plus, Trash2, UsersRound } from "lucide-react";
 import type { Action, Neighborhood, Profile, ProjectMemoryEntry, TeamMember, WeeklyTeamReport, WeeklyTeamReportStatus } from "@/lib/database.types";
 import { FilterBar, FilterField, filterControlClassName } from "@/components/ui/filter-bar";
 import { SemearButton, SemearCard, SemearMetricCard, SemearPageHeader, SemearStatusBadge } from "@/components/ui/semear-primitives";
@@ -51,6 +51,8 @@ export function ProjectMemoryDashboard() {
   const [currentProfile, setCurrentProfile] = useState<Pick<Profile, "id" | "role"> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [deletingReportId, setDeletingReportId] = useState<string | null>(null);
   const [filters, setFilters] = useState({
     week: "",
     teamMemberId: "",
@@ -191,6 +193,67 @@ export function ProjectMemoryDashboard() {
   const membersPending = teamMembers.filter((member) => !sentMemberIds.has(member.id));
   const countsByStatus = countReportsByStatus(filteredReports);
 
+  async function deleteArchivedReport(report: WeeklyTeamReport) {
+    if (!supabase) return;
+
+    if (report.status !== "archived") {
+      setError("Somente relatórios arquivados podem ser excluídos por esta tela.");
+      return;
+    }
+
+    const confirmed = window.confirm(`Excluir definitivamente o relatório "${report.title}"? Esta ação não pode ser desfeita.`);
+    if (!confirmed) return;
+
+    setDeletingReportId(report.id);
+    setError(null);
+    setFeedback(null);
+
+    const attachmentsResult = await supabase
+      .from("weekly_team_report_attachments")
+      .select("storage_path")
+      .eq("report_id", report.id);
+
+    if (attachmentsResult.error) {
+      setError(attachmentsResult.error.message);
+      setDeletingReportId(null);
+      return;
+    }
+
+    const storagePaths = (attachmentsResult.data ?? [])
+      .map((attachment) => attachment.storage_path)
+      .filter(Boolean);
+
+    if (storagePaths.length > 0) {
+      const removeResult = await supabase.storage.from("project-memory-documents").remove(storagePaths);
+      if (removeResult.error) {
+        setError(removeResult.error.message);
+        setDeletingReportId(null);
+        return;
+      }
+    }
+
+    const deleteResult = await supabase
+      .from("weekly_team_reports")
+      .delete()
+      .eq("id", report.id)
+      .eq("status", "archived");
+
+    if (deleteResult.error) {
+      setError(deleteResult.error.message);
+      setDeletingReportId(null);
+      return;
+    }
+
+    setReports((current) => current.filter((item) => item.id !== report.id));
+    setReportActions((current) => current.filter((item) => item.report_id !== report.id));
+    setReportNeighborhoods((current) => current.filter((item) => item.report_id !== report.id));
+    setEntries((current) => current.map((entry) => (
+      entry.source_report_id === report.id ? { ...entry, source_report_id: null, weekly_team_reports: null } : entry
+    )));
+    setFeedback("Relatório arquivado excluído.");
+    setDeletingReportId(null);
+  }
+
   if (loading) {
     return <StateBox>Carregando memória do projeto...</StateBox>;
   }
@@ -218,6 +281,8 @@ export function ProjectMemoryDashboard() {
           </>
         }
       />
+
+      {feedback ? <StateBox>{feedback}</StateBox> : null}
 
       {canReview && (
         <div className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-semear-earth/20 bg-semear-earth/5 p-4 shadow-sm">
@@ -356,9 +421,22 @@ export function ProjectMemoryDashboard() {
                       <p className="mt-1 text-sm text-stone-600">{member?.display_name ?? "Membro não identificado"}</p>
                       {report.summary ? <p className="mt-3 text-sm leading-6 text-stone-700">{report.summary}</p> : null}
                     </div>
-                    <Link className="inline-flex min-h-10 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href={`/memoria/${report.id}`}>
-                      Abrir relatório
-                    </Link>
+                    <div className="flex flex-col gap-2 sm:items-end">
+                      <Link className="inline-flex min-h-10 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href={`/memoria/${report.id}`}>
+                        Abrir relatório
+                      </Link>
+                      {canReview && report.status === "archived" ? (
+                        <button
+                          className="inline-flex min-h-9 items-center justify-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 text-xs font-bold text-red-800 transition hover:bg-red-100 disabled:opacity-60"
+                          type="button"
+                          onClick={() => void deleteArchivedReport(report)}
+                          disabled={deletingReportId === report.id}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                          {deletingReportId === report.id ? "Excluindo..." : "Excluir"}
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2 text-xs text-stone-600">
                     {linkedActions.map((item) => (
