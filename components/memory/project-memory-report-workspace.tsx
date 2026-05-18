@@ -132,6 +132,8 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [memorySubmitError, setMemorySubmitError] = useState<string | null>(null);
+  const [memorySubmitFeedback, setMemorySubmitFeedback] = useState<string | null>(null);
   const [memoryChecklist, setMemoryChecklist] = useState<MemoryChecklistState>(normalizeMemoryChecklist({}));
   const [linkedEventId, setLinkedEventId] = useState(searchParams.get("eventId") ?? "");
   const [isImportMode, setIsImportMode] = useState(false);
@@ -553,50 +555,75 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
   }
 
   async function createMemoryEntry() {
-    if (!supabase || !report || !currentProfile?.id) return;
+    const fail = (message: string) => {
+      setError(message);
+      setMemorySubmitError(message);
+      setSubmitting(false);
+    };
+
+    if (!supabase) {
+      fail("Não foi possível conectar ao banco de dados. Recarregue a página e tente novamente.");
+      return;
+    }
+
+    if (!report) {
+      fail("Salve ou carregue o relatório antes de criar uma entrada de memória.");
+      return;
+    }
+
+    if (!currentProfile?.id) {
+      fail("Não foi possível identificar seu perfil. Faça login novamente e tente criar a entrada de memória.");
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
     setFeedback(null);
+    setMemorySubmitError(null);
+    setMemorySubmitFeedback(null);
 
     if (!memoryValues.title.trim() || !memoryValues.body.trim()) {
-      setError("Preencha título e corpo da entrada de memória.");
-      setSubmitting(false);
+      fail("Preencha título e corpo da entrada de memória.");
       return;
     }
 
     const visibility = canReview ? memoryValues.visibility : "internal";
-    const result = await supabase.from("project_memory_entries").insert({
-      source_report_id: report.id,
-      entry_date: memoryValues.entry_date,
-      title: memoryValues.title.trim(),
-      body: memoryValues.body.trim(),
-      memory_type: memoryValues.memory_type,
-      visibility,
-      action_id: memoryValues.action_id || null,
-      team_calendar_event_id: linkedEventId || null,
-      created_by: currentProfile.id,
-      review_checklist: memoryChecklist as any,
-    }).select("*, actions:action_id(id, title)").single();
+    try {
+      const result = await supabase.from("project_memory_entries").insert({
+        source_report_id: report.id,
+        entry_date: memoryValues.entry_date,
+        title: memoryValues.title.trim(),
+        body: memoryValues.body.trim(),
+        memory_type: memoryValues.memory_type,
+        visibility,
+        action_id: memoryValues.action_id || null,
+        team_calendar_event_id: linkedEventId || null,
+        created_by: currentProfile.id,
+        review_checklist: memoryChecklist as any,
+      }).select("*, actions:action_id(id, title)").single();
 
-    if (result.error) {
-      setError(result.error.message);
+      if (result.error) {
+        fail(result.error.message);
+        return;
+      }
+
+      setMemoryEntries((current) => [result.data as unknown as MemoryEntryWithAction, ...current]);
+      setMemoryValues({
+        entry_date: report.week_end,
+        title: "",
+        body: "",
+        memory_type: "atividade",
+        visibility: "internal",
+        action_id: selectedActionIds[0] ?? "",
+      });
+      setMemoryChecklist(normalizeMemoryChecklist({}));
+      setFeedback("Entrada de memória criada.");
+      setMemorySubmitFeedback("Entrada de memória criada.");
+    } catch (err) {
+      fail(err instanceof Error ? err.message : "Erro inesperado ao criar entrada de memória.");
+    } finally {
       setSubmitting(false);
-      return;
     }
-
-    setMemoryEntries((current) => [result.data as unknown as MemoryEntryWithAction, ...current]);
-    setMemoryValues({
-      entry_date: report.week_end,
-      title: "",
-      body: "",
-      memory_type: "atividade",
-      visibility: "internal",
-      action_id: selectedActionIds[0] ?? "",
-    });
-    setMemoryChecklist(normalizeMemoryChecklist({}));
-    setFeedback("Entrada de memória criada.");
-    setSubmitting(false);
   }
 
   async function downloadAttachment(attachment: WeeklyTeamReportAttachment) {
@@ -1279,6 +1306,18 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
                         Aprovação pública bloqueada. Verifique riscos e complete o checklist.
                       </div>
                     )}
+
+                    {memorySubmitError ? (
+                      <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold leading-5 text-red-800">
+                        {memorySubmitError}
+                      </div>
+                    ) : null}
+
+                    {memorySubmitFeedback ? (
+                      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold leading-5 text-emerald-800">
+                        {memorySubmitFeedback}
+                      </div>
+                    ) : null}
                   </div>
 
                   <MemoryEntryPrivacyChecklist 
