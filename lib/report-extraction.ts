@@ -45,6 +45,20 @@ export interface ExtractedReportData {
   raw_text: string;
 }
 
+const metadataLinePatterns = [
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/i,
+  /^cnpj\b/i,
+  /^cpf\b/i,
+  /^cep\b/i,
+  /^oab\b/i,
+  /^sede:/i,
+  /^contratante:/i,
+  /^contratado:/i,
+  /^representante/i,
+  /^endereco/i,
+  /^endereço/i,
+];
+
 function normalizeText(value: string) {
   return value
     .toLowerCase()
@@ -52,6 +66,12 @@ function normalizeText(value: string) {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
+}
+
+function isLikelySectionHeader(line: string) {
+  const trimmed = line.trim();
+  const withoutNumbering = trimmed.replace(/^\d+[\s.)-]+/, "");
+  return /^\d+[\s.)-]+/.test(trimmed) || (withoutNumbering.length <= 80 && withoutNumbering === withoutNumbering.toLocaleUpperCase("pt-BR"));
 }
 
 /**
@@ -65,7 +85,8 @@ export function mapRawTextToReport(text: string): ExtractedReportData {
   };
 
   if (lines.length > 0) {
-    data.title = lines[0].slice(0, 100);
+    const titleLine = lines.find((line) => !metadataLinePatterns.some((pattern) => pattern.test(line)));
+    data.title = (titleLine ?? lines[0]).slice(0, 100);
   }
 
   // Seções comuns (regex para ignorar numeração e ser flexível com acentos/case)
@@ -73,9 +94,9 @@ export function mapRawTextToReport(text: string): ExtractedReportData {
     { key: "summary", keywords: ["objetivo das atividades", "objetivo", "resumo"] },
     { key: "activities_done", keywords: ["atividades realizadas", "atividades desenvolvidas", "atividade realizada", "o que realizei", "atividades da semana"] },
     { key: "problems_found", keywords: ["problemas encontrados", "dificuldades", "desafios", "entraves", "pontos de atencao"] },
-    { key: "learnings", keywords: ["aprendizados", "percepcoes", "observacoes", "observacoes gerais", "avaliacao", "consideracoes"] },
+    { key: "learnings", keywords: ["aprendizados", "percepcoes", "observacoes", "observacoes gerais", "avaliacao", "resultados alcancados"] },
     { key: "pending_items", keywords: ["pendencias", "pendencias identificadas", "itens pendentes"] },
-    { key: "next_steps", keywords: ["proximos passos", "encaminhamentos", "plano de continuidade", "recomendacoes"] },
+    { key: "next_steps", keywords: ["proximos passos", "encaminhamentos", "plano de continuidade", "recomendacoes", "consideracoes finais"] },
   ];
 
   let currentKey: keyof ExtractedReportData | null = null;
@@ -91,7 +112,7 @@ export function mapRawTextToReport(text: string): ExtractedReportData {
     
     let foundSection = false;
     for (const section of normalizedSections) {
-      if (section.keywords.some(k => normalizedLine.includes(k))) {
+      if (isLikelySectionHeader(line) && section.keywords.some(k => normalizedLine.includes(k))) {
         currentKey = section.key as keyof ExtractedReportData;
         foundSection = true;
         break;

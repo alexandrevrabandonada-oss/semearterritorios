@@ -101,6 +101,7 @@ export async function POST(req: NextRequest) {
       
       // Contar seções detectadas
       if (mappedData) {
+        if (mappedData.summary) sectionsCount++;
         if (mappedData.activities_done) sectionsCount++;
         if (mappedData.problems_found) sectionsCount++;
         if (mappedData.learnings) sectionsCount++;

@@ -8,7 +8,7 @@ export function calculateExtractionQuality(params: {
   sectionsCount: number;
   hasPrivacyAlerts: boolean;
 }): "high" | "medium" | "low" | "fail" {
-  const { status, text, sectionsCount, hasPrivacyAlerts } = params;
+  const { status, text, sectionsCount } = params;
 
   if (status === "failed" || status === "unsupported") {
     return "fail";
@@ -20,12 +20,12 @@ export function calculateExtractionQuality(params: {
 
   const textLength = (text || "").trim().length;
 
-  // Critérios para ALTA
-  // - Sucesso na extração
-  // - Pelo menos 4 seções detectadas
-  // - Texto com tamanho razoável (ex: > 400 caracteres)
-  // - Sem alertas de privacidade críticos (opcional, aqui tratamos como critério de "confiança")
-  if (status === "extracted" && sectionsCount >= 4 && textLength > 400 && !hasPrivacyAlerts) {
+  // A qualidade mede a extração técnica. Alertas de privacidade seguem como revisão obrigatória separada.
+  if (status === "extracted" && textLength >= 1000 && sectionsCount >= 3) {
+    return "high";
+  }
+
+  if (status === "extracted" && textLength >= 400 && sectionsCount >= 4) {
     return "high";
   }
 
