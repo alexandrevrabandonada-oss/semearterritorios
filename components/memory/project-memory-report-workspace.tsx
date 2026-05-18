@@ -398,10 +398,11 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
         body: importPayload,
       });
 
-      const responseData = await response.json();
+      const responseText = await response.text();
+      const responseData = responseText ? safeParseJson(responseText) : {};
 
       if (!response.ok) {
-        throw new Error(responseData.error || "Erro ao importar arquivo.");
+        throw new Error(responseData.error || responseText.slice(0, 240) || "Erro ao importar arquivo.");
       }
 
       setFeedback("Relatório importado e processado como rascunho. Redirecionando para revisão...");
@@ -1313,6 +1314,14 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
 function nullableText(value: string) {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
+}
+
+function safeParseJson(value: string) {
+  try {
+    return JSON.parse(value) as { error?: string; reportId?: string };
+  } catch {
+    return {};
+  }
 }
 
 function Field({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
