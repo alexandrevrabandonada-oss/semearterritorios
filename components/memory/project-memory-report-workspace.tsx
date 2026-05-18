@@ -424,9 +424,14 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
 
     // 6. Chamar API de processamento
     try {
+      const sessionResult = await supabase.auth.getSession();
+      const accessToken = sessionResult.data.session?.access_token;
       const response = await fetch("/api/memoria/process-report", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
         body: JSON.stringify({ attachmentId: attachment.id }),
       });
 
@@ -649,9 +654,14 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
     setReprocessingAttachmentId(attachment.id);
 
     try {
+      const sessionResult = await supabase.auth.getSession();
+      const accessToken = sessionResult.data.session?.access_token;
       const response = await fetch("/api/memoria/process-report", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
         body: JSON.stringify({ attachmentId: attachment.id }),
       });
 

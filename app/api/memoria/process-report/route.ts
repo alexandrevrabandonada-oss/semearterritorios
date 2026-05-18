@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { 
   extractTextFromDocx, 
@@ -12,10 +13,23 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
-  const supabase = createSupabaseServerClient();
+  const authorization = req.headers.get("authorization");
+  const bearerToken = authorization?.match(/^Bearer\s+(.+)$/i)?.[1] ?? null;
+  const supabase = bearerToken
+    ? createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          auth: { persistSession: false },
+          global: { headers: { Authorization: `Bearer ${bearerToken}` } },
+        }
+      )
+    : createSupabaseServerClient();
   
   // Verificar autenticação
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = bearerToken
+    ? await supabase.auth.getUser(bearerToken)
+    : await supabase.auth.getUser();
   if (authError || !user) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
@@ -103,7 +117,7 @@ export async function POST(req: NextRequest) {
     });
 
     // 5. Atualizar metadados do anexo
-    await supabase
+    const attachmentUpdateResult = await supabase
       .from("weekly_team_report_attachments")
       .update({
         extraction_status: status,
@@ -114,6 +128,10 @@ export async function POST(req: NextRequest) {
         sections_detected_count: sectionsCount,
       })
       .eq("id", attachmentId);
+
+    if (attachmentUpdateResult.error) {
+      return NextResponse.json({ error: `Erro ao atualizar anexo: ${attachmentUpdateResult.error.message}` }, { status: 500 });
+    }
 
     // 6. Atualizar o relatório se vinculado
     if (attachment.report_id && status === "extracted") {
@@ -137,23 +155,34 @@ export async function POST(req: NextRequest) {
         updatePayload.import_status = "needs_review";
       }
 
-      await supabase
+      const reportUpdateResult = await supabase
         .from("weekly_team_reports")
         .update(updatePayload)
         .eq("id", attachment.report_id);
+
+      if (reportUpdateResult.error) {
+        return NextResponse.json({ error: `Erro ao atualizar relatório: ${reportUpdateResult.error.message}` }, { status: 500 });
+      }
     } else if (attachment.report_id && status !== "extracted") {
-       await supabase
+      const reportUpdateResult = await supabase
         .from("weekly_team_reports")
         .update({
           import_status: status === "needs_manual_transcription" ? "needs_review" : "extraction_failed",
           extraction_quality: quality,
         })
         .eq("id", attachment.report_id);
+
+      if (reportUpdateResult.error) {
+        return NextResponse.json({ error: `Erro ao atualizar relatório: ${reportUpdateResult.error.message}` }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ 
       success: true, 
       status, 
+      quality,
+      textLength: extractedText.trim().length,
+      sectionsCount,
       privacyAlerts 
     });
 
