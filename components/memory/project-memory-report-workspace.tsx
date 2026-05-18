@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Archive, CheckCircle2, Copy, Download, FileSearch, FileText, MapPinned, RefreshCw, Save, Send, ShieldCheck, Upload, UsersRound, ShieldAlert, AlertTriangle } from "lucide-react";
@@ -138,6 +138,7 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
   const [importFile, setImportFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
   const [reprocessingAttachmentId, setReprocessingAttachmentId] = useState<string | null>(null);
+  const autoReprocessAttemptedRef = useRef<Set<string>>(new Set());
 
   const riskReport = useMemo(() => detectMemoryPrivacyRisks(memoryValues.body + " " + memoryValues.title), [memoryValues.body, memoryValues.title]);
   const canApprovePublic = isMemoryChecklistComplete(memoryChecklist) && !riskReport.hasBlockingRisk;
@@ -262,6 +263,26 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
       ignore = true;
     };
   }, [queryActionId, queryEventId, reportId, supabase]);
+
+  useEffect(() => {
+    if (!report || !report.import_source || !report.imported_attachment_id || reprocessingAttachmentId) return;
+    if (report.imported_raw_text && report.import_status !== "pending_extraction") return;
+
+    const importedAttachment = attachments.find((attachment) => attachment.id === report.imported_attachment_id);
+    if (!importedAttachment) return;
+
+    const shouldRecover =
+      report.import_status === "pending_extraction" ||
+      importedAttachment.extraction_status === "pending" ||
+      (!report.imported_raw_text && report.extraction_quality === "fail");
+
+    if (!shouldRecover || autoReprocessAttemptedRef.current.has(report.id)) return;
+
+    autoReprocessAttemptedRef.current.add(report.id);
+    setFeedback("Processando extração pendente do relatório importado...");
+    void reprocessAttachment(importedAttachment, { automatic: true });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attachments, report, reprocessingAttachmentId]);
 
   async function saveReport() {
     if (!supabase || !currentProfile?.id) return;
@@ -588,11 +609,13 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
     window.open(result.data.signedUrl, "_blank", "noopener,noreferrer");
   }
 
-  async function reprocessAttachment(attachment: WeeklyTeamReportAttachment) {
+  async function reprocessAttachment(attachment: WeeklyTeamReportAttachment, options?: { automatic?: boolean }) {
     if (!supabase || !report) return;
 
     setError(null);
-    setFeedback(null);
+    if (!options?.automatic) {
+      setFeedback(null);
+    }
     setReprocessingAttachmentId(attachment.id);
 
     try {
@@ -638,10 +661,10 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
         pending_items: updatedReport.pending_items ?? "",
         next_steps: updatedReport.next_steps ?? "",
       }));
-      setFeedback("Extração reprocessada. Revise os campos preenchidos antes de aprovar.");
+      setFeedback(options?.automatic ? "Extração pendente processada. Revise os campos preenchidos antes de aprovar." : "Extração reprocessada. Revise os campos preenchidos antes de aprovar.");
       router.refresh();
     } catch (err: any) {
-      setError(`Reprocessamento falhou: ${err.message}`);
+      setError(`${options?.automatic ? "Processamento automático" : "Reprocessamento"} falhou: ${err.message}`);
     } finally {
       setReprocessingAttachmentId(null);
     }
