@@ -8,6 +8,9 @@ import {
 import { detectImportPrivacyRisks } from "@/lib/report-import-privacy";
 import { calculateExtractionQuality } from "@/lib/report-extraction-quality";
 
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   const supabase = createSupabaseServerClient();
   

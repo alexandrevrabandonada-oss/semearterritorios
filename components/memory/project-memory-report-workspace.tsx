@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Archive, CheckCircle2, Copy, Download, FileSearch, FileText, MapPinned, Save, Send, ShieldCheck, Upload, UsersRound, ShieldAlert, AlertTriangle } from "lucide-react";
+import { Archive, CheckCircle2, Copy, Download, FileSearch, FileText, MapPinned, RefreshCw, Save, Send, ShieldCheck, Upload, UsersRound, ShieldAlert, AlertTriangle } from "lucide-react";
 import type {
   Action,
   Neighborhood,
@@ -137,6 +137,7 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
   const [isImportMode, setIsImportMode] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [reprocessingAttachmentId, setReprocessingAttachmentId] = useState<string | null>(null);
 
   const riskReport = useMemo(() => detectMemoryPrivacyRisks(memoryValues.body + " " + memoryValues.title), [memoryValues.body, memoryValues.title]);
   const canApprovePublic = isMemoryChecklistComplete(memoryChecklist) && !riskReport.hasBlockingRisk;
@@ -640,6 +641,57 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
     window.open(result.data.signedUrl, "_blank", "noopener,noreferrer");
   }
 
+  async function reprocessAttachment(attachment: WeeklyTeamReportAttachment) {
+    if (!supabase || !report) return;
+
+    setError(null);
+    setFeedback(null);
+    setReprocessingAttachmentId(attachment.id);
+
+    try {
+      const response = await fetch("/api/memoria/process-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attachmentId: attachment.id }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Erro ao reprocessar arquivo.");
+      }
+
+      const [reportResult, attachmentsResult] = await Promise.all([
+        supabase.from("weekly_team_reports").select("*").eq("id", report.id).single(),
+        supabase.from("weekly_team_report_attachments").select("*").eq("report_id", report.id).order("uploaded_at", { ascending: false }),
+      ]);
+
+      if (reportResult.error || attachmentsResult.error) {
+        throw new Error(reportResult.error?.message ?? attachmentsResult.error?.message ?? "Erro ao atualizar relatório reprocessado.");
+      }
+
+      const updatedReport = reportResult.data as WeeklyTeamReport;
+      setReport(updatedReport);
+      setAttachments((attachmentsResult.data ?? []) as WeeklyTeamReportAttachment[]);
+      setFormValues((current) => ({
+        ...current,
+        title: updatedReport.title,
+        summary: updatedReport.summary ?? "",
+        activities_done: updatedReport.activities_done ?? "",
+        territories_involved: updatedReport.territories_involved ?? "",
+        problems_found: updatedReport.problems_found ?? "",
+        learnings: updatedReport.learnings ?? "",
+        pending_items: updatedReport.pending_items ?? "",
+        next_steps: updatedReport.next_steps ?? "",
+      }));
+      setFeedback("Extração reprocessada. Revise os campos preenchidos antes de aprovar.");
+      router.refresh();
+    } catch (err: any) {
+      setError(`Reprocessamento falhou: ${err.message}`);
+    } finally {
+      setReprocessingAttachmentId(null);
+    }
+  }
+
   function handleFileSelection(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
     const nextErrors = files.map(validateProjectMemoryFile).filter(Boolean) as string[];
@@ -1052,10 +1104,23 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
                           )}
                         </p>
                       </div>
-                      <button className="inline-flex min-h-10 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" onClick={() => void downloadAttachment(attachment)} type="button">
-                        <Download className="h-4 w-4" aria-hidden="true" />
-                        Link temporário
-                      </button>
+                      <div className="flex flex-wrap gap-2">
+                        {report?.imported_attachment_id === attachment.id && attachment.extraction_status !== "extracted" ? (
+                          <button
+                            className="inline-flex min-h-10 items-center gap-2 rounded-full border border-semear-green/15 bg-semear-green px-4 text-sm font-semibold text-white disabled:opacity-60"
+                            onClick={() => void reprocessAttachment(attachment)}
+                            type="button"
+                            disabled={reprocessingAttachmentId === attachment.id}
+                          >
+                            <RefreshCw className={`h-4 w-4 ${reprocessingAttachmentId === attachment.id ? "animate-spin" : ""}`} aria-hidden="true" />
+                            {reprocessingAttachmentId === attachment.id ? "Reprocessando..." : "Reprocessar"}
+                          </button>
+                        ) : null}
+                        <button className="inline-flex min-h-10 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" onClick={() => void downloadAttachment(attachment)} type="button">
+                          <Download className="h-4 w-4" aria-hidden="true" />
+                          Link temporário
+                        </button>
+                      </div>
                     </div>
                   </article>
                 ))}

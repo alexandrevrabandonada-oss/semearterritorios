@@ -45,6 +45,15 @@ export interface ExtractedReportData {
   raw_text: string;
 }
 
+function normalizeText(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
 /**
  * Mapeia o texto bruto para campos estruturados do relatório semanal.
  * Baseado em cabeçalhos comuns.
@@ -61,23 +70,28 @@ export function mapRawTextToReport(text: string): ExtractedReportData {
 
   // Seções comuns (regex para ignorar numeração e ser flexível com acentos/case)
   const sections = [
-    { key: "activities_done", keywords: ["atividades realizadas", "o que realizei", "atividades da semana"] },
-    { key: "problems_found", keywords: ["problemas encontrados", "dificuldades", "desafios"] },
-    { key: "learnings", keywords: ["aprendizados", "percepcoes", "observacoes"] },
-    { key: "pending_items", keywords: ["pendencias"] },
-    { key: "next_steps", keywords: ["proximos passos", "encaminhamentos"] },
+    { key: "summary", keywords: ["objetivo das atividades", "objetivo", "resumo"] },
+    { key: "activities_done", keywords: ["atividades realizadas", "atividades desenvolvidas", "atividade realizada", "o que realizei", "atividades da semana"] },
+    { key: "problems_found", keywords: ["problemas encontrados", "dificuldades", "desafios", "entraves", "pontos de atencao"] },
+    { key: "learnings", keywords: ["aprendizados", "percepcoes", "observacoes", "observacoes gerais", "avaliacao", "consideracoes"] },
+    { key: "pending_items", keywords: ["pendencias", "pendencias identificadas", "itens pendentes"] },
+    { key: "next_steps", keywords: ["proximos passos", "encaminhamentos", "plano de continuidade", "recomendacoes"] },
   ];
 
   let currentKey: keyof ExtractedReportData | null = null;
   const content: Record<string, string[]> = {};
+  const normalizedSections = sections.map((section) => ({
+    ...section,
+    keywords: section.keywords.map(normalizeText),
+  }));
 
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
-    const normalizedLine = line.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const normalizedLine = normalizeText(line.replace(/^\d+[\s.)-]+/, ""));
     
     let foundSection = false;
-    for (const section of sections) {
-      if (section.keywords.some(k => normalizedLine.includes(k.normalize("NFD").replace(/[\u0300-\u036f]/g, "")))) {
+    for (const section of normalizedSections) {
+      if (section.keywords.some(k => normalizedLine.includes(k))) {
         currentKey = section.key as keyof ExtractedReportData;
         foundSection = true;
         break;
