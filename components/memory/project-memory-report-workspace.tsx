@@ -355,104 +355,43 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
       return;
     }
 
-    const selectedMember = teamMembers.find((member) => member.id === formValues.team_member_id);
-    const profileId = currentProfile.role === "equipe" ? currentProfile.id : selectedMember?.profile_id ?? null;
-    
-    const extension = importFile.name.split(".").pop()?.toLowerCase();
-    const source: "uploaded_doc" | "uploaded_pdf" = extension === "pdf" ? "uploaded_pdf" : "uploaded_doc";
-
-    // 1. Criar relatório base como rascunho
-    const reportPayload = {
-      week_start: formValues.week_start,
-      week_end: formValues.week_end,
-      team_member_id: formValues.team_member_id,
-      profile_id: profileId,
-      title: `Relatório importado: ${importFile.name}`,
-      status: "draft" as const,
-      import_source: source,
-      import_status: "pending_extraction" as const,
-      created_by: currentProfile.id,
-      team_calendar_event_id: linkedEventId || null,
-    };
-
-    const reportResult = await supabase.from("weekly_team_reports").insert(reportPayload as any).select("*").single();
-
-    if (reportResult.error) {
-      setError(reportResult.error.message);
-      setProcessing(false);
-      return;
-    }
-
-    const newReport = reportResult.data as WeeklyTeamReport;
-    if (!newReport) return;
-
-    // 2. Upload do arquivo
-    const safeFileName = `${Date.now()}-${sanitizeUploadFileName(importFile.name)}`;
-    const storagePath = `${newReport.id}/${safeFileName}`;
-    const uploadResult = await supabase.storage.from("project-memory-documents").upload(storagePath, importFile, { upsert: false, contentType: importFile.type || undefined });
-
-    if (uploadResult.error) {
-      setError(`Erro no upload: ${uploadResult.error.message}`);
-      setProcessing(false);
-      return;
-    }
-
-    // 3. Criar anexo
-    const attachmentResult = await supabase.from("weekly_team_report_attachments").insert({
-      report_id: newReport.id,
-      storage_path: storagePath,
-      file_name: importFile.name,
-      file_type: importFile.type || null,
-      file_size: importFile.size,
-      uploaded_by: currentProfile.id,
-      extraction_status: "pending",
-    }).select("*").single();
-
-    if (attachmentResult.error) {
-      setError(`Erro ao registrar anexo: ${attachmentResult.error.message}`);
-      setProcessing(false);
-      return;
-    }
-
-    const attachment = attachmentResult.data as WeeklyTeamReportAttachment;
-
-    // 4. Atualizar relatório com o ID do anexo importado
-    await supabase.from("weekly_team_reports").update({ imported_attachment_id: attachment.id }).eq("id", newReport.id);
-
-    // 5. Vincular ações e territórios, se houver
-    await syncLinks(newReport.id);
-
-    // 6. Chamar API de processamento
     try {
       const sessionResult = await supabase.auth.getSession();
       const accessToken = sessionResult.data.session?.access_token;
       if (!accessToken) {
         throw new Error("Sessão expirada. Entre novamente e tente importar o relatório.");
       }
-      const response = await fetch("/api/memoria/process-report", {
+
+      const importPayload = new FormData();
+      importPayload.set("file", importFile);
+      importPayload.set("week_start", formValues.week_start);
+      importPayload.set("week_end", formValues.week_end);
+      importPayload.set("team_member_id", formValues.team_member_id);
+      importPayload.set("team_calendar_event_id", linkedEventId || "");
+      importPayload.set("action_ids", JSON.stringify(selectedActionIds));
+      importPayload.set("neighborhood_ids", JSON.stringify(selectedNeighborhoodIds));
+
+      const response = await fetch("/api/memoria/import-report", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        },
-        body: JSON.stringify({ attachmentId: attachment.id }),
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: importPayload,
       });
 
+      const responseData = await response.json();
+
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "Erro ao processar arquivo.");
+        throw new Error(responseData.error || "Erro ao importar arquivo.");
       }
 
       setFeedback("Relatório importado e processado como rascunho. Redirecionando para revisão...");
       
       setTimeout(() => {
-        router.push(`/memoria/${newReport.id}`);
+        router.push(`/memoria/${responseData.reportId}`);
         router.refresh();
       }, 1500);
     } catch (err: any) {
-      setError(`Extração falhou: ${err.message}. Você ainda pode preencher manualmente.`);
+      setError(`Importação falhou: ${err.message}`);
       setProcessing(false);
-      router.push(`/memoria/${newReport.id}`);
     }
   }
 
