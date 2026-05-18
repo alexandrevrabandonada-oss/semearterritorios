@@ -6,7 +6,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["tests/transparencia/**/*.test.ts"],
+    include: ["tests/**/*.test.ts"],
     globals: true,
     restoreMocks: true,
     clearMocks: true
