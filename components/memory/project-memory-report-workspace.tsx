@@ -743,7 +743,22 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
 
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <Field label="Início da semana">
-              <input className={inputClassName} type="date" value={formValues.week_start} onChange={(event) => setFormValues((current) => ({ ...current, week_start: event.target.value, week_end: getEndOfWeekIso(event.target.value) }))} />
+              <input
+                className={inputClassName}
+                type="date"
+                value={formValues.week_start}
+                onChange={(event) =>
+                  setFormValues((current) => {
+                    const weekStart = event.target.value;
+                    const computedWeekEnd = getEndOfWeekIso(weekStart);
+                    return {
+                      ...current,
+                      week_start: weekStart,
+                      week_end: computedWeekEnd || current.week_end,
+                    };
+                  })
+                }
+              />
             </Field>
             <Field label="Membro da equipe">
               <select className={inputClassName} value={formValues.team_member_id} onChange={(event) => setFormValues((current) => ({ ...current, team_member_id: event.target.value }))} disabled={currentProfile?.role === "equipe"}>
@@ -856,7 +871,23 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
 
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <Field label="Início da semana">
-                <input className={inputClassName} type="date" value={formValues.week_start} onChange={(event) => setFormValues((current) => ({ ...current, week_start: event.target.value, week_end: getEndOfWeekIso(event.target.value) }))} disabled={!canEditReport} />
+                <input
+                  className={inputClassName}
+                  type="date"
+                  value={formValues.week_start}
+                  onChange={(event) =>
+                    setFormValues((current) => {
+                      const weekStart = event.target.value;
+                      const computedWeekEnd = getEndOfWeekIso(weekStart);
+                      return {
+                        ...current,
+                        week_start: weekStart,
+                        week_end: computedWeekEnd || current.week_end,
+                      };
+                    })
+                  }
+                  disabled={!canEditReport}
+                />
               </Field>
               <Field label="Fim da semana">
                 <input className={inputClassName} type="date" value={formValues.week_end} onChange={(event) => setFormValues((current) => ({ ...current, week_end: event.target.value }))} disabled={!canEditReport} />

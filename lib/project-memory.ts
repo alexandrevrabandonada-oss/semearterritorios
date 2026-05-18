@@ -59,8 +59,21 @@ export function getProjectMemoryVisibilityLabel(visibility: ProjectMemoryVisibil
   return projectMemoryVisibilityOptions.find((option) => option.value === visibility)?.label ?? visibility;
 }
 
+function parseDateInput(input: Date | string) {
+  if (input instanceof Date) {
+    return Number.isNaN(input.getTime()) ? null : new Date(input);
+  }
+
+  const normalizedInput = input.trim();
+  if (!normalizedInput) return null;
+
+  const parsed = new Date(normalizedInput.includes("T") ? normalizedInput : `${normalizedInput}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export function getStartOfWeekIso(input: Date | string) {
-  const date = new Date(typeof input === "string" ? `${input}T00:00:00` : input);
+  const date = parseDateInput(input);
+  if (!date) return "";
   const weekday = date.getDay();
   const diff = weekday === 0 ? -6 : 1 - weekday;
   date.setDate(date.getDate() + diff);
@@ -68,7 +81,9 @@ export function getStartOfWeekIso(input: Date | string) {
 }
 
 export function getEndOfWeekIso(input: Date | string) {
-  const start = new Date(`${getStartOfWeekIso(input)}T00:00:00`);
+  const weekStart = getStartOfWeekIso(input);
+  if (!weekStart) return "";
+  const start = new Date(`${weekStart}T00:00:00`);
   start.setDate(start.getDate() + 6);
   return toIsoDate(start);
 }
@@ -78,10 +93,12 @@ export function formatWeekLabel(weekStart: string, weekEnd: string) {
 }
 
 export function formatDateLabel(value: string) {
-  return new Date(`${value}T00:00:00`).toLocaleDateString("pt-BR");
+  const parsed = parseDateInput(value);
+  return parsed ? parsed.toLocaleDateString("pt-BR") : "";
 }
 
 export function toIsoDate(date: Date) {
+  if (Number.isNaN(date.getTime())) return "";
   return date.toISOString().slice(0, 10);
 }
 
