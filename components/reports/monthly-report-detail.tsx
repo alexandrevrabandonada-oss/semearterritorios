@@ -16,7 +16,8 @@ import {
   Save,
   Tag,
   Sparkles,
-  Bot
+  Bot,
+  Printer
 } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Action, ActionClosure, ActionDebrief, ListeningRecord, Neighborhood, Theme } from "@/lib/database.types";
@@ -144,7 +145,8 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
       });
 
       if (!res.ok) {
-        throw new Error("Falha ao gerar síntese");
+        const errorData = await res.json().catch(() => null);
+        throw new Error(errorData?.error ?? "Falha ao gerar síntese");
       }
 
       const data = await res.json();
@@ -217,7 +219,8 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
   }
 
   return (
-    <section className="pb-10">
+    <>
+    <section className="no-print pb-10">
       <div className="mb-5 flex flex-wrap gap-3">
         <Link className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white/70 px-4 text-sm font-semibold text-semear-green transition hover:bg-white" href="/relatorios">
           Voltar para relatórios
@@ -253,6 +256,10 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
             <button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-stone-800 px-4 text-sm font-semibold text-white" onClick={exportCsv} type="button">
               <Download className="h-4 w-4" aria-hidden="true" />
               Exportar CSV
+            </button>
+            <button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-semear-earth px-4 text-sm font-semibold text-white" onClick={() => window.print()} type="button">
+              <Printer className="h-4 w-4" aria-hidden="true" />
+              Exportar PDF
             </button>
           </div>
         </div>
@@ -482,7 +489,123 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
         </Panel>
       </div>
     </section>
+    <MonthlyReportPrintSheet report={report} />
+    </>
   );
+}
+
+function MonthlyReportPrintSheet({ report }: { report: MonthlyReportData }) {
+  return (
+    <article className="print-only print-sheet">
+      <header className="mb-8 border-b border-semear-gray pb-5">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">SEMEAR Territórios</p>
+        <h1 className="mt-2 text-3xl font-semibold text-semear-green">{report.title}</h1>
+        <p className="mt-3 text-sm leading-6 text-stone-700">
+          Relatório mensal gerado a partir de ações, escutas, temas e campos preenchidos pela equipe.
+        </p>
+      </header>
+
+      <section className="mb-6 grid grid-cols-2 gap-3">
+        <PrintMetric label="Mês de referência" value={formatMonthLabel(report.month)} />
+        <PrintMetric label="Ações" value={report.totalActions} />
+        <PrintMetric label="Escutas" value={report.totalRecords} />
+        <PrintMetric label="Cobertura territorial" value={`${report.territorialQuality.coveragePercent}%`} />
+      </section>
+
+      <PrintSection title="Síntese de busca ativa">
+        <p>{report.activeSearchSummary}</p>
+      </PrintSection>
+
+      <PrintSection title="Síntese pedagógica">
+        <p>{report.pedagogicalSummary}</p>
+      </PrintSection>
+
+      <PrintSection title="Nota metodológica territorial">
+        <p><strong>Status:</strong> {report.territorialMethodologyNote.status}</p>
+        <p><strong>Escutas sem território de referência:</strong> {report.territorialQuality.recordsWithoutRespondentTerritory}</p>
+        <p>{report.territorialMethodologyNote.fullText}</p>
+        <p><strong>Recomendação operacional:</strong> {report.territorialMethodologyNote.operationalRecommendation}</p>
+      </PrintSection>
+
+      <section className="mb-6 grid grid-cols-2 gap-5">
+        <PrintCountList title="Ações por território" items={report.actionTerritoryCounts} />
+        <PrintCountList title="Escutas por território de referência" items={report.respondentTerritoryCounts} />
+        <PrintCountList title="Tipos de ação" items={report.actionTypeCounts} />
+        <PrintCountList title="Temas mais recorrentes" items={report.topThemes} />
+        <PrintCountList title="Prioridades apontadas" items={report.priorities} />
+        <PrintCountList title="Temas inesperados" items={report.unexpectedTopics} />
+      </section>
+
+      <PrintSection title="Lista de ações do mês">
+        {report.actions.length > 0 ? (
+          <ul className="space-y-2">
+            {report.actions.map((action) => (
+              <li key={action.id}>
+                {formatDate(action.action_date)} | {action.title} | {getActionTypeLabel(action.action_type)} | {action.neighborhoods?.name ?? "Território da ação não informado"}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>Nenhuma ação cadastrada no mês.</p>
+        )}
+      </PrintSection>
+
+      <PrintSection title="Pendências de revisão">
+        {report.pendingReviews.length > 0 ? (
+          <ul className="space-y-2">
+            {report.pendingReviews.map((record) => (
+              <li key={record.id}>
+                {formatDate(record.date)} | ação em {record.neighborhoods?.name ?? "Território da ação não informado"} | referência {record.respondent_neighborhoods?.name ?? "Não informado"} | {truncatePrint(record.free_speech_text, 120)}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>Nenhuma pendência de revisão no mês.</p>
+        )}
+      </PrintSection>
+
+      <footer className="mt-8 border-t border-semear-gray pt-4 text-xs text-stone-600">
+        Exportado em {new Date().toLocaleDateString("pt-BR")} pelo sistema interno SEMEAR Territórios.
+      </footer>
+    </article>
+  );
+}
+
+function PrintMetric({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-2xl border border-semear-gray p-3">
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{label}</p>
+      <p className="mt-1 text-lg font-semibold text-semear-green">{value}</p>
+    </div>
+  );
+}
+
+function PrintSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="mb-6 text-sm leading-6 text-stone-800">
+      <h2 className="mb-2 text-lg font-semibold text-semear-green">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+function PrintCountList({ title, items }: { title: string; items: Array<{ name: string; count: number }> }) {
+  return (
+    <section className="text-sm leading-6 text-stone-800">
+      <h2 className="mb-2 text-base font-semibold text-semear-green">{title}</h2>
+      {items.length > 0 ? (
+        <ul className="space-y-1">
+          {items.map((item) => <li key={item.name}>{item.name} ({item.count})</li>)}
+        </ul>
+      ) : (
+        <p>Nenhum registro.</p>
+      )}
+    </section>
+  );
+}
+
+function truncatePrint(value: string, maxLength: number) {
+  return value.length > maxLength ? `${value.slice(0, maxLength - 1)}...` : value;
 }
 
 function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {

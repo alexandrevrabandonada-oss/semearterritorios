@@ -10,6 +10,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Dados incompletos passados para a IA." }, { status: 400 });
     }
 
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: "Assistente de síntese indisponível: OPENAI_API_KEY não está configurada no servidor." },
+        { status: 503 }
+      );
+    }
+
     const systemPrompt = `
 Você é uma inteligência artificial assistente no projeto "Semear Territórios", criada para apoiar a equipe na síntese de relatórios mensais.
 
@@ -40,8 +47,9 @@ Você deve atuar apenas como SUGESTÃO, em tom analítico e acolhedor, voltado �
     return NextResponse.json({ text: result.text });
   } catch (error) {
     console.error("Erro ao gerar síntese:", error);
+    const message = error instanceof Error ? error.message : "Erro desconhecido";
     return NextResponse.json(
-      { error: "Ocorreu um erro ao processar a geração com a IA." },
+      { error: `Ocorreu um erro ao processar a geração com a IA: ${message}` },
       { status: 500 }
     );
   }
