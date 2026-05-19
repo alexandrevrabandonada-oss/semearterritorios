@@ -242,7 +242,7 @@ export function ListeningRecordBatchForm() {
   const selectedAction = actions.find(a => a.id === lockedActionId);
 
   return (
-    <section className="pb-10 max-w-6xl mx-auto">
+    <section className="mx-auto max-w-6xl pb-32">
       <SemearButton className="mb-5" href="/escutas" variant="secondary">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         Voltar para escutas
@@ -317,7 +317,7 @@ export function ListeningRecordBatchForm() {
               </label>
             </div>
             {selectedAction && (
-              <div className="mt-4 p-4 rounded-xl bg-semear-green-soft text-sm text-semear-green flex gap-4">
+              <div className="mt-4 flex gap-4 rounded-xl border border-semear-green/10 bg-white p-4 text-sm text-semear-green shadow-[0_8px_18px_rgba(23,74,55,0.04)]">
                 <span><strong>Data:</strong> {selectedAction.action_date}</span>
                 <span><strong>Bairro:</strong> {selectedAction.neighborhoods?.name || "Sem bairro"}</span>
               </div>
@@ -344,7 +344,7 @@ export function ListeningRecordBatchForm() {
                     <h3 className="mt-1 text-lg font-semibold text-semear-green">Registre a fala com conforto no celular</h3>
                   </div>
                   <div className="grid gap-5 md:grid-cols-2">
-                    <label className="md:col-span-2 rounded-2xl border border-semear-green/25 bg-semear-green-soft/45 p-4">
+                    <label className="md:col-span-2 rounded-2xl border border-semear-green/20 bg-white p-4 shadow-[0_10px_24px_rgba(23,74,55,0.04)]">
                   <span className="text-sm font-bold text-semear-green">Fala original / síntese livre</span>
                   <textarea className="mt-3 min-h-48 w-full rounded-2xl border border-semear-green/20 bg-white px-4 py-3 text-base leading-7 outline-none focus:border-semear-green" required value={values.free_speech_text} onChange={e => updateField("free_speech_text", e.target.value)} />
                     </label>
@@ -363,7 +363,7 @@ export function ListeningRecordBatchForm() {
                   </div>
                 </section>
 
-                <section className="rounded-2xl border border-semear-green/20 bg-semear-green-soft/30 p-5">
+                <section className="rounded-2xl border border-semear-green/15 bg-white p-5 shadow-[0_10px_24px_rgba(23,74,55,0.04)]">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">3. Território de referência</p>
                   <h3 className="mt-1 font-semibold text-semear-green">Território agregado da pessoa escutada</h3>
                   <p className="mt-1 text-xs leading-5 text-stone-600">Registre apenas município, bairro oficial e vínculo com o território. Não registre rua, número ou endereço.</p>
@@ -453,7 +453,7 @@ export function ListeningRecordBatchForm() {
                   </div>
                 </section>
 
-                <div className="sticky bottom-20 z-20 mt-8 rounded-2xl border border-semear-green/15 bg-white/95 p-4 shadow-[0_14px_36px_rgba(23,74,55,0.12)] backdrop-blur md:bottom-4">
+                <div className="sticky bottom-4 z-20 mt-8 rounded-2xl border border-semear-green/15 bg-white/95 p-4 shadow-[0_18px_42px_rgba(23,74,55,0.14)] backdrop-blur">
                   <div className="grid gap-3 sm:grid-cols-2">
                     <button className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-semear-green px-5 text-base font-semibold text-white disabled:opacity-60" disabled={saving || !lockedActionId} onClick={() => setSubmitMode("next")} type="submit">
                       <PlayCircle className="h-5 w-5" aria-hidden="true" />
@@ -472,7 +472,7 @@ export function ListeningRecordBatchForm() {
 
         {/* SIDEBAR */}
         <div className="hidden space-y-6 xl:block">
-          <div className="rounded-[2rem] border border-semear-green/15 bg-white/78 p-6 shadow-soft">
+          <div className="rounded-2xl border border-semear-green/15 bg-white p-6 shadow-[0_14px_34px_rgba(23,74,55,0.06)]">
             <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth mb-2">Sessão Atual</h3>
             <p className="text-4xl font-semibold text-semear-green">{sessionCount}</p>
             <p className="text-sm text-stone-600">fichas digitadas por você agora.</p>
@@ -484,7 +484,7 @@ export function ListeningRecordBatchForm() {
           </div>
           
           {selectedAction && (
-            <div className="rounded-[2rem] border border-semear-green/15 bg-white/78 p-6 shadow-soft">
+            <div className="rounded-2xl border border-semear-green/15 bg-white p-6 shadow-[0_14px_34px_rgba(23,74,55,0.06)]">
               <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth mb-4">Ação Selecionada</h3>
               <p className="text-sm text-stone-700 font-medium">{selectedAction.title}</p>
               <Link className="mt-4 block text-sm font-semibold text-semear-green hover:underline" href={`/escutas?actionId=${selectedAction.id}`}>

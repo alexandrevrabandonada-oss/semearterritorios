@@ -349,12 +349,12 @@ export function TeamCalendarEventForm({ eventId }: EventFormProps) {
   }
 
   if (loading) {
-    return <section className="rounded-[2rem] border border-white/80 bg-white/72 p-8 text-sm text-stone-600 shadow-soft">Carregando formulário da agenda...</section>;
+    return <section className="rounded-3xl border border-white/60 bg-white/80 p-8 text-xs font-semibold text-stone-500 shadow-premium-md backdrop-blur-sm">Carregando formulário da agenda...</section>;
   }
 
   if (!canManage) {
     return (
-      <section className="rounded-[2rem] border border-amber-200 bg-amber-50 p-8 text-sm leading-6 text-amber-950">
+      <section className="rounded-3xl border border-amber-200 bg-amber-50 p-8 text-xs leading-relaxed font-semibold text-amber-950 shadow-premium-md">
         A agenda é visível para a equipe toda, mas apenas coordenação e admin podem criar ou editar eventos.
       </section>
     );
@@ -362,33 +362,33 @@ export function TeamCalendarEventForm({ eventId }: EventFormProps) {
 
   return (
     <section className="pb-10">
-      <Link className="mb-5 inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white/70 px-4 text-sm font-semibold text-semear-green transition hover:bg-white" href="/agenda">
+      <Link className="mb-5 inline-flex min-h-11 items-center gap-2 rounded-full border border-stone-200 bg-white/90 px-4 text-xs font-bold text-stone-700 shadow-premium-sm transition hover:bg-white active:scale-[0.98]" href="/agenda">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         Voltar para agenda
       </Link>
 
-      <form className="rounded-[2rem] border border-white/80 bg-white/80 p-5 shadow-soft sm:p-8" onSubmit={handleSubmit}>
+      <form className="rounded-3xl border border-white/60 bg-white/80 p-5 shadow-premium-md backdrop-blur-sm sm:p-8" onSubmit={handleSubmit}>
         <div className="max-w-3xl">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">{eventId ? "Editar evento" : "Novo evento"}</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-semear-green">Agenda da Equipe</h2>
-          <p className="mt-3 text-sm leading-6 text-stone-600">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-semear-earth">{eventId ? "Editar evento" : "Novo evento"}</p>
+          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-semear-green">Agenda da Equipe</h2>
+          <p className="mt-3 text-xs font-semibold leading-relaxed text-stone-555">
             Organize ações de campo, bancas, reuniões, prazos e atividades internas da equipe.
           </p>
-          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-xs leading-relaxed font-bold text-amber-900 shadow-premium-sm">
             Esta agenda é interna da equipe SEMEAR. Não inclua dados pessoais de entrevistados.
           </div>
         </div>
 
-        {error ? <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div> : null}
+        {error ? <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-bold text-red-800 shadow-premium-sm">{error}</div> : null}
 
         <div className="mt-8 grid gap-5 lg:grid-cols-2">
           <label className="lg:col-span-2">
-            <span className="text-sm font-semibold text-semear-green">Título</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-semear-green">Título</span>
             <input className={inputClassName} value={values.title} onChange={(event) => updateField("title", event.target.value)} required />
           </label>
 
           <label>
-            <span className="text-sm font-semibold text-semear-green">Tipo</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-semear-green">Tipo</span>
             <select className={inputClassName} value={values.event_type} onChange={(event) => updateField("event_type", event.target.value as TeamCalendarEventType)}>
               {teamCalendarEventTypeOptions.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
@@ -397,7 +397,7 @@ export function TeamCalendarEventForm({ eventId }: EventFormProps) {
           </label>
 
           <label>
-            <span className="text-sm font-semibold text-semear-green">Status</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-semear-green">Status</span>
             <select className={inputClassName} value={values.status} onChange={(event) => updateField("status", event.target.value as TeamCalendarEventStatus)}>
               {teamCalendarEventStatusOptions.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
@@ -405,19 +405,19 @@ export function TeamCalendarEventForm({ eventId }: EventFormProps) {
             </select>
           </label>
 
-          <label className="rounded-2xl border border-semear-gray bg-semear-offwhite px-4 py-3 text-sm text-stone-700">
+          <label className="rounded-2xl border border-white/60 bg-white/60 px-4 py-3 text-xs font-bold text-stone-750 shadow-premium-sm flex items-center cursor-pointer select-none">
             <span className="flex items-center gap-3">
-              <input checked={values.all_day} onChange={(event) => updateField("all_day", event.target.checked)} type="checkbox" />
+              <input checked={values.all_day} onChange={(event) => updateField("all_day", event.target.checked)} type="checkbox" className="h-4 w-4 rounded border-stone-200 text-semear-green focus:ring-semear-green" />
               Dia inteiro
             </span>
           </label>
 
-          <div className="rounded-2xl border border-semear-gray bg-semear-offwhite px-4 py-3 text-sm text-stone-600">
+          <div className="rounded-2xl border border-white/60 bg-white/65 px-4 py-3 text-xs leading-relaxed font-bold text-stone-500 shadow-premium-sm">
             Se o evento veio de uma ação, revise o horário antes de salvar. Quando a ação já tiver `starts_at` e `ends_at`, a agenda herda esse período. Se não tiver, você pode ajustar a sugestão manualmente.
           </div>
 
           <label>
-            <span className="text-sm font-semibold text-semear-green">Início</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-semear-green">Início</span>
             <input
               className={inputClassName}
               type={values.all_day ? "date" : "datetime-local"}
@@ -428,7 +428,7 @@ export function TeamCalendarEventForm({ eventId }: EventFormProps) {
           </label>
 
           <label>
-            <span className="text-sm font-semibold text-semear-green">Fim</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-semear-green">Fim</span>
             <input
               className={inputClassName}
               type={values.all_day ? "date" : "datetime-local"}
@@ -438,7 +438,7 @@ export function TeamCalendarEventForm({ eventId }: EventFormProps) {
           </label>
 
           <label>
-            <span className="text-sm font-semibold text-semear-green">Território</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-semear-green">Território</span>
             <select className={inputClassName} value={values.neighborhood_id} onChange={(event) => updateField("neighborhood_id", event.target.value)}>
               <option value="">Sem território definido</option>
               {neighborhoods.map((neighborhood) => (
@@ -448,7 +448,7 @@ export function TeamCalendarEventForm({ eventId }: EventFormProps) {
           </label>
 
           <label>
-            <span className="text-sm font-semibold text-semear-green">Ação vinculada</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-semear-green">Ação vinculada</span>
             <select className={inputClassName} value={values.action_id} onChange={(event) => updateField("action_id", event.target.value)}>
               <option value="">Sem ação vinculada</option>
               {actions.map((action) => (
@@ -458,28 +458,28 @@ export function TeamCalendarEventForm({ eventId }: EventFormProps) {
           </label>
 
           <label className="lg:col-span-2">
-            <span className="text-sm font-semibold text-semear-green">Descrição</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-semear-green">Descrição</span>
             <textarea className={textareaClassName} value={values.description} onChange={(event) => updateField("description", event.target.value)} />
           </label>
 
-          <fieldset className="lg:col-span-2 rounded-2xl border border-semear-gray bg-semear-offwhite/60 p-4">
-            <legend className="px-1 text-sm font-semibold text-semear-green">Equipe participante e presença</legend>
-            <div className="mt-2 space-y-3">
+          <fieldset className="lg:col-span-2 rounded-3xl border border-white/60 bg-white/40 p-5 shadow-premium-sm">
+            <legend className="px-2 text-xs font-bold uppercase tracking-wider text-semear-green">Equipe participante e presença</legend>
+            <div className="mt-4 space-y-3">
               {teamMembers.map((member) => {
                 const state = participants[member.id] ?? { selected: false, responsibility: "", attendance_status: "invited" as TeamCalendarAttendanceStatus };
                 return (
-                  <div className="rounded-xl border border-semear-gray bg-white p-3" key={member.id}>
-                    <label className="flex min-h-14 cursor-pointer items-center gap-3 text-sm font-medium text-stone-700">
-                      <input checked={state.selected} className="h-5 w-5 rounded border-semear-gray text-semear-green focus:ring-semear-green" onChange={(event) => updateParticipant(member.id, { selected: event.target.checked })} type="checkbox" />
+                  <div className="rounded-2xl border border-white/40 bg-white/95 p-4 shadow-premium-sm transition duration-200 hover:-translate-y-0.5" key={member.id}>
+                    <label className="flex min-h-14 cursor-pointer items-center gap-3 text-sm font-semibold text-stone-700">
+                      <input checked={state.selected} className="h-5 w-5 rounded border-stone-300 text-semear-green focus:ring-semear-green" onChange={(event) => updateParticipant(member.id, { selected: event.target.checked })} type="checkbox" />
                       <span className="flex-1">
-                        <span className="block font-semibold text-semear-green">{member.display_name}</span>
-                        <span className="text-xs text-stone-500">{member.role_label ?? "Sem função informada"}</span>
+                        <span className="block font-bold text-semear-green">{member.display_name}</span>
+                        <span className="text-[10px] font-bold text-stone-450 uppercase tracking-wider">{member.role_label ?? "Sem função informada"}</span>
                       </span>
                     </label>
                     {state.selected ? (
                       <div className="mt-3 grid gap-3 md:grid-cols-2">
-                        <input className="min-h-11 rounded-xl border border-semear-gray bg-white px-3 text-sm outline-none focus:border-semear-green" placeholder="Responsabilidade" value={state.responsibility} onChange={(event) => updateParticipant(member.id, { responsibility: event.target.value })} />
-                        <select className="min-h-11 rounded-xl border border-semear-gray bg-white px-3 text-sm outline-none focus:border-semear-green" value={state.attendance_status} onChange={(event) => updateParticipant(member.id, { attendance_status: event.target.value as TeamCalendarAttendanceStatus })}>
+                        <input className="min-h-11 rounded-2xl border border-stone-200 bg-white px-4 text-xs font-bold outline-none focus:border-semear-green shadow-premium-sm" placeholder="Responsabilidade" value={state.responsibility} onChange={(event) => updateParticipant(member.id, { responsibility: event.target.value })} />
+                        <select className="min-h-11 rounded-2xl border border-stone-200 bg-white px-4 text-xs font-bold outline-none focus:border-semear-green shadow-premium-sm text-stone-750" value={state.attendance_status} onChange={(event) => updateParticipant(member.id, { attendance_status: event.target.value as TeamCalendarAttendanceStatus })}>
                           {teamCalendarAttendanceOptions.map((option) => (
                             <option key={option.value} value={option.value}>{option.label}</option>
                           ))}
@@ -493,17 +493,18 @@ export function TeamCalendarEventForm({ eventId }: EventFormProps) {
           </fieldset>
         </div>
 
-        <div className="sticky bottom-20 z-20 mt-8 flex flex-wrap gap-3 rounded-[1.5rem] border border-semear-green/15 bg-white/95 p-4 shadow-soft backdrop-blur md:bottom-4">
-          <button className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full bg-semear-green px-5 text-sm font-semibold text-white transition hover:bg-semear-green/92 disabled:cursor-not-allowed disabled:opacity-60" disabled={saving} type="submit">
+        <div className="sticky bottom-20 z-20 mt-8 flex flex-wrap gap-3 rounded-2xl border border-white/60 bg-white/95 p-4 shadow-premium-md backdrop-blur md:bottom-4">
+          <button className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full bg-semear-green px-5 text-xs font-bold text-white shadow-premium-sm transition hover:bg-semear-green/90 disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.98] duration-200" disabled={saving} type="submit">
             {eventId ? <Save className="h-4 w-4" aria-hidden="true" /> : <CalendarPlus className="h-4 w-4" aria-hidden="true" />}
             {saving ? "Salvando..." : eventId ? "Salvar evento" : "Criar evento"}
           </button>
-          <Link className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full border border-semear-green/15 bg-white px-5 text-sm font-semibold text-semear-green" href="/agenda">Cancelar</Link>
+          <Link className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full border border-white/60 bg-white px-5 text-xs font-bold text-stone-750 shadow-premium-sm transition hover:bg-stone-50 active:scale-[0.98] duration-200" href="/agenda">Cancelar</Link>
         </div>
       </form>
     </section>
   );
 }
 
-const inputClassName = "mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green";
-const textareaClassName = "mt-2 min-h-28 w-full rounded-2xl border border-semear-gray bg-white px-4 py-3 text-sm outline-none focus:border-semear-green";
+const inputClassName = "mt-2 min-h-12 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 text-xs font-bold text-stone-750 outline-none focus:border-semear-green shadow-premium-sm";
+const textareaClassName = "mt-2 min-h-28 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 py-3 text-xs font-bold text-stone-750 outline-none focus:border-semear-green shadow-premium-sm";
+

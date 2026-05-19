@@ -377,7 +377,7 @@ export function ActionDebriefPage({ actionId }: Props) {
 
   return (
     <section className="pb-10">
-      <div className="no-print mb-5 flex flex-wrap gap-3">
+      <div className="no-print mb-5 flex flex-wrap gap-3 items-center">
         <SemearButton href={`/acoes/${actionId}`} variant="secondary">
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Voltar para ação
@@ -386,21 +386,29 @@ export function ActionDebriefPage({ actionId }: Props) {
           <Sparkles className="h-4 w-4" aria-hidden="true" />
           Gerar rascunho determinístico
         </SemearButton>
-        {draftRefreshLabel ? <p className="inline-flex min-h-11 items-center text-sm font-semibold text-semear-green">{draftRefreshLabel}</p> : null}
-        <div className="inline-flex rounded-full border border-semear-green/20 bg-white p-1">
+        {draftRefreshLabel ? <p className="inline-flex min-h-11 items-center text-sm font-bold text-semear-green">{draftRefreshLabel}</p> : null}
+        <div className="inline-flex rounded-full border border-white/60 bg-white/80 p-1 shadow-premium-sm">
           <button
-            className={`rounded-full px-4 py-2 text-xs font-semibold ${mode === "interno" ? "bg-semear-green text-white" : "text-semear-green"}`}
+            className={`rounded-full px-4 py-2 text-xs font-bold transition-all duration-200 active:scale-95 ${
+              mode === "interno" 
+                ? "bg-semear-green text-white shadow-premium-sm" 
+                : "text-semear-green hover:bg-white/40"
+            }`}
             onClick={() => setMode("interno")}
             type="button"
           >
-            Modo tecnico interno
+            Modo técnico interno
           </button>
           <button
-            className={`rounded-full px-4 py-2 text-xs font-semibold ${mode === "publico" ? "bg-semear-green text-white" : "text-semear-green"}`}
+            className={`rounded-full px-4 py-2 text-xs font-bold transition-all duration-200 active:scale-95 ${
+              mode === "publico" 
+                ? "bg-semear-green text-white shadow-premium-sm" 
+                : "text-semear-green hover:bg-white/40"
+            }`}
             onClick={() => setMode("publico")}
             type="button"
           >
-            Modo publico
+            Modo público
           </button>
         </div>
       </div>
@@ -432,41 +440,41 @@ export function ActionDebriefPage({ actionId }: Props) {
           <div className="space-y-5">
             {mode === "publico" ? (
               <>
-                <EditableBlock label="Titulo publico" value={form.title} onChange={(value) => updateField("title", value)} />
-                <EditableBlock area label="Texto publico sugerido" value={form.public_summary} onChange={(value) => updateField("public_summary", value)} />
+                <EditableBlock label="Título público" value={form.title} onChange={(value) => updateField("title", value)} />
+                <EditableBlock area label="Texto público sugerido" value={form.public_summary} onChange={(value) => updateField("public_summary", value)} />
                 <EditableBlock area label="Principais achados" value={form.key_findings} onChange={(value) => updateField("key_findings", value)} />
-                <EditableBlock area label="Proximos passos" value={form.next_steps} onChange={(value) => updateField("next_steps", value)} />
+                <EditableBlock area label="Próximos passos" value={form.next_steps} onChange={(value) => updateField("next_steps", value)} />
                 <SemearAlert tone="yellow">
-                  <p className="text-sm font-semibold text-amber-900">Ressalva metodologica automatica</p>
+                  <p className="text-sm font-semibold text-amber-900">Ressalva metodológica automática</p>
                   <p className="mt-1 text-sm text-amber-900">{publicCautionText}</p>
                 </SemearAlert>
-                <section className="rounded-2xl border border-semear-green/15 bg-semear-offwhite p-4">
-                  <p className="text-sm font-semibold text-semear-green">Vozes do territorio</p>
-                  <p className="mt-1 text-xs text-stone-600">Trechos curtos revisados e sem identificação pessoal.</p>
+                <section className="rounded-3xl border border-white/60 bg-white/60 p-5 shadow-premium-md backdrop-blur-md">
+                  <p className="text-sm font-bold text-semear-green">Vozes do território</p>
+                  <p className="mt-1 text-xs text-stone-600 font-medium">Trechos curtos revisados e sem identificação pessoal.</p>
                   {publicQuotes.length > 0 ? (
-                    <ul className="mt-3 space-y-2 text-sm leading-6 text-stone-700">
+                    <ul className="mt-3 space-y-2 text-sm leading-relaxed text-stone-700 font-medium">
                       {publicQuotes.slice(0, 5).map((quote) => (
-                        <li className="rounded-xl border border-semear-gray bg-white p-3" key={quote.id}>
+                        <li className="rounded-2xl border border-white/60 bg-white/80 p-3 shadow-premium-sm" key={quote.id}>
                           {(quote.sanitized_text?.trim() || quote.quote_text).trim()}
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="mt-3 text-sm text-stone-600">Ainda não há falas aprovadas para publicação nesta ação.</p>
+                    <p className="mt-3 text-sm text-stone-500 font-medium">Ainda não há falas aprovadas para publicação nesta ação.</p>
                   )}
                 </section>
               </>
             ) : (
               <>
-                <EditableBlock label="Titulo interno" value={form.title} onChange={(value) => updateField("title", value)} />
+                <EditableBlock label="Título interno" value={form.title} onChange={(value) => updateField("title", value)} />
                 <EditableBlock area label="Notas internas de contexto" value={form.team_review_text} onChange={(value) => updateField("team_review_text", value)} />
                 <EditableBlock area label="Leitura interna dos achados" value={form.key_findings} onChange={(value) => updateField("key_findings", value)} />
                 <EditableBlock area label="Encaminhamentos internos" value={form.next_steps} onChange={(value) => updateField("next_steps", value)} />
-                <section className="rounded-2xl border border-semear-green/15 bg-semear-offwhite p-4">
-                  <p className="text-sm font-semibold text-semear-green">Governança das falas representativas</p>
-                  <p className="mt-1 text-sm text-stone-700">Aprovadas públicas: {approvedPublicQuotes.length}</p>
-                  <p className="mt-1 text-sm text-stone-700">Com evento de auditoria: {approvedPublicWithAudit}/{approvedPublicQuotes.length}</p>
-                  <p className="mt-1 text-sm text-stone-700">Com justificativa de aprovação pública: {approvedPublicWithJustification}/{approvedPublicQuotes.length}</p>
+                <section className="rounded-3xl border border-white/60 bg-white/60 p-5 shadow-premium-md backdrop-blur-md">
+                  <p className="text-sm font-bold text-semear-green">Governança das falas representativas</p>
+                  <p className="mt-1 text-sm text-stone-700 font-medium">Aprovadas públicas: {approvedPublicQuotes.length}</p>
+                  <p className="mt-1 text-sm text-stone-700 font-medium">Com evento de auditoria: {approvedPublicWithAudit}/{approvedPublicQuotes.length}</p>
+                  <p className="mt-1 text-sm text-stone-700 font-medium">Com justificativa de aprovação pública: {approvedPublicWithJustification}/{approvedPublicQuotes.length}</p>
                   {approvedPublicQuotes.length > 0 && approvedPublicWithAudit === approvedPublicQuotes.length && approvedPublicWithJustification === approvedPublicQuotes.length ? (
                     <p className="mt-2 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-xs font-semibold text-green-800">Conformidade editorial completa para uso interno.</p>
                   ) : (
@@ -479,13 +487,13 @@ export function ActionDebriefPage({ actionId }: Props) {
 
           <aside className="space-y-5">
             <InfoPanel icon={<AlertTriangle className="h-5 w-5" />} title="Qualidade territorial da devolutiva">
-              <div className={`rounded-xl border px-3 py-2 text-sm ${respondentTerritoryNote.status === "boa" ? "border-green-200 bg-green-50 text-green-900" : respondentTerritoryNote.status === "atenção" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-red-200 bg-red-50 text-red-900"}`}>
+              <div className={`rounded-xl border px-3 py-2.5 text-sm font-medium ${respondentTerritoryNote.status === "boa" ? "border-green-200 bg-green-50 text-green-900" : respondentTerritoryNote.status === "atenção" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-red-200 bg-red-50 text-red-900"}`}>
                 <p><strong>Cobertura territorial:</strong> {respondentTerritoryMetrics.coveragePercent}% ({respondentTerritoryMetrics.recordsWithRespondentTerritory}/{respondentTerritoryMetrics.totalRecords})</p>
                 <p className="mt-1">{respondentTerritoryNote.shortText}</p>
                 {respondentTerritoryNote.status !== "boa" ? (
                   <>
                     <p className="mt-1">Entre as escutas com território de referência preenchido, observam-se os padrões descritos nesta devolutiva.</p>
-                    <Link className="mt-2 inline-flex min-h-10 items-center rounded-lg bg-semear-green px-3 text-xs font-semibold text-white" href={`/escutas/revisao-territorial?tab=qualidade&actionId=${loadedAction.id}`}>
+                    <Link className="mt-2 inline-flex min-h-10 items-center justify-center rounded-xl bg-semear-green px-3 text-xs font-bold text-white shadow-premium-sm hover:bg-semear-green/92 active:scale-95 transition-all duration-200" href={`/escutas/revisao-territorial?tab=qualidade&actionId=${loadedAction.id}`}>
                       Revisar escutas sem território
                     </Link>
                   </>
@@ -496,7 +504,7 @@ export function ActionDebriefPage({ actionId }: Props) {
               <EditableBlock area label="Aviso metodológico" value={form.methodology_note} onChange={(value) => updateField("methodology_note", value)} compact />
             </InfoPanel>
             <InfoPanel icon={<ShieldCheck className="h-5 w-5" />} title="Privacidade">
-              <p className="text-sm leading-6 text-stone-700">{defaultPrivacyNote}</p>
+              <p className="text-sm leading-relaxed text-stone-700 font-medium">{defaultPrivacyNote}</p>
             </InfoPanel>
             <InfoPanel icon={<AlertTriangle className="h-5 w-5" />} title="Revisão humana">
               <EditableBlock area label="Anotações da equipe" value={form.team_review_text} onChange={(value) => updateField("team_review_text", value)} compact />
@@ -517,8 +525,8 @@ export function ActionDebriefPage({ actionId }: Props) {
       </article>
 
       <div className="no-print mt-5 grid gap-4 lg:grid-cols-[1fr_420px]">
-        <div className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
-          <h3 className="font-semibold text-semear-green">Estados da devolutiva</h3>
+        <div className="rounded-3xl border border-white/60 bg-white/80 p-5 shadow-premium-md backdrop-blur-md">
+          <h3 className="font-bold text-semear-green">Estados da devolutiva</h3>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             <StatusNote active={currentStatus === "draft"} title="Rascunho" text="Texto em preparação, não é versão final." />
             <StatusNote active={currentStatus === "reviewed"} title="Revisada" text="Equipe revisou, mas ainda não aprovou circulação." />
@@ -530,45 +538,45 @@ export function ActionDebriefPage({ actionId }: Props) {
           {metrics.draft > 0 ? <Warning text="Há escutas em rascunho. Recomenda-se revisar antes de aprovar." /> : null}
           {metrics.possibleSensitive > 0 ? <Warning text="Há registros com possível dado sensível. Revise antes de aprovar a devolutiva." danger /> : null}
           {metrics.draft === 0 && metrics.possibleSensitive === 0 && metrics.reviewed > 0 ? <Ready text="Pronta para devolutiva, após revisão humana final." /> : null}
-          {feedback ? <p className="mt-4 text-sm font-semibold text-semear-green">{feedback}</p> : null}
-          {error ? <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p> : null}
+          {feedback ? <p className="mt-4 text-sm font-bold text-semear-green">{feedback}</p> : null}
+          {error ? <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800 shadow-premium-sm">{error}</p> : null}
         </div>
 
-        <div className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
-          <h3 className="font-semibold text-semear-green">Exportação e fluxo</h3>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <button className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" onClick={() => void copyText(publicText, "Texto público")} type="button">
+        <div className="sticky bottom-4 rounded-3xl border border-white/60 bg-white/90 p-5 shadow-premium-lg backdrop-blur-lg">
+          <h3 className="font-bold text-semear-green">Exportação e fluxo</h3>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/60 bg-white px-4 text-xs font-bold text-semear-green shadow-premium-sm transition hover:bg-stone-50 active:scale-[0.98] transition-all duration-200" onClick={() => void copyText(publicText, "Texto público")} type="button">
               <Copy className="h-4 w-4" aria-hidden="true" />
               Copiar texto público
             </button>
-            <button className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" onClick={() => void copyText(markdown, "Markdown")} type="button">
+            <button className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/60 bg-white px-4 text-xs font-bold text-semear-green shadow-premium-sm transition hover:bg-stone-50 active:scale-[0.98] transition-all duration-200" onClick={() => void copyText(markdown, "Markdown")} type="button">
               <FileText className="h-4 w-4" aria-hidden="true" />
               Copiar Markdown
             </button>
-            <button className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" onClick={downloadMarkdown} type="button">
+            <button className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/60 bg-white px-4 text-xs font-bold text-semear-green shadow-premium-sm transition hover:bg-stone-50 active:scale-[0.98] transition-all duration-200" onClick={downloadMarkdown} type="button">
               <Download className="h-4 w-4" aria-hidden="true" />
               Baixar .md
             </button>
-            <button className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" onClick={() => window.print()} type="button">
+            <button className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/60 bg-white px-4 text-xs font-bold text-semear-green shadow-premium-sm transition hover:bg-stone-50 active:scale-[0.98] transition-all duration-200" onClick={() => window.print()} type="button">
               <Printer className="h-4 w-4" aria-hidden="true" />
               Imprimir
             </button>
           </div>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <button className="inline-flex min-h-12 items-center gap-2 rounded-full bg-semear-green px-5 text-sm font-semibold text-white disabled:opacity-60" disabled={saving} onClick={() => void saveDebrief("draft")} type="button">
+          <div className="mt-5 flex flex-wrap gap-2.5">
+            <button className="inline-flex min-h-12 items-center gap-2 rounded-full bg-semear-green px-5 text-sm font-bold text-white shadow-premium-sm hover:bg-semear-green/92 active:scale-[0.98] transition-all duration-200 disabled:opacity-60" disabled={saving} onClick={() => void saveDebrief("draft")} type="button">
               <Save className="h-4 w-4" aria-hidden="true" />
               Salvar rascunho
             </button>
-            <button className="inline-flex min-h-12 items-center gap-2 rounded-full bg-semear-earth px-5 text-sm font-semibold text-white disabled:opacity-60" disabled={saving} onClick={() => void saveDebrief("reviewed")} type="button">
+            <button className="inline-flex min-h-12 items-center gap-2 rounded-full bg-semear-earth px-5 text-sm font-bold text-white shadow-premium-sm hover:bg-semear-earth/92 active:scale-[0.98] transition-all duration-200 disabled:opacity-60" disabled={saving} onClick={() => void saveDebrief("reviewed")} type="button">
               <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
               Marcar revisada
             </button>
-            <button className="inline-flex min-h-12 items-center gap-2 rounded-full bg-stone-900 px-5 text-sm font-semibold text-white disabled:opacity-60" disabled={saving || !canApprove} onClick={() => void saveDebrief("approved")} type="button">
+            <button className="inline-flex min-h-12 items-center gap-2 rounded-full bg-stone-900 px-5 text-sm font-bold text-white shadow-premium-sm hover:bg-stone-800 active:scale-[0.98] transition-all duration-200 disabled:opacity-60" disabled={saving || !canApprove} onClick={() => void saveDebrief("approved")} type="button">
               <ShieldCheck className="h-4 w-4" aria-hidden="true" />
               Aprovar
             </button>
           </div>
-          {!canApprove ? <p className="mt-3 text-sm text-stone-600">Aprovação final é restrita à coordenação ou admin.</p> : null}
+          {!canApprove ? <p className="mt-3 text-xs text-stone-500 font-medium">Aprovação final é restrita à coordenação ou admin.</p> : null}
         </div>
       </div>
     </section>
@@ -577,18 +585,22 @@ export function ActionDebriefPage({ actionId }: Props) {
 
 function Metric({ label, value, danger = false }: { label: string; value: number; danger?: boolean }) {
   return (
-    <div className={`rounded-2xl border p-4 ${danger ? "border-red-100 bg-red-50" : "border-semear-gray bg-semear-offwhite"}`}>
-      <p className={`text-xs font-semibold uppercase tracking-[0.12em] ${danger ? "text-red-800" : "text-stone-500"}`}>{label}</p>
-      <strong className={`mt-2 block text-3xl font-semibold ${danger ? "text-red-800" : "text-semear-green"}`}>{value}</strong>
+    <div className={`rounded-2xl border p-4 shadow-premium-sm ${danger ? "border-red-200 bg-red-50" : "border-white/60 bg-white/80"}`}>
+      <p className={`text-xs font-semibold uppercase tracking-[0.12em] ${danger ? "text-red-850" : "text-stone-500"}`}>{label}</p>
+      <strong className={`mt-2 block text-3xl font-extrabold ${danger ? "text-red-800" : "text-semear-green"}`}>{value}</strong>
     </div>
   );
 }
 
 function MiniList({ title, items }: { title: string; items: string[] }) {
   return (
-    <section className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4">
-      <h3 className="font-semibold text-semear-green">{title}</h3>
-      {items.length > 0 ? <p className="mt-2 text-sm leading-6 text-stone-700">{items.join(", ")}</p> : <p className="mt-2 text-sm text-stone-500">Não registrado.</p>}
+    <section className="rounded-2xl border border-white/60 bg-white/60 p-4 shadow-premium-sm backdrop-blur-md">
+      <h3 className="font-bold text-semear-green">{title}</h3>
+      {items.length > 0 ? (
+        <p className="mt-2 text-sm leading-relaxed text-stone-700 font-medium">{items.join(", ")}</p>
+      ) : (
+        <p className="mt-2 text-sm text-stone-400 font-medium">Não registrado.</p>
+      )}
     </section>
   );
 }
@@ -596,11 +608,11 @@ function MiniList({ title, items }: { title: string; items: string[] }) {
 function EditableBlock({ label, value, onChange, area = false, compact = false }: { label: string; value: string; onChange: (value: string) => void; area?: boolean; compact?: boolean }) {
   return (
     <label className="block">
-      <span className="text-sm font-semibold text-semear-green">{label}</span>
+      <span className="text-sm font-bold text-semear-green">{label}</span>
       {area ? (
-        <textarea className={`mt-2 w-full rounded-2xl border border-semear-gray bg-white px-4 py-3 text-sm leading-7 outline-none focus:border-semear-green ${compact ? "min-h-32" : "min-h-56"}`} value={value} onChange={(event) => onChange(event.target.value)} />
+        <textarea className={`mt-2 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 py-3 text-sm leading-relaxed text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green ${compact ? "min-h-32" : "min-h-56"}`} value={value} onChange={(event) => onChange(event.target.value)} />
       ) : (
-        <input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" value={value} onChange={(event) => onChange(event.target.value)} />
+        <input className="mt-2 min-h-12 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 text-sm font-bold text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green" value={value} onChange={(event) => onChange(event.target.value)} />
       )}
     </label>
   );
@@ -608,10 +620,10 @@ function EditableBlock({ label, value, onChange, area = false, compact = false }
 
 function InfoPanel({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
   return (
-    <section className="rounded-2xl border border-semear-green/15 bg-semear-offwhite p-5">
+    <section className="rounded-3xl border border-white/60 bg-white/60 p-5 shadow-premium-sm backdrop-blur-md">
       <div className="mb-4 flex items-center gap-3 text-semear-green">
-        {icon}
-        <h3 className="font-semibold">{title}</h3>
+        <div className="text-semear-green">{icon}</div>
+        <h3 className="font-bold">{title}</h3>
       </div>
       {children}
     </section>
@@ -620,21 +632,33 @@ function InfoPanel({ icon, title, children }: { icon: ReactNode; title: string; 
 
 function StatusNote({ active, title, text }: { active: boolean; title: string; text: string }) {
   return (
-    <div className={`rounded-2xl border p-4 ${active ? "border-semear-green bg-semear-green-soft" : "border-semear-gray bg-semear-offwhite"}`}>
-      <p className="font-semibold text-semear-green">{title}</p>
-      <p className="mt-1 text-sm leading-5 text-stone-600">{text}</p>
+    <div className={`rounded-2xl border p-4 shadow-premium-sm transition-all duration-200 ${active ? "border-semear-green bg-semear-green-soft/40" : "border-white/60 bg-white/80"}`}>
+      <p className="font-bold text-semear-green">{title}</p>
+      <p className="mt-1 text-sm leading-relaxed text-stone-600 font-medium">{text}</p>
     </div>
   );
 }
 
 function Warning({ text, danger = false }: { text: string; danger?: boolean }) {
-  return <p className={`mt-4 rounded-2xl border p-4 text-sm font-medium ${danger ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}>{text}</p>;
+  return (
+    <p className={`mt-4 rounded-2xl border p-4 text-sm font-semibold shadow-premium-sm ${danger ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+      {text}
+    </p>
+  );
 }
 
 function Ready({ text }: { text: string }) {
-  return <p className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm font-medium text-green-800">{text}</p>;
+  return (
+    <p className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm font-semibold text-green-800 shadow-premium-sm">
+      {text}
+    </p>
+  );
 }
 
 function StateBox({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "error" }) {
-  return <div className={`rounded-[1.5rem] p-6 text-sm shadow-soft ${tone === "error" ? "border border-red-200 bg-red-50 text-red-800" : "bg-white/72 text-stone-600"}`}>{children}</div>;
+  return (
+    <div className={`rounded-3xl p-6 text-sm font-medium shadow-premium-md backdrop-blur-md ${tone === "error" ? "border border-red-200 bg-red-50 text-red-800" : "border border-white/60 bg-white/80 text-stone-600"}`}>
+      {children}
+    </div>
+  );
 }

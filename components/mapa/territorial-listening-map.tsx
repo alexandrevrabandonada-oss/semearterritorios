@@ -189,15 +189,15 @@ export function TerritorialListeningMap() {
             </div>
 
             <SemearCard className="mt-5">
-              <h3 className="text-lg font-semibold text-semear-green">Cards por território da ação</h3>
+              <h3 className="text-xl font-extrabold text-semear-green">Cards por território da ação</h3>
               <div className="mt-4 grid gap-4 lg:grid-cols-2">
                 {operationCards.map((card) => (
-                  <article className="rounded-xl border border-semear-gray bg-white p-4" key={card.neighborhoodId}>
-                    <h4 className="text-xl font-semibold text-semear-green">{card.neighborhoodName}</h4>
-                    <p className="mt-2 text-sm text-stone-700">{card.actionsCount} ação(ões) realizada(s)</p>
-                    <p className="text-sm text-stone-700">{card.recordsCollectedThere} escuta(s) coletada(s) em ações neste território</p>
-                    <p className="text-sm text-stone-700">entrevistados vieram de {card.respondentTerritoriesReached} território(s)</p>
-                    <p className="mt-2 text-xs text-stone-500">última ação: {card.latestActionDate ? new Date(`${card.latestActionDate}T00:00:00`).toLocaleDateString("pt-BR") : "não informado"}</p>
+                  <article className="rounded-2xl border border-white/60 bg-white/60 p-5 shadow-premium-sm hover:shadow-premium-md hover:bg-white/80 transition-all duration-200" key={card.neighborhoodId}>
+                    <h4 className="text-xl font-extrabold text-semear-green">{card.neighborhoodName}</h4>
+                    <p className="mt-2 text-sm text-stone-700 font-semibold">{card.actionsCount} ação(ões) realizada(s)</p>
+                    <p className="text-sm text-stone-700 font-semibold">{card.recordsCollectedThere} escuta(s) coletada(s) em ações neste território</p>
+                    <p className="text-sm text-stone-700 font-semibold">entrevistados vieram de {card.respondentTerritoriesReached} território(s)</p>
+                    <p className="mt-3 text-xs text-stone-500 font-bold">última ação: {card.latestActionDate ? new Date(`${card.latestActionDate}T00:00:00`).toLocaleDateString("pt-BR") : "não informado"}</p>
                   </article>
                 ))}
                 {operationCards.length === 0 ? <PedagogicEmpty text="Sem ações no recorte selecionado." /> : null}
@@ -214,15 +214,15 @@ export function TerritorialListeningMap() {
             </div>
 
             <SemearCard className="mt-5">
-              <h3 className="text-lg font-semibold text-semear-green">Cards por território de referência do entrevistado</h3>
+              <h3 className="text-xl font-extrabold text-semear-green">Cards por território de referência do entrevistado</h3>
               <div className="mt-4 grid gap-4 lg:grid-cols-2">
                 {respondentCards.map((card) => (
-                  <article className="rounded-xl border border-semear-gray bg-white p-4" key={card.neighborhoodId}>
-                    <h4 className="text-xl font-semibold text-semear-green">{card.neighborhoodName}</h4>
-                    <p className="mt-2 text-sm text-stone-700">{card.recordsCount} escuta(s) de pessoas deste território</p>
-                    <p className="text-sm text-stone-700">temas mais citados: {card.topThemes.length > 0 ? card.topThemes.map((item) => `${item.name} (${item.count})`).join(", ") : "não informado"}</p>
-                    <p className="text-sm text-stone-700">ações onde apareceram: {card.actionsWhereAppeared.length > 0 ? card.actionsWhereAppeared.join(", ") : "não informado"}</p>
-                    <p className="text-xs text-stone-500">vínculo predominante: {card.predominantRelation ?? "não informado"}</p>
+                  <article className="rounded-2xl border border-white/60 bg-white/60 p-5 shadow-premium-sm hover:shadow-premium-md hover:bg-white/80 transition-all duration-200" key={card.neighborhoodId}>
+                    <h4 className="text-xl font-extrabold text-semear-green">{card.neighborhoodName}</h4>
+                    <p className="mt-2 text-sm text-stone-700 font-semibold">{card.recordsCount} escuta(s) de pessoas deste território</p>
+                    <p className="text-sm text-stone-700 font-semibold">temas mais citados: {card.topThemes.length > 0 ? card.topThemes.map((item) => `${item.name} (${item.count})`).join(", ") : "não informado"}</p>
+                    <p className="text-sm text-stone-700 font-semibold">ações onde apareceram: {card.actionsWhereAppeared.length > 0 ? card.actionsWhereAppeared.join(", ") : "não informado"}</p>
+                    <p className="mt-3 text-xs text-stone-500 font-bold">vínculo predominante: {card.predominantRelation ?? "não informado"}</p>
                   </article>
                 ))}
                 {respondentCards.length === 0 ? <PedagogicEmpty text="Sem territórios de referência no recorte selecionado." /> : null}
@@ -233,7 +233,7 @@ export function TerritorialListeningMap() {
       ) : null}
 
       <SemearCard className="mt-5">
-        <h3 className="font-semibold text-semear-green">Acessos rápidos</h3>
+        <h3 className="text-lg font-extrabold text-semear-green">Acessos rápidos</h3>
         <div className="mt-4 flex flex-wrap gap-2">
           <SemearButton href="/escutas" variant="secondary">
             Abrir escutas
@@ -329,7 +329,7 @@ function countBy<TItem>(items: TItem[], getValue: (item: TItem) => string) {
 function TabButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
   return (
     <button
-      className={`inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold ${active ? "bg-semear-green text-white" : "border border-semear-green/15 bg-white text-semear-green"}`}
+      className={`inline-flex min-h-11 items-center rounded-full px-4 text-sm font-bold shadow-premium-sm transition duration-200 active:scale-[0.98] ${active ? "bg-semear-yellow text-semear-green" : "border border-white/60 bg-white/80 text-semear-green hover:bg-white"}`}
       onClick={onClick}
       type="button"
     >
@@ -339,31 +339,31 @@ function TabButton({ active, label, onClick }: { active: boolean; label: string;
 }
 
 function AlertMarker() {
-  return <span className="inline-block h-5 w-5 rounded-full bg-amber-100 text-center text-xs leading-5 text-amber-900">!</span>;
+  return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-900 shadow-premium-sm">!</span>;
 }
 
 function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
   return (
-    <article className="rounded-3xl border border-white/80 bg-white p-5 shadow-soft">
-      <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl bg-semear-green text-white">{icon}</div>
-      <p className="text-sm font-medium text-stone-600">{label}</p>
-      <strong className="mt-2 block text-4xl font-semibold tracking-tight text-semear-green">{value}</strong>
+    <article className="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-md p-5 shadow-premium-md">
+      <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl bg-semear-green text-white shadow-premium-sm">{icon}</div>
+      <p className="text-sm font-bold text-stone-600">{label}</p>
+      <strong className="mt-2 block text-4xl font-extrabold tracking-tight text-semear-green">{value}</strong>
     </article>
   );
 }
 
 function FilterInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label><span className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{label}</span><input className={semearControlClassName} onChange={(event) => onChange(event.target.value)} type="month" value={value} /></label>;
+  return <label><span className="text-xs font-bold uppercase tracking-[0.12em] text-stone-500">{label}</span><input className={semearControlClassName} onChange={(event) => onChange(event.target.value)} type="month" value={value} /></label>;
 }
 
 function FilterSelect({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: ReactNode }) {
-  return <label><span className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{label}</span><select className={semearControlClassName} onChange={(event) => onChange(event.target.value)} value={value}>{children}</select></label>;
+  return <label><span className="text-xs font-bold uppercase tracking-[0.12em] text-stone-500">{label}</span><select className={semearControlClassName} onChange={(event) => onChange(event.target.value)} value={value}>{children}</select></label>;
 }
 
 function StateBox({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "error" }) {
-  return <div className={`mt-5 rounded-[1.5rem] p-6 text-sm shadow-soft ${tone === "error" ? "border border-red-200 bg-red-50 text-red-800" : "bg-white/72 text-stone-600"}`}>{children}</div>;
+  return <div className={`mt-5 rounded-3xl p-6 text-sm shadow-premium-md backdrop-blur-md ${tone === "error" ? "border border-red-200 bg-red-50 text-red-800 font-bold" : "border border-white/60 bg-white/80 text-stone-650 font-semibold"}`}>{children}</div>;
 }
 
 function PedagogicEmpty({ text }: { text: string }) {
-  return <div className="rounded-2xl border border-dashed border-semear-green/25 bg-semear-offwhite p-5 text-sm leading-6 text-stone-600">{text}</div>;
+  return <div className="rounded-2xl border border-dashed border-semear-green/30 bg-white/60 p-5 text-sm leading-6 text-stone-700 font-bold shadow-premium-sm">{text}</div>;
 }

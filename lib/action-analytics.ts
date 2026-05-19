@@ -12,6 +12,17 @@ import type {
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { calculateRespondentTerritoryQuality, buildTerritorialQualityMethodologyNote } from "@/lib/territorial-quality";
 import { getActionPilotMetrics, summarizeOccupations, hasPossibleSensitiveData } from "@/lib/action-pilot";
+import { normalizePlaceKey } from "@/lib/normalized-places-quality";
+
+function isPlaceSensitive(place: string): boolean {
+  const sensitivePatterns = [
+    /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{3}[-.\s]?\d{2}\b/, // CPF
+    /\b\d{4,5}[-.\s]?\d{4}\b/, // Phone
+    /\b[\w.%+-]+@[\w.-]+\.[a-zA-Z]{2,}\b/, // Email
+    /\b(?:rua|avenida|av\.|travessa|alameda)\s+[^,.;\n]+,\s*\d+\b/i // Address with number
+  ];
+  return sensitivePatterns.some((pattern) => pattern.test(place));
+}
 
 export type ListeningRecordAnalytic = ListeningRecord & {
   listening_record_themes: Array<{ themes: Pick<Theme, "id" | "name"> | null }>;
@@ -250,15 +261,34 @@ export async function buildActionAnalytics(
     rank: idx + 1
   }));
 
+  // Fetch normalized places to check if the places are normalized (structured)
+  const supabase = createBrowserSupabaseClient();
+  const normalizedPlacesSet = new Set<string>();
+  if (supabase) {
+    const { data: normPlaces } = await supabase
+      .from("normalized_places")
+      .select("normalized_name");
+    if (normPlaces) {
+      normPlaces.forEach((np) => {
+        normalizedPlacesSet.add(normalizePlaceKey(np.normalized_name));
+      });
+    }
+  }
+
   // 7. Place ranking
-  const placeRanking: PlaceRanking[] = pilotMetrics.places.map((item, idx) => ({
-    place: item.label,
-    count: item.count,
-    percentage: totalRecords > 0 ? Math.round((item.count / totalRecords) * 100) : 0,
-    rank: idx + 1,
-    isSensitive: false, // TODO: Check against sensitive patterns
-    isStructured: false // TODO: Check if place is normalized
-  }));
+  const placeRanking: PlaceRanking[] = pilotMetrics.places.map((item, idx) => {
+    const placeNormalizedKey = normalizePlaceKey(item.label);
+    const isSensitive = isPlaceSensitive(item.label);
+    const isStructured = normalizedPlacesSet.has(placeNormalizedKey);
+    return {
+      place: item.label,
+      count: item.count,
+      percentage: totalRecords > 0 ? Math.round((item.count / totalRecords) * 100) : 0,
+      rank: idx + 1,
+      isSensitive,
+      isStructured
+    };
+  });
 
   // 8. Occupation summary as detail array
   const occupationSummary: OccupationDetail[] = occupationSummaryRaw.groups.map((group) => {
@@ -323,7 +353,66 @@ export async function buildActionAnalytics(
   );
 
   // 16. Interviewer summary
-  const interviewerSummary: InterviewerDetail[] = []; // TODO: Load from action_team_members
+  const interviewerSummary: InterviewerDetail[] = [];
+  if (supabase) {
+    const { data: actionTeam } = await supabase
+      .from("action_team_members")
+      .select("team_member_id, team_members(id, display_name)")
+      .eq("action_id", actionId);
+
+    if (actionTeam) {
+      // Map participant ids to their names
+      const teamMap = new Map<string, string>();
+      actionTeam.forEach((at: any) => {
+        if (at.team_members) {
+          teamMap.set(at.team_members.id, at.team_members.display_name);
+        }
+      });
+
+      // Fetch team members not on action but who have records
+      const missingIds = new Set<string>();
+      records.forEach((r) => {
+        if (r.interviewer_team_member_id && !teamMap.has(r.interviewer_team_member_id)) {
+          missingIds.add(r.interviewer_team_member_id);
+        }
+      });
+
+      if (missingIds.size > 0) {
+        const { data: missingMembers } = await supabase
+          .from("team_members")
+          .select("id, display_name")
+          .in("id", Array.from(missingIds));
+
+        if (missingMembers) {
+          missingMembers.forEach((tm: any) => {
+            teamMap.set(tm.id, tm.display_name);
+          });
+        }
+      }
+
+      // Count records per interviewer_team_member_id
+      const counts = new Map<string, number>();
+      records.forEach((r) => {
+        if (r.interviewer_team_member_id) {
+          counts.set(r.interviewer_team_member_id, (counts.get(r.interviewer_team_member_id) ?? 0) + 1);
+        }
+      });
+
+      // Build summary
+      Array.from(teamMap.entries()).forEach(([id, name]) => {
+        const count = counts.get(id) ?? 0;
+        interviewerSummary.push({
+          interviewerId: id,
+          interviewerName: name,
+          recordCount: count,
+          percentage: totalRecords > 0 ? Math.round((count / totalRecords) * 100) : 0
+        });
+      });
+
+      // Sort by count desc, name asc
+      interviewerSummary.sort((a, b) => b.recordCount - a.recordCount || a.interviewerName.localeCompare(b.interviewerName, "pt-BR"));
+    }
+  }
 
   return {
     actionId,

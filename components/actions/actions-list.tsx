@@ -145,28 +145,28 @@ export function ActionsList() {
   );
 
   const filterFields = (
-    <div className="grid gap-3 md:grid-cols-4">
-      <label>
-        <span className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">
+    <div className="grid gap-4 md:grid-cols-4">
+      <label className="block">
+        <span className="text-xs font-bold uppercase tracking-[0.15em] text-stone-500">
           Mês
         </span>
         <input
-          className="mt-2 min-h-11 w-full rounded-2xl border border-semear-gray bg-white px-3 text-sm outline-none focus:border-semear-green"
+          className="mt-2 min-h-11 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 py-2 text-sm font-bold text-stone-700 shadow-premium-sm outline-none transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green"
           onChange={(event) => updateFilter("month", event.target.value)}
           type="month"
           value={filters.month}
         />
       </label>
-      <label>
-        <span className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">
+      <label className="block">
+        <span className="text-xs font-bold uppercase tracking-[0.15em] text-stone-500">
           Bairro
         </span>
         <select
-          className="mt-2 min-h-11 w-full rounded-2xl border border-semear-gray bg-white px-3 text-sm outline-none focus:border-semear-green"
+          className="mt-2 min-h-11 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 py-2 text-sm font-bold text-stone-700 shadow-premium-sm outline-none transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green"
           onChange={(event) => updateFilter("neighborhoodId", event.target.value)}
           value={filters.neighborhoodId}
         >
-          <option value="">Todos</option>
+          <option value="">Todos os bairros</option>
           {neighborhoods.map((neighborhood) => (
             <option key={neighborhood.id} value={neighborhood.id}>
               {formatNeighborhoodOption(neighborhood)}
@@ -174,16 +174,16 @@ export function ActionsList() {
           ))}
         </select>
       </label>
-      <label>
-        <span className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">
+      <label className="block">
+        <span className="text-xs font-bold uppercase tracking-[0.15em] text-stone-500">
           Tipo
         </span>
         <select
-          className="mt-2 min-h-11 w-full rounded-2xl border border-semear-gray bg-white px-3 text-sm outline-none focus:border-semear-green"
+          className="mt-2 min-h-11 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 py-2 text-sm font-bold text-stone-700 shadow-premium-sm outline-none transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green"
           onChange={(event) => updateFilter("actionType", event.target.value)}
           value={filters.actionType}
         >
-          <option value="">Todos</option>
+          <option value="">Todos os tipos</option>
           {actionTypeOptions.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
@@ -191,16 +191,16 @@ export function ActionsList() {
           ))}
         </select>
       </label>
-      <label>
-        <span className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">
+      <label className="block">
+        <span className="text-xs font-bold uppercase tracking-[0.15em] text-stone-500">
           Status
         </span>
         <select
-          className="mt-2 min-h-11 w-full rounded-2xl border border-semear-gray bg-white px-3 text-sm outline-none focus:border-semear-green"
+          className="mt-2 min-h-11 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 py-2 text-sm font-bold text-stone-700 shadow-premium-sm outline-none transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green"
           onChange={(event) => updateFilter("status", event.target.value)}
           value={filters.status}
         >
-          <option value="">Todos</option>
+          <option value="">Todos os status</option>
           {actionStatusOptions.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
@@ -220,21 +220,21 @@ export function ActionsList() {
 
   return (
     <section className="pb-10">
-      <div className="flex flex-col gap-4 rounded-[2rem] border border-white/80 bg-white/72 p-5 shadow-soft sm:p-7 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4 rounded-3xl border border-white/60 bg-white/80 p-6 shadow-premium-sm backdrop-blur-sm sm:p-8 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-semear-earth">
             Ações territoriais
           </p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-semear-green">
+          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-semear-green">
             Planejamento e memória das atividades
           </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-stone-600 font-medium">
             Cadastre ações antes das escutas. Depois, cada escuta poderá ser vinculada a uma ação
             para manter contexto territorial e rastreabilidade.
           </p>
         </div>
         <Link
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-semear-green px-5 text-sm font-semibold text-white transition hover:bg-semear-green/92"
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-semear-green px-6 text-sm font-bold text-white shadow-premium-sm transition hover:bg-semear-green/90 active:scale-[0.98]"
           href="/acoes/nova"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
@@ -242,16 +242,16 @@ export function ActionsList() {
         </Link>
       </div>
 
-      <details className="mt-5 rounded-[1.5rem] border border-white/80 bg-white/72 p-4 shadow-soft md:hidden">
-        <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold text-semear-green">
+      <details className="mt-5 rounded-3xl border border-white/60 bg-white/60 p-5 shadow-premium-sm backdrop-blur-sm md:hidden">
+        <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-bold text-semear-green">
           <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
           Filtrar ações
         </summary>
         <div className="mt-4">{filterFields}</div>
       </details>
 
-      <div className="mt-5 hidden rounded-[1.5rem] border border-white/80 bg-white/72 p-4 shadow-soft md:block">
-        <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-semear-green">
+      <div className="mt-5 hidden rounded-3xl border border-white/60 bg-white/60 p-5 shadow-premium-sm backdrop-blur-sm md:block">
+        <div className="mb-4 flex items-center gap-2 text-sm font-bold text-semear-green">
           <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
           Filtros
         </div>
@@ -259,26 +259,26 @@ export function ActionsList() {
       </div>
 
       {loading ? (
-        <div className="mt-5 rounded-[1.5rem] border border-white/80 bg-white/72 p-6 text-sm font-medium text-stone-600 shadow-soft">
+        <div className="mt-5 rounded-3xl border border-white/60 bg-white/60 p-6 text-sm font-bold text-stone-600 shadow-premium-sm backdrop-blur-sm">
           Carregando ações...
         </div>
       ) : null}
 
       {error ? (
-        <div className="mt-5 rounded-[1.5rem] border border-red-200 bg-red-50 p-6 text-sm text-red-800">
+        <div className="mt-5 rounded-3xl border border-red-200 bg-red-50 p-6 text-sm font-bold text-red-800">
           {error}
         </div>
       ) : null}
 
       {!loading && !error && filteredActions.length === 0 ? (
-        <div className="mt-5 rounded-[1.5rem] border border-dashed border-semear-green/25 bg-semear-offwhite p-8 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white text-semear-earth">
+        <div className="mt-5 rounded-3xl border border-dashed border-semear-green/20 bg-white/50 p-8 text-center backdrop-blur-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white text-semear-earth shadow-premium-sm">
             <Search className="h-6 w-6" aria-hidden="true" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold text-semear-green">
+          <h3 className="mt-4 text-lg font-bold text-semear-green">
             Nenhuma ação encontrada
           </h3>
-          <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-stone-600">
+          <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-stone-500 font-medium">
             Cadastre a primeira ação territorial ou ajuste os filtros para ver outros registros.
           </p>
         </div>
@@ -287,26 +287,26 @@ export function ActionsList() {
       {!loading && !error && filteredActions.length > 0 ? (
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           {filteredActions.map((action) => (
-            <article className="rounded-3xl border border-white/80 bg-white p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-semear-green/25" key={action.id}>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-semear-green-soft px-3 py-1 text-xs font-semibold text-semear-green">
+            <article className="rounded-3xl border border-white/60 bg-white/95 p-6 shadow-premium-sm transition duration-350 hover:-translate-y-1 hover:shadow-premium-md hover:border-semear-green/35" key={action.id}>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span className="inline-flex items-center rounded-full border border-semear-green-soft bg-semear-green-soft/40 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-semear-green">
                   {getActionTypeLabel(action.action_type as ActionType)}
                 </span>
-                <span className="rounded-full bg-semear-yellow/35 px-3 py-1 text-xs font-semibold text-semear-green">
+                <span className="inline-flex items-center rounded-full border border-semear-yellow bg-semear-yellow/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-semear-green">
                   {getActionStatusLabel(action.status as ActionStatus)}
                 </span>
-                <span className="rounded-full bg-semear-offwhite px-3 py-1 text-xs font-semibold text-stone-700">
+                <span className="inline-flex items-center rounded-full border border-white/65 bg-white px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-stone-700 shadow-premium-sm">
                   {actionMeta.get(action.id)?.totalRecords ?? 0} escutas
                 </span>
               </div>
-              <h3 className="mt-4 text-xl font-semibold text-semear-green">{action.title}</h3>
-              <div className="mt-4 flex flex-wrap gap-3 text-sm text-stone-600">
-                <span className="inline-flex items-center gap-2">
-                  <CalendarDays className="h-4 w-4" aria-hidden="true" />
+              <h3 className="mt-4 text-xl font-bold text-semear-green tracking-tight">{action.title}</h3>
+              <div className="mt-4 flex flex-wrap gap-3 text-xs font-bold text-stone-500">
+                <span className="inline-flex items-center gap-1.5">
+                  <CalendarDays className="h-4 w-4 text-semear-earth" aria-hidden="true" />
                   {new Date(`${action.action_date}T00:00:00`).toLocaleDateString("pt-BR")}
                 </span>
-                <span className="inline-flex items-center gap-2">
-                  <MapPin className="h-4 w-4" aria-hidden="true" />
+                <span className="inline-flex items-center gap-1.5">
+                  <MapPin className="h-4 w-4 text-semear-earth" aria-hidden="true" />
                   {action.neighborhoods ? formatNeighborhoodOption(action.neighborhoods) : "Sem bairro definido"}
                 </span>
               </div>
@@ -317,20 +317,20 @@ export function ActionsList() {
                 <StatusStrip icon={<Keyboard className="h-4 w-4" />} label="Operação" value="Abrir, digitar ou revisar" />
               </div>
               {action.summary ? (
-                <p className="mt-4 line-clamp-3 text-sm leading-6 text-stone-600">
+                <p className="mt-4 line-clamp-3 text-sm leading-relaxed text-stone-600 font-medium">
                   {action.summary}
                 </p>
               ) : (
-                <p className="mt-4 text-sm leading-6 text-stone-500">Sem resumo cadastrado.</p>
+                <p className="mt-4 text-sm leading-relaxed text-stone-400 font-medium">Sem resumo cadastrado.</p>
               )}
-              <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href={`/acoes/${action.id}`}>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/60 bg-white px-4 text-sm font-bold text-semear-green shadow-premium-sm transition hover:bg-stone-50 active:scale-[0.98] duration-200" href={`/acoes/${action.id}`}>
                   Abrir
                 </Link>
-                <Link className="inline-flex min-h-11 items-center justify-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/escutas/lote">
+                <Link className="inline-flex min-h-11 items-center justify-center rounded-full bg-semear-green px-4 text-sm font-bold text-white shadow-premium-sm transition hover:bg-semear-green/90 active:scale-[0.98] duration-200" href="/escutas/lote">
                   Digitar fichas
                 </Link>
-                <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href={`/escutas?actionId=${action.id}`}>
+                <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/60 bg-white px-4 text-sm font-bold text-semear-green shadow-premium-sm transition hover:bg-stone-50 active:scale-[0.98] duration-200" href={`/escutas?actionId=${action.id}`}>
                   Revisar
                 </Link>
               </div>
@@ -344,9 +344,9 @@ export function ActionsList() {
 
 function StatusStrip({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-semear-offwhite px-3 py-3 text-sm text-stone-700">
-      <span className="flex items-center gap-2 font-semibold text-semear-green">{icon}{label}</span>
-      <p className="mt-1 text-xs leading-5 text-stone-600">{value}</p>
+    <div className="rounded-2xl border border-white/40 bg-white/50 px-3.5 py-3 text-sm text-stone-700 shadow-premium-sm">
+      <span className="flex items-center gap-2 font-bold text-semear-green">{icon}{label}</span>
+      <p className="mt-1 text-xs leading-5 text-stone-600 font-medium">{value}</p>
     </div>
   );
 }

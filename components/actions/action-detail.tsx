@@ -195,14 +195,14 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
     <section className="pb-10">
       <div className="mb-5 flex flex-wrap gap-3">
         <Link
-          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white/70 px-4 text-sm font-semibold text-semear-green transition hover:bg-white"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/60 bg-white/80 px-4 text-sm font-bold text-semear-green shadow-premium-sm transition hover:bg-white active:scale-[0.98] duration-200"
           href="/acoes"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Voltar para ações
         </Link>
         <button
-          className="inline-flex min-h-11 items-center gap-2 rounded-full bg-semear-green px-4 text-sm font-semibold text-white transition hover:bg-semear-green/92"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full bg-semear-green px-5 text-sm font-bold text-white shadow-premium-sm transition hover:bg-semear-green/90 active:scale-[0.98] duration-200"
           onClick={() => setEditing(true)}
           type="button"
         >
@@ -210,21 +210,21 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
           Editar ação
         </button>
         <Link
-          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white/70 px-4 text-sm font-semibold text-semear-green transition hover:bg-white"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/60 bg-white/80 px-4 text-sm font-bold text-semear-green shadow-premium-sm transition hover:bg-white active:scale-[0.98] duration-200"
           href={`/acoes/${actionId}/piloto`}
         >
           <FlaskConical className="h-4 w-4" aria-hidden="true" />
           Piloto da banca
         </Link>
         <Link
-          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white/70 px-4 text-sm font-semibold text-semear-green transition hover:bg-white"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/60 bg-white/80 px-4 text-sm font-bold text-semear-green shadow-premium-sm transition hover:bg-white active:scale-[0.98] duration-200"
           href="/escutas/lote"
         >
           <ClipboardList className="h-4 w-4" aria-hidden="true" />
           Digitalizar fichas
         </Link>
         <Link
-          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white/70 px-4 text-sm font-semibold text-semear-green transition hover:bg-white"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/60 bg-white/80 px-4 text-sm font-bold text-semear-green shadow-premium-sm transition hover:bg-white active:scale-[0.98] duration-200"
           href={calendarEvents[0] ? `/agenda/${calendarEvents[0].id}` : `/agenda/novo?actionId=${actionId}&startsAt=${encodeURIComponent(suggestedEventStart)}&endsAt=${encodeURIComponent(suggestedEventEnd)}&allDay=${action.all_day ? "1" : "0"}`}
         >
           <CalendarDays className="h-4 w-4" aria-hidden="true" />
@@ -232,40 +232,40 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
         </Link>
       </div>
 
-      <article className="rounded-[2rem] border border-white/80 bg-white/78 p-5 shadow-soft sm:p-8">
+      <article className="rounded-3xl border border-white/60 bg-white/85 p-6 shadow-premium-md backdrop-blur-sm sm:p-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-semear-earth">
               Ação territorial
             </p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-semear-green">
+            <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-semear-green">
               {action.title}
             </h2>
-            <div className="mt-4 flex flex-wrap gap-3 text-sm text-stone-600">
-              <span className="inline-flex items-center gap-2">
-                <CalendarDays className="h-4 w-4" aria-hidden="true" />
+            <div className="mt-4 flex flex-wrap gap-3 text-xs font-bold text-stone-500">
+              <span className="inline-flex items-center gap-1.5">
+                <CalendarDays className="h-4 w-4 text-semear-earth" aria-hidden="true" />
                 {getActionScheduleLabel(action)}
               </span>
-              <span className="inline-flex items-center gap-2">
-                <MapPin className="h-4 w-4" aria-hidden="true" />
+              <span className="inline-flex items-center gap-1.5">
+                <MapPin className="h-4 w-4 text-semear-earth" aria-hidden="true" />
                 {action.neighborhoods?.name ?? "Sem bairro definido"}
               </span>
             </div>
           </div>
-          <div className="rounded-2xl bg-semear-green-soft px-4 py-3 text-sm font-semibold text-semear-green">
+          <div className="rounded-2xl border border-semear-green-soft bg-semear-green-soft/30 px-4 py-3 text-xs font-bold text-semear-green max-w-sm shadow-premium-sm leading-relaxed">
             {action.status === "realizada"
               ? "Banca realizada — digitalize as fichas em /escutas/lote"
               : "Ação planejada — fichas podem ser digitadas após a banca"}
           </div>
         </div>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
           {detailItems.map(([label, value]) => (
-            <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4" key={label}>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">
+            <div className="rounded-2xl border border-white/60 bg-white/90 p-4 shadow-premium-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-premium-md" key={label}>
+              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-stone-400">
                 {label}
               </p>
-              <p className="mt-2 text-sm font-semibold text-semear-green">{value}</p>
+              <p className="mt-2 text-sm font-bold text-semear-green leading-snug">{value}</p>
             </div>
           ))}
         </div>
@@ -274,43 +274,43 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
           <TextBlock title="Objetivo" value={action.objective} />
           <TextBlock title="Resumo" value={action.summary} />
           <TextBlock title="Observações" value={action.notes} />
-          <section className="rounded-2xl border border-semear-gray bg-white p-5">
-            <h3 className="font-semibold text-semear-green">Participantes da ação</h3>
+          <section className="rounded-2xl border border-white/60 bg-white/80 p-5 shadow-premium-sm backdrop-blur-sm">
+            <h3 className="font-bold text-semear-green uppercase tracking-wider text-xs">Participantes da ação</h3>
             {participants.length > 0 ? (
               <ul className="mt-3 space-y-3">
                 {participants.map((participant) => (
-                  <li className="rounded-xl border border-semear-gray bg-semear-offwhite p-3" key={participant.id}>
-                    <p className="text-sm font-semibold text-semear-green">
+                  <li className="rounded-xl border border-white/40 bg-white/90 p-4 shadow-premium-sm transition duration-200 hover:-translate-y-0.5" key={participant.id}>
+                    <p className="text-sm font-bold text-semear-green">
                       {participant.team_members?.display_name ?? "Membro não encontrado"}
                     </p>
-                    <p className="mt-1 text-xs text-stone-600">
+                    <p className="mt-1 text-xs font-semibold text-stone-400">
                       {participant.team_members?.role_label ?? "Função não informada"}
                     </p>
-                    <p className="mt-2 text-xs text-stone-600">
+                    <p className="mt-2 text-xs text-stone-600 font-medium">
                       {participant.responsibility ? `Responsabilidade: ${participant.responsibility}` : "Responsabilidade não informada."}
                     </p>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="mt-3 text-sm leading-6 text-stone-600">
+              <p className="mt-3 text-sm leading-relaxed text-stone-500 font-medium">
                 Nenhum participante padronizado foi vinculado. Use o campo legado de equipe apenas como observação.
               </p>
             )}
             {action.team ? (
-              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+              <div className="mt-3 rounded-xl border border-amber-200/50 bg-amber-50/70 p-3 text-xs leading-relaxed text-amber-900 font-medium">
                 Registro legado de equipe: {action.team}
               </div>
             ) : null}
           </section>
-          <div className="rounded-2xl border border-dashed border-semear-green/25 bg-semear-offwhite p-5">
+          <div className="rounded-2xl border border-dashed border-semear-green/20 bg-white/50 p-5 backdrop-blur-sm">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-semear-earth">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-semear-earth shadow-premium-sm">
                 <UsersRound className="h-5 w-5" aria-hidden="true" />
               </div>
               <div>
-                <h3 className="font-semibold text-semear-green">Privacidade do público</h3>
-                <p className="mt-1 text-sm leading-6 text-stone-600">
+                <h3 className="font-bold text-semear-green">Privacidade do público</h3>
+                <p className="mt-1 text-xs leading-relaxed text-stone-500 font-medium">
                   Este módulo registra dados coletivos da ação, sem CPF, telefone ou endereço
                   pessoal de participantes.
                 </p>
@@ -325,23 +325,23 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
         <ActionOperationChecklist action={action} records={records} />
       </div>
 
-      <section className="mt-8 rounded-[2rem] border border-white/80 bg-white p-6 shadow-soft">
+      <section className="mt-8 rounded-3xl border border-white/60 bg-white/80 p-6 shadow-premium-sm backdrop-blur-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-semear-green-soft text-semear-green">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-semear-green text-semear-yellow shadow-premium-sm">
               <FileText className="h-6 w-6" aria-hidden="true" />
             </div>
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Devolutiva da ação</p>
-              <h3 className="mt-2 text-xl font-semibold text-semear-green">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-semear-earth">Devolutiva da ação</p>
+              <h3 className="mt-2 text-xl font-bold text-semear-green">
                 {debrief ? getDebriefStatusLabel(debrief.status) : "Não criada"}
               </h3>
-              <p className="mt-2 text-sm leading-6 text-stone-600">
+              <p className="mt-2 text-sm leading-relaxed text-stone-600 font-medium">
                 Prepare o relatório bonito “O que ouvimos na feira” com revisão humana, privacidade e versão de impressão.
               </p>
             </div>
           </div>
-          <Link className="inline-flex min-h-11 items-center justify-center rounded-full bg-semear-green px-5 text-sm font-semibold text-white" href={`/acoes/${actionId}/devolutiva`}>
+          <Link className="inline-flex min-h-11 items-center justify-center rounded-xl bg-semear-green px-5 text-sm font-bold text-white shadow-premium-sm transition hover:bg-semear-green/90 active:scale-[0.98]" href={`/acoes/${actionId}/devolutiva`}>
             Abrir devolutiva
           </Link>
         </div>
@@ -355,77 +355,77 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
         </div>
       </section>
 
-      <section className="mt-8 rounded-[2rem] border border-white/80 bg-white p-6 shadow-soft">
+      <section className="mt-8 rounded-3xl border border-white/60 bg-white/80 p-6 shadow-premium-sm backdrop-blur-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-semear-green-soft text-semear-green">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-semear-green text-semear-yellow shadow-premium-sm">
               <FolderCheck className="h-6 w-6" aria-hidden="true" />
             </div>
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Dossiê da ação</p>
-              <h3 className="mt-2 text-xl font-semibold text-semear-green">{getClosureStatusLabel(closure?.status)}</h3>
-              <p className="mt-2 text-sm leading-6 text-stone-600">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-semear-earth">Dossiê da ação</p>
+              <h3 className="mt-2 text-xl font-bold text-semear-green">{getClosureStatusLabel(closure?.status)}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-stone-600 font-medium">
                 {reviewedPercent}% revisado · devolutiva {debrief?.status === "approved" ? "aprovada" : "não aprovada"} · {metrics.pending} pendência(s).
               </p>
             </div>
           </div>
-          <Link className="inline-flex min-h-11 items-center justify-center rounded-full bg-semear-green px-5 text-sm font-semibold text-white" href={`/acoes/${actionId}/dossie`}>
+          <Link className="inline-flex min-h-11 items-center justify-center rounded-xl bg-semear-green px-5 text-sm font-bold text-white shadow-premium-sm transition hover:bg-semear-green/90 active:scale-[0.98]" href={`/acoes/${actionId}/dossie`}>
             Abrir dossiê
           </Link>
         </div>
         {metrics.possibleSensitive > 0 ? <Alert text="Há pendência crítica de possível dado sensível." danger /> : null}
       </section>
 
-      <section className="mt-8 rounded-[2rem] border border-white/80 bg-white p-6 shadow-soft">
+      <section className="mt-8 rounded-3xl border border-white/60 bg-white/80 p-6 shadow-premium-sm backdrop-blur-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Agenda da Equipe</p>
-            <h3 className="mt-2 text-xl font-semibold text-semear-green">Operação vinculada à agenda coletiva</h3>
-            <p className="mt-2 text-sm leading-6 text-stone-600">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-semear-earth">Agenda da Equipe</p>
+            <h3 className="mt-2 text-xl font-bold text-semear-green">Operação vinculada à agenda coletiva</h3>
+            <p className="mt-2 text-sm leading-relaxed text-stone-600 font-medium">
               Use a agenda interna para consolidar horário, presença, lembretes e próximos passos desta ação.
             </p>
           </div>
-          <Link className="inline-flex min-h-11 items-center justify-center rounded-full bg-semear-green px-5 text-sm font-semibold text-white" href={calendarEvents[0] ? `/agenda/${calendarEvents[0].id}` : `/agenda/novo?actionId=${actionId}&startsAt=${encodeURIComponent(suggestedEventStart)}&endsAt=${encodeURIComponent(suggestedEventEnd)}&allDay=${action.all_day ? "1" : "0"}`}>
+          <Link className="inline-flex min-h-11 items-center justify-center rounded-xl bg-semear-green px-5 text-sm font-bold text-white shadow-premium-sm transition hover:bg-semear-green/90 active:scale-[0.98]" href={calendarEvents[0] ? `/agenda/${calendarEvents[0].id}` : `/agenda/novo?actionId=${actionId}&startsAt=${encodeURIComponent(suggestedEventStart)}&endsAt=${encodeURIComponent(suggestedEventEnd)}&allDay=${action.all_day ? "1" : "0"}`}>
             {calendarEvents[0] ? "Abrir agenda" : "Criar evento"}
           </Link>
         </div>
 
         <div className="mt-5 grid gap-3 md:grid-cols-2">
           {calendarEvents.map((calendarEvent) => (
-            <article className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4" key={calendarEvent.id}>
-              <p className="font-semibold text-semear-green">{calendarEvent.title}</p>
-              <p className="mt-1 text-xs text-stone-500">
+            <article className="rounded-xl border border-white/60 bg-white/90 p-4 shadow-premium-sm transition hover:-translate-y-0.5 hover:shadow-premium-md" key={calendarEvent.id}>
+              <p className="font-bold text-semear-green">{calendarEvent.title}</p>
+              <p className="mt-1 text-xs text-stone-400 font-semibold">
                 {new Date(calendarEvent.starts_at).toLocaleString("pt-BR")} · {calendarEvent.status}
               </p>
-              <p className="mt-2 text-xs text-stone-600">
+              <p className="mt-2 text-xs text-stone-500 font-medium">
                 Google Calendar: {getGoogleCalendarSyncStatusLabel(calendarEvent.google_sync_status)}
               </p>
-              <Link className="mt-3 inline-flex min-h-10 items-center justify-center rounded-full border border-semear-green/15 bg-white px-3 text-xs font-semibold text-semear-green" href={`/agenda/${calendarEvent.id}`}>
+              <Link className="mt-3 inline-flex min-h-10 items-center justify-center rounded-full border border-white/60 bg-white px-3 text-xs font-bold text-semear-green shadow-premium-sm transition hover:bg-stone-50 active:scale-[0.98] duration-200" href={`/agenda/${calendarEvent.id}`}>
                 Ver evento
               </Link>
             </article>
           ))}
           {calendarEvents.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-semear-green/25 bg-semear-offwhite p-4 text-sm text-stone-600">
+            <div className="rounded-xl border border-dashed border-semear-green/20 bg-white/50 p-4 text-sm text-stone-500 font-medium">
               Nenhum evento da agenda foi vinculado ainda. A criação é opcional e não acontece automaticamente.
             </div>
           ) : null}
         </div>
 
         <div className="mt-5 flex flex-wrap gap-2">
-          <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href={`/agenda/novo?actionId=${actionId}&eventType=devolutiva&title=${encodeURIComponent(`Devolutiva — ${action.title}`)}&startsAt=${nextWeekIso}T18:00&endsAt=${nextWeekIso}T20:00&allDay=0&neighborhoodId=${action.neighborhood_id ?? ""}`}>
+          <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/60 bg-white/90 px-4 text-xs font-bold text-semear-green shadow-premium-sm transition hover:bg-stone-50 active:scale-[0.98] duration-200" href={`/agenda/novo?actionId=${actionId}&eventType=devolutiva&title=${encodeURIComponent(`Devolutiva — ${action.title}`)}&startsAt=${nextWeekIso}T18:00&endsAt=${nextWeekIso}T20:00&allDay=0&neighborhoodId=${action.neighborhood_id ?? ""}`}>
             Agendar devolutiva
           </Link>
-          <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href={`/agenda/novo?actionId=${actionId}&eventType=dossie&title=${encodeURIComponent(`Fechamento do dossiê — ${action.title}`)}&startsAt=${nextWeekIso}T14:00&endsAt=${nextWeekIso}T15:00&allDay=0&neighborhoodId=${action.neighborhood_id ?? ""}`}>
+          <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/60 bg-white/90 px-4 text-xs font-bold text-semear-green shadow-premium-sm transition hover:bg-stone-50 active:scale-[0.98] duration-200" href={`/agenda/novo?actionId=${actionId}&eventType=dossie&title=${encodeURIComponent(`Fechamento do dossiê — ${action.title}`)}&startsAt=${nextWeekIso}T14:00&endsAt=${nextWeekIso}T15:00&allDay=0&neighborhoodId=${action.neighborhood_id ?? ""}`}>
             Agendar fechamento do dossiê
           </Link>
-          <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href={`/agenda/novo?actionId=${actionId}&eventType=reuniao&title=${encodeURIComponent(`Revisão das escutas — ${action.title}`)}&startsAt=${nextWeekIso}T10:00&endsAt=${nextWeekIso}T12:00&allDay=0&neighborhoodId=${action.neighborhood_id ?? ""}`}>
+          <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/60 bg-white/90 px-4 text-xs font-bold text-semear-green shadow-premium-sm transition hover:bg-stone-50 active:scale-[0.98] duration-200" href={`/agenda/novo?actionId=${actionId}&eventType=reuniao&title=${encodeURIComponent(`Revisão das escutas — ${action.title}`)}&startsAt=${nextWeekIso}T10:00&endsAt=${nextWeekIso}T12:00&allDay=0&neighborhoodId=${action.neighborhood_id ?? ""}`}>
             Agendar revisão das escutas
           </Link>
         </div>
 
         {primaryCalendarEvent ? (
-          <div className="mt-5 rounded-2xl border border-semear-gray bg-semear-offwhite p-4 text-sm leading-6 text-stone-700">
+          <div className="mt-5 rounded-2xl border border-white/60 bg-white/90 p-4 text-sm leading-relaxed text-stone-600 shadow-premium-sm">
             <strong className="text-semear-green">Google Calendar:</strong> {getGoogleCalendarSyncStatusLabel(primaryCalendarEvent.google_sync_status)}. A sincronização manual acontece no evento interno da agenda para evitar duplicação de lógica.
           </div>
         ) : null}
@@ -443,68 +443,68 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
         />
       </div>
 
-      <section className="mt-8 rounded-[2rem] border border-white/80 bg-white p-6 shadow-soft">
+      <section className="mt-8 rounded-3xl border border-white/60 bg-white/85 p-6 shadow-premium-sm backdrop-blur-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Memória do Projeto</p>
-            <h3 className="mt-2 text-xl font-semibold text-semear-green">Relatórios semanais, anexos relacionados e entradas de memória</h3>
-            <p className="mt-2 text-sm leading-6 text-stone-600">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-semear-earth">Memória do Projeto</p>
+            <h3 className="mt-2 text-xl font-bold text-semear-green">Relatórios semanais, anexos relacionados e entradas de memória</h3>
+            <p className="mt-2 text-sm leading-relaxed text-stone-600 font-medium">
               Este bloco cruza a ação com os relatórios semanais já vinculados no módulo de memória do projeto.
             </p>
           </div>
-          <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/memoria">
+          <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/60 bg-white/90 px-4 text-sm font-bold text-semear-green shadow-premium-sm transition hover:bg-stone-50 active:scale-[0.98] duration-200" href="/memoria">
             Abrir memória
           </Link>
         </div>
 
         <div className="mt-5 grid gap-5 lg:grid-cols-2">
-          <section className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4">
-            <h4 className="font-semibold text-semear-green">Relatórios semanais vinculados</h4>
+          <section className="rounded-2xl border border-white/60 bg-white/80 p-5 shadow-premium-sm backdrop-blur-sm">
+            <h4 className="font-bold text-semear-green uppercase tracking-wider text-xs">Relatórios semanais vinculados</h4>
             <div className="mt-3 space-y-3">
               {weeklyReports.map((weeklyReport) => (
-                <article className="rounded-xl bg-white p-3" key={weeklyReport.id}>
+                <article className="rounded-xl border border-white/40 bg-white/90 p-3 shadow-premium-sm transition hover:-translate-y-0.5" key={weeklyReport.id}>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <p className="font-semibold text-semear-green">{weeklyReport.title}</p>
-                      <p className="mt-1 text-xs text-stone-500">{weeklyReport.team_members?.display_name ?? "Membro não identificado"} · {new Date(`${weeklyReport.week_start}T00:00:00`).toLocaleDateString("pt-BR")} até {new Date(`${weeklyReport.week_end}T00:00:00`).toLocaleDateString("pt-BR")}</p>
+                      <p className="font-bold text-semear-green">{weeklyReport.title}</p>
+                      <p className="mt-1 text-xs text-stone-400 font-semibold">{weeklyReport.team_members?.display_name ?? "Membro não identificado"} · {new Date(`${weeklyReport.week_start}T00:00:00`).toLocaleDateString("pt-BR")} até {new Date(`${weeklyReport.week_end}T00:00:00`).toLocaleDateString("pt-BR")}</p>
                     </div>
-                    <Link className="inline-flex min-h-10 items-center justify-center rounded-full border border-semear-green/15 px-3 text-xs font-semibold text-semear-green" href={`/memoria/${weeklyReport.id}`}>
+                    <Link className="inline-flex min-h-10 items-center justify-center rounded-full border border-white/60 bg-white px-3 text-xs font-bold text-semear-green shadow-premium-sm transition hover:bg-stone-50 active:scale-[0.98] duration-200" href={`/memoria/${weeklyReport.id}`}>
                       Abrir
                     </Link>
                   </div>
                 </article>
               ))}
-              {weeklyReports.length === 0 ? <p className="text-sm text-stone-500">Nenhum relatório semanal vinculado a esta ação ainda.</p> : null}
+              {weeklyReports.length === 0 ? <p className="text-sm text-stone-500 font-medium">Nenhum relatório semanal vinculado a esta ação ainda.</p> : null}
             </div>
           </section>
 
-          <section className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4">
-            <h4 className="font-semibold text-semear-green">Anexos relacionados</h4>
+          <section className="rounded-2xl border border-white/60 bg-white/80 p-5 shadow-premium-sm backdrop-blur-sm">
+            <h4 className="font-bold text-semear-green uppercase tracking-wider text-xs">Anexos relacionados</h4>
             <div className="mt-3 space-y-3">
               {weeklyReportAttachments.map((attachment) => (
-                <article className="rounded-xl bg-white p-3" key={attachment.id}>
-                  <p className="font-semibold text-semear-green">{attachment.file_name}</p>
-                  <p className="mt-1 text-xs text-stone-500">{attachment.file_type ?? "tipo não informado"}</p>
-                  <p className="mt-1 text-xs text-stone-500">Abra o relatório semanal para gerar link temporário de download.</p>
+                <article className="rounded-xl border border-white/40 bg-white/90 p-3 shadow-premium-sm" key={attachment.id}>
+                  <p className="font-bold text-semear-green">{attachment.file_name}</p>
+                  <p className="mt-1 text-xs text-stone-400 font-semibold">{attachment.file_type ?? "tipo não informado"}</p>
+                  <p className="mt-1 text-xs text-stone-500 font-medium">Abra o relatório semanal para gerar link temporário de download.</p>
                 </article>
               ))}
-              {weeklyReportAttachments.length === 0 ? <p className="text-sm text-stone-500">Nenhum anexo relacionado encontrado.</p> : null}
+              {weeklyReportAttachments.length === 0 ? <p className="text-sm text-stone-500 font-medium">Nenhum anexo relacionado encontrado.</p> : null}
             </div>
           </section>
         </div>
 
-        <section className="mt-5 rounded-2xl border border-semear-gray bg-semear-offwhite p-4">
-          <h4 className="font-semibold text-semear-green">Entradas de memória relacionadas</h4>
+        <section className="mt-5 rounded-2xl border border-white/60 bg-white/80 p-5 shadow-premium-sm backdrop-blur-sm">
+          <h4 className="font-bold text-semear-green uppercase tracking-wider text-xs">Entradas de memória relacionadas</h4>
           <div className="mt-3 space-y-3">
             {memoryEntries.map((entry) => (
-              <article className="rounded-xl bg-white p-3" key={entry.id}>
-                <p className="font-semibold text-semear-green">{entry.title}</p>
-                <p className="mt-1 text-xs text-stone-500">{new Date(`${entry.entry_date}T00:00:00`).toLocaleDateString("pt-BR")} · {entry.memory_type}</p>
-                <p className="mt-2 text-sm leading-6 text-stone-700">{entry.body}</p>
-                {entry.weekly_team_reports ? <p className="mt-2 text-xs text-stone-500">Origem: {entry.weekly_team_reports.title}</p> : null}
+              <article className="rounded-xl border border-white/40 bg-white/90 p-3 shadow-premium-sm" key={entry.id}>
+                <p className="font-bold text-semear-green">{entry.title}</p>
+                <p className="mt-1 text-xs text-stone-400 font-semibold">{new Date(`${entry.entry_date}T00:00:00`).toLocaleDateString("pt-BR")} · {entry.memory_type}</p>
+                <p className="mt-2 text-sm leading-relaxed text-stone-600 font-medium">{entry.body}</p>
+                {entry.weekly_team_reports ? <p className="mt-2 text-xs text-stone-400 font-semibold">Origem: {entry.weekly_team_reports.title}</p> : null}
               </article>
             ))}
-            {memoryEntries.length === 0 ? <p className="text-sm text-stone-500">Nenhuma entrada de memória vinculada diretamente a esta ação.</p> : null}
+            {memoryEntries.length === 0 ? <p className="text-sm text-stone-500 font-medium">Nenhuma entrada de memória vinculada diretamente a esta ação.</p> : null}
           </div>
         </section>
       </section>
@@ -522,7 +522,7 @@ function getDebriefStatusLabel(status: ActionDebrief["status"]) {
 
 function Alert({ text, danger = false }: { text: string; danger?: boolean }) {
   return (
-    <p className={`flex gap-2 rounded-2xl border p-4 text-sm font-medium ${danger ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+    <p className={`flex gap-2 rounded-2xl border p-4 text-xs font-bold ${danger ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
       {text}
     </p>
@@ -531,9 +531,9 @@ function Alert({ text, danger = false }: { text: string; danger?: boolean }) {
 
 function TextBlock({ title, value }: { title: string; value: string | null }) {
   return (
-    <section className="rounded-2xl border border-semear-gray bg-white p-5">
-      <h3 className="font-semibold text-semear-green">{title}</h3>
-      <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-stone-600">
+    <section className="rounded-2xl border border-white/60 bg-white/80 p-5 shadow-premium-sm backdrop-blur-sm">
+      <h3 className="font-bold text-semear-green uppercase tracking-wider text-xs">{title}</h3>
+      <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-stone-600 font-medium">
         {value || "Não informado."}
       </p>
     </section>

@@ -17,13 +17,13 @@ export function TerritoryThemeMatrix({ matrix, themeMap, territoryNames }: Terri
   }
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-white">
+    <div className="overflow-x-auto rounded-3xl border border-white/60 bg-white/80 shadow-premium-md backdrop-blur-md">
       <table className="w-full text-left text-xs border-collapse">
         <thead>
-          <tr className="bg-stone-50 border-b border-stone-200">
-            <th className="p-3 font-bold text-stone-900 border-r border-stone-200 sticky left-0 bg-stone-50 z-10">Território</th>
+          <tr className="bg-stone-100/50 border-b border-white/60">
+            <th className="p-4 font-bold text-stone-900 border-r border-white/60 sticky left-0 bg-stone-100/90 backdrop-blur-sm z-10">Território</th>
             {themes.map((tId) => (
-              <th key={tId} className="p-3 font-bold text-stone-900 whitespace-nowrap min-w-[100px] text-center">
+              <th key={tId} className="p-4 font-bold text-stone-900 whitespace-nowrap min-w-[120px] text-center">
                 {themeMap[tId]}
               </th>
             ))}
@@ -31,8 +31,8 @@ export function TerritoryThemeMatrix({ matrix, themeMap, territoryNames }: Terri
         </thead>
         <tbody>
           {territories.map((tId) => (
-            <tr key={tId} className="border-b border-stone-100 hover:bg-stone-50/50 transition-colors">
-              <td className="p-3 font-medium text-stone-900 border-r border-stone-200 sticky left-0 bg-white z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+            <tr key={tId} className="border-b border-white/40 hover:bg-white/40 transition-all duration-200">
+              <td className="p-4 font-bold text-stone-900 border-r border-white/60 sticky left-0 bg-white/90 z-10 shadow-[2px_0_10px_rgba(0,0,0,0.03)]">
                 {territoryNames[tId]}
               </td>
               {themes.map((themeId) => {
@@ -41,11 +41,11 @@ export function TerritoryThemeMatrix({ matrix, themeMap, territoryNames }: Terri
                 return (
                   <td key={themeId} className="p-3 text-center">
                     <div 
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg font-bold transition-all"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl font-bold transition-all shadow-premium-sm"
                       style={{ 
                         backgroundColor: count > 0 ? `rgba(16, 185, 129, ${intensity / 100})` : 'transparent',
                         color: intensity > 50 ? 'white' : '#10b981',
-                        border: count > 0 ? 'none' : '1px solid #f3f4f6'
+                        border: count > 0 ? 'none' : '1px solid rgba(255,255,255,0.6)'
                       }}
                     >
                       {count > 0 ? count : '-'}

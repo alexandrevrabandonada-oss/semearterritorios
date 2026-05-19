@@ -13,7 +13,11 @@ const config: Config = {
         "semear-yellow": "#E4B84E"
       },
       boxShadow: {
-        soft: "0 18px 45px rgba(23, 74, 55, 0.10)"
+        soft: "0 18px 45px rgba(23, 74, 55, 0.10)",
+        "premium-sm": "0 2px 8px rgba(23, 74, 55, 0.04)",
+        "premium-md": "0 12px 30px rgba(23, 74, 55, 0.06)",
+        "premium-lg": "0 22px 50px rgba(23, 74, 55, 0.10)",
+        "premium-glow": "0 0 25px rgba(228, 184, 78, 0.18)"
       }
     }
   },

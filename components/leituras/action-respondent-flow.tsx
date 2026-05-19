@@ -23,7 +23,7 @@ export function ActionRespondentFlow({ flow, actionTerritoryNames, respTerritory
         const totalActionRecords = Object.values(flow[actionId]).reduce((sum, count) => sum + count, 0);
 
         return (
-          <div key={actionId} className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-soft">
+          <div key={actionId} className="rounded-3xl border border-white/60 bg-white/80 p-6 shadow-premium-sm backdrop-blur-sm">
             <h4 className="text-sm font-bold text-stone-900 flex items-center gap-2 mb-4">
               <span className="h-2 w-2 rounded-full bg-semear-green"></span>
               Ação em: {actionTerritoryNames[actionId]}
@@ -34,7 +34,7 @@ export function ActionRespondentFlow({ flow, actionTerritoryNames, respTerritory
               <p className="text-[10px] uppercase tracking-wider text-stone-500 font-bold mb-1">Pessoas de:</p>
               {respondents.map(([respId, count]) => (
                 <div key={respId} className="flex items-center gap-3">
-                  <div className="flex-1 rounded-xl bg-stone-50 px-3 py-2 text-xs font-medium text-stone-700">
+                  <div className="flex-1 rounded-2xl border border-white/40 bg-white/50 px-3.5 py-2 text-xs font-bold text-stone-700 shadow-premium-sm">
                     {respTerritoryNames[respId]}
                   </div>
                   <ArrowRight className="h-3 w-3 text-stone-300" />

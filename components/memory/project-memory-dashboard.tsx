@@ -285,8 +285,8 @@ export function ProjectMemoryDashboard() {
       {feedback ? <StateBox>{feedback}</StateBox> : null}
 
       {canReview && (
-        <div className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-semear-earth/20 bg-semear-earth/5 p-4 shadow-sm">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-semear-earth">
+        <div className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-semear-earth/20 bg-white p-4 shadow-[0_12px_28px_rgba(23,74,55,0.05)]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-semear-earth/10 text-semear-earth">
             <CheckCircle2 className="h-5 w-5" />
           </div>
           <div className="flex-1">
@@ -296,13 +296,13 @@ export function ProjectMemoryDashboard() {
           <div className="flex gap-2">
             <Link 
               href="/memoria/curadoria" 
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-semear-earth px-5 text-sm font-bold text-white shadow-soft hover:bg-semear-earth/90"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-semear-earth px-5 text-sm font-bold text-white shadow-sm hover:bg-semear-earth/90"
             >
               Acessar Curadoria
             </Link>
             <Link 
               href="/memoria/importacoes" 
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-semear-earth/20 bg-white px-5 text-sm font-bold text-semear-earth shadow-soft hover:bg-semear-earth/5"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-semear-earth/20 bg-white px-5 text-sm font-bold text-semear-earth shadow-sm hover:bg-semear-earth/5"
             >
               <FileSearch className="h-4 w-4" />
               Qualidade das Importações
@@ -410,11 +410,11 @@ export function ProjectMemoryDashboard() {
               const linkedNeighborhoods = reportNeighborhoods.filter((item) => item.report_id === report.id);
 
               return (
-                <article className="rounded-xl border border-semear-gray bg-white p-4" key={report.id}>
+                <article className="semear-modern-row rounded-xl p-4" key={report.id}>
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-semear-earth">{getWeeklyReportStatusLabel(report.status)}</span>
+                        <span className="rounded-full bg-semear-green-soft px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-semear-green">{getWeeklyReportStatusLabel(report.status)}</span>
                         <span className="text-xs text-stone-500">{formatWeekLabel(report.week_start, report.week_end)}</span>
                       </div>
                       <h4 className="mt-3 text-lg font-semibold text-semear-green">{report.title}</h4>
@@ -422,7 +422,7 @@ export function ProjectMemoryDashboard() {
                       {report.summary ? <p className="mt-3 text-sm leading-6 text-stone-700">{report.summary}</p> : null}
                     </div>
                     <div className="flex flex-col gap-2 sm:items-end">
-                      <Link className="inline-flex min-h-10 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href={`/memoria/${report.id}`}>
+                      <Link className="semear-text-link" href={`/memoria/${report.id}`}>
                         Abrir relatório
                       </Link>
                       {canReview && report.status === "archived" ? (
@@ -440,10 +440,10 @@ export function ProjectMemoryDashboard() {
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2 text-xs text-stone-600">
                     {linkedActions.map((item) => (
-                      <span className="rounded-full bg-white px-3 py-1" key={item.action_id}>Ação: {item.actions?.title ?? "Ação vinculada"}</span>
+                      <span className="rounded-full bg-stone-50 px-3 py-1" key={item.action_id}>Ação: {item.actions?.title ?? "Ação vinculada"}</span>
                     ))}
                     {linkedNeighborhoods.map((item) => (
-                      <span className="rounded-full bg-white px-3 py-1" key={item.neighborhood_id}>Território: {item.neighborhoods?.name ?? "Território"}</span>
+                      <span className="rounded-full bg-stone-50 px-3 py-1" key={item.neighborhood_id}>Território: {item.neighborhoods?.name ?? "Território"}</span>
                     ))}
                   </div>
                 </article>
@@ -478,7 +478,7 @@ export function ProjectMemoryDashboard() {
                 <InfoList title="Ainda não enviaram" items={membersPending.map((member) => member.display_name)} emptyText="Todos os membros ativos já enviaram." />
               </div>
             ) : (
-              <div className="mt-4 rounded-2xl border border-semear-gray bg-semear-offwhite p-4 text-sm leading-6 text-stone-700">
+              <div className="mt-4 rounded-xl border border-stone-200 bg-white p-4 text-sm leading-6 text-stone-700">
                 A coordenação acompanha a cobertura completa da semana. Aqui você vê seus próprios relatórios e a linha do tempo interna já consolidada.
               </div>
             )}
@@ -497,9 +497,9 @@ export function ProjectMemoryDashboard() {
 
             <div className="mt-4 space-y-3">
               {filteredEntries.map((entry) => (
-                <article className="rounded-xl border border-semear-gray bg-white p-4" key={entry.id}>
+                <article className="semear-modern-row rounded-xl p-4" key={entry.id}>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-semear-earth">{getProjectMemoryTypeLabel(entry.memory_type)}</span>
+                    <span className="rounded-full bg-semear-green-soft px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-semear-green">{getProjectMemoryTypeLabel(entry.memory_type)}</span>
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${getVisibilityStyle(entry.visibility)}`}>
                       {getProjectMemoryVisibilityLabel(entry.visibility)}
                     </span>
@@ -508,8 +508,8 @@ export function ProjectMemoryDashboard() {
                   <h4 className="mt-3 text-lg font-semibold text-semear-green">{entry.title}</h4>
                   <p className="mt-2 text-sm leading-6 text-stone-700">{summarizeProjectMemoryEntry(entry)}</p>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs text-stone-600">
-                    {entry.weekly_team_reports ? <Link className="rounded-full bg-white px-3 py-1" href={`/memoria/${entry.weekly_team_reports.id}`}>Origem: {entry.weekly_team_reports.title}</Link> : null}
-                    {entry.actions ? <Link className="rounded-full bg-white px-3 py-1" href={`/acoes/${entry.actions.id}`}>Ação: {entry.actions.title}</Link> : null}
+                    {entry.weekly_team_reports ? <Link className="rounded-full bg-stone-50 px-3 py-1" href={`/memoria/${entry.weekly_team_reports.id}`}>Origem: {entry.weekly_team_reports.title}</Link> : null}
+                    {entry.actions ? <Link className="rounded-full bg-stone-50 px-3 py-1" href={`/acoes/${entry.actions.id}`}>Ação: {entry.actions.title}</Link> : null}
                   </div>
                 </article>
               ))}
@@ -549,12 +549,12 @@ function countReportsByStatus(reports: WeeklyTeamReport[]) {
 
 function InfoList({ title, items, emptyText }: { title: string; items: string[]; emptyText: string }) {
   return (
-    <section className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4">
+    <section className="rounded-xl border border-stone-200 bg-white p-4">
       <h4 className="font-semibold text-semear-green">{title}</h4>
       {items.length > 0 ? (
         <ul className="mt-3 space-y-2 text-sm text-stone-700">
           {items.map((item) => (
-            <li className="rounded-xl bg-white px-3 py-2" key={item}>{item}</li>
+            <li className="rounded-xl bg-stone-50 px-3 py-2" key={item}>{item}</li>
           ))}
         </ul>
       ) : (
@@ -569,5 +569,5 @@ function EmptyCard({ text }: { text: string }) {
 }
 
 function StateBox({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "error" }) {
-  return <div className={`rounded-[1.5rem] p-6 text-sm shadow-soft ${tone === "error" ? "border border-red-200 bg-red-50 text-red-800" : "border border-white/80 bg-white/72 text-stone-600"}`}>{children}</div>;
+  return <div className={`rounded-2xl p-6 text-sm shadow-[0_12px_28px_rgba(23,74,55,0.05)] ${tone === "error" ? "border border-red-200 bg-red-50 text-red-800" : "border border-white/80 bg-white text-stone-600"}`}>{children}</div>;
 }

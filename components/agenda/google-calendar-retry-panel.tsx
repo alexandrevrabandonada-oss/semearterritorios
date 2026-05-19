@@ -44,15 +44,15 @@ export function GoogleCalendarRetryPanel({
   onUnlink,
 }: RetryPanelProps) {
   return (
-    <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800">
-      <p className="font-semibold">Erro de sincronização detectado</p>
-      <p className="mt-2">
-        Tipo de erro: <strong>{syncErrorCode ? errorLabels[syncErrorCode] ?? syncErrorCode : "Erro operacional seguro"}</strong>.
+    <div className="mt-4 rounded-3xl border border-red-200 bg-red-50/80 p-4 text-sm leading-6 text-red-900 backdrop-blur-sm shadow-premium-sm font-semibold">
+      <p className="font-extrabold uppercase tracking-wider text-red-800 text-xs">Erro de sincronização detectado</p>
+      <p className="mt-2 text-stone-750">
+        Tipo de erro: <strong className="text-red-700 font-extrabold">{syncErrorCode ? errorLabels[syncErrorCode] ?? syncErrorCode : "Erro operacional seguro"}</strong>.
       </p>
-      <p className="mt-2">{hint ?? "Confira calendário institucional, conexão Google, envs e permissões do compartilhamento."}</p>
+      <p className="mt-2 text-stone-600">{hint ?? "Confira calendário institucional, conexão Google, envs e permissões do compartilhamento."}</p>
       <div className="mt-4 flex flex-wrap gap-2">
         <button
-          className="inline-flex min-h-10 items-center justify-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex min-h-10 items-center justify-center rounded-full bg-semear-green px-4 text-sm font-bold text-white shadow-premium-sm transition hover:bg-semear-green/90 active:scale-[0.98] duration-200 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={syncActionLoading !== null || connectionActionLoading !== null || !canRetry}
           onClick={onRetry}
           type="button"
@@ -61,7 +61,7 @@ export function GoogleCalendarRetryPanel({
         </button>
         {hasExternalEvent ? (
           <button
-            className="inline-flex min-h-10 items-center justify-center rounded-full border border-stone-300 bg-white px-4 text-sm font-semibold text-stone-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-10 items-center justify-center rounded-full border border-white/60 bg-white/85 px-4 text-sm font-bold text-stone-700 shadow-premium-sm transition hover:bg-white active:scale-[0.98] duration-200 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={syncActionLoading !== null || connectionActionLoading !== null}
             onClick={onUnlink}
             type="button"
@@ -71,7 +71,7 @@ export function GoogleCalendarRetryPanel({
         ) : null}
         {showReconnect ? (
           <button
-            className="inline-flex min-h-10 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-10 items-center justify-center rounded-full border border-semear-green/30 bg-white/85 px-4 text-sm font-bold text-semear-green shadow-premium-sm transition hover:bg-white active:scale-[0.98] duration-200 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={syncActionLoading !== null || connectionActionLoading !== null}
             onClick={onReconnect}
             type="button"
@@ -81,7 +81,7 @@ export function GoogleCalendarRetryPanel({
         ) : null}
         {showDocsLink ? (
           <Link
-            className="inline-flex min-h-10 items-center justify-center rounded-full border border-stone-300 bg-white px-4 text-sm font-semibold text-stone-700"
+            className="inline-flex min-h-10 items-center justify-center rounded-full border border-white/60 bg-white/85 px-4 text-sm font-bold text-stone-700 shadow-premium-sm transition hover:bg-white active:scale-[0.98] duration-200"
             href="/ajuda#google-calendar-manual"
           >
             Abrir ajuda

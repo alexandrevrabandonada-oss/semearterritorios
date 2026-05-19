@@ -260,19 +260,19 @@ export function TeamCalendarPage() {
         description="Agenda interna para ações de campo, bancas, reuniões, prazos, devolutivas, dossiês e memória. Não inclua dados pessoais de entrevistados."
         actions={canManage ? (
           <>
-            <Link className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/agenda">
+            <Link className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-stone-200 bg-white/90 px-4 text-xs font-bold text-stone-700 shadow-premium-sm transition hover:bg-white active:scale-[0.98]" href="/agenda">
               <CalendarDays className="h-4 w-4" aria-hidden="true" />
               Hoje
             </Link>
-            <Link className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/agenda">
+            <Link className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-stone-200 bg-white/90 px-4 text-xs font-bold text-stone-700 shadow-premium-sm transition hover:bg-white active:scale-[0.98]" href="/agenda">
               <CalendarClock className="h-4 w-4" aria-hidden="true" />
               Esta semana
             </Link>
-            <Link className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/agenda/google/status">
+            <Link className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-stone-200 bg-white/90 px-4 text-xs font-bold text-stone-700 shadow-premium-sm transition hover:bg-white active:scale-[0.98]" href="/agenda/google/status">
               <AlertTriangle className="h-4 w-4" aria-hidden="true" />
               Saúde Google
             </Link>
-            <Link className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href="/agenda/novo">
+            <Link className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-semear-green px-4 text-xs font-bold text-white shadow-premium-sm transition hover:bg-semear-green/90 active:scale-[0.98]" href="/agenda/novo">
               <Plus className="h-4 w-4" aria-hidden="true" />
               Novo evento
             </Link>
@@ -288,17 +288,17 @@ export function TeamCalendarPage() {
       </div>
 
       <section className="mt-5 grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <section className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <section className="rounded-3xl border border-white/60 bg-white/80 p-5 shadow-premium-md backdrop-blur-sm sm:p-6">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between border-b border-stone-200/55 pb-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Visões</p>
-              <h3 className="mt-1 text-2xl font-semibold text-semear-green">Visão semanal operacional com hoje, amanhã, atrasados e próximos 7 dias</h3>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-semear-earth">Visões</p>
+              <h3 className="mt-1 text-2xl font-extrabold tracking-tight text-semear-green">Calendário e Escopo</h3>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1 bg-stone-100 p-1.5 rounded-2xl border border-stone-200/40">
               {teamCalendarViewOptions.map((option) => (
                 <button
                   key={option.value}
-                  className={`rounded-full px-4 py-2 text-sm font-semibold ${view === option.value ? "bg-semear-green text-white" : "border border-semear-green/15 bg-white text-semear-green"}`}
+                  className={`rounded-xl px-4 py-1.5 text-xs font-bold transition duration-200 active:scale-[0.96] ${view === option.value ? "bg-white text-semear-green shadow-premium-sm" : "text-stone-500 hover:text-stone-700"}`}
                   onClick={() => setView(option.value)}
                   type="button"
                 >
@@ -311,7 +311,7 @@ export function TeamCalendarPage() {
           <div className="mt-5">
             {view === "proximos" ? <EventList events={nextEvents} memberships={memberships} teamMembers={teamMembers} linkedTeamMember={linkedTeamMember} onAttendanceChange={updateAttendance} /> : null}
             {view === "semana" ? (
-              <div className="space-y-5">
+              <div className="space-y-6">
                 <SectionedEventList title="Hoje" events={todayEvents} memberships={memberships} teamMembers={teamMembers} linkedTeamMember={linkedTeamMember} onAttendanceChange={updateAttendance} />
                 <SectionedEventList title="Amanhã" events={tomorrowEvents} memberships={memberships} teamMembers={teamMembers} linkedTeamMember={linkedTeamMember} onAttendanceChange={updateAttendance} />
                 <SectionedEventList title="Próximos 7 dias" events={nextSevenDaysEvents} memberships={memberships} teamMembers={teamMembers} linkedTeamMember={linkedTeamMember} onAttendanceChange={updateAttendance} />
@@ -327,7 +327,7 @@ export function TeamCalendarPage() {
         <section className="space-y-5">
           <InternalRemindersPanel
             title="Lembretes internos simples"
-            description="Sem push por enquanto. Acompanhe hoje, amanhã e pendências operacionais."
+            description="Acompanhe pendências operacionais e compromissos importantes do portal."
             items={[
               { label: "Hoje", value: todayEvents.length, text: todayEvents.length > 0 ? todayEvents.map((event) => event.title).join(" · ") : "Nenhum evento hoje.", href: "/agenda" },
               { label: "Amanhã", value: tomorrowEvents.length, text: tomorrowEvents.length > 0 ? tomorrowEvents.map((event) => event.title).join(" · ") : "Nenhum evento amanhã.", href: "/agenda" },
@@ -354,17 +354,17 @@ export function TeamCalendarPage() {
             pendingClosures={pendingClosures.length}
           />
 
-          <section className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
+          <section className="rounded-3xl border border-white/60 bg-white/80 p-5 shadow-premium-md backdrop-blur-sm">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-semear-green-soft text-semear-green">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-amber-50 text-amber-600 border border-amber-200">
                 <AlertTriangle className="h-5 w-5" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Privacidade</p>
-                <h3 className="text-xl font-semibold text-semear-green">Agenda interna, sem dado sensível</h3>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-semear-earth">Privacidade</p>
+                <h3 className="text-xl font-bold tracking-tight text-semear-green">Agenda interna, sem dado sensível</h3>
               </div>
             </div>
-            <div className="mt-4 space-y-2 text-sm leading-6 text-stone-700">
+            <div className="mt-4 space-y-2 text-xs leading-relaxed text-stone-600 font-medium">
               <p>Não registrar CPF, telefone, endereço pessoal, e-mail ou nome de entrevistado.</p>
               <p>Presença na agenda não é folha de ponto.</p>
               <p>Participação em evento não concede acesso ao sistema.</p>
@@ -374,7 +374,7 @@ export function TeamCalendarPage() {
         </section>
       </section>
 
-      <div className="mt-5 rounded-[2rem] border border-white/80 bg-white/80 p-5 shadow-soft">
+      <div className="mt-5 rounded-3xl border border-white/60 bg-white/85 p-5 shadow-premium-md backdrop-blur-sm">
         <FilterBar title="Filtros" onClear={() => setFilters(initialFilters)}>
           <FilterField label="Tipo">
             <select className={filterControlClassName} value={filters.type} onChange={(event) => setFilters((current) => ({ ...current, type: event.target.value }))}>
@@ -422,34 +422,36 @@ export function TeamCalendarPage() {
         </FilterBar>
       </div>
 
-      <section className="mt-5 rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
-        <div className="flex items-start justify-between gap-3">
+      <section className="mt-5 rounded-3xl border border-white/60 bg-white/80 p-5 shadow-premium-md backdrop-blur-sm sm:p-6">
+        <div className="flex items-center justify-between gap-3 border-b border-stone-200/55 pb-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Memória e histórico</p>
-            <h3 className="mt-1 text-2xl font-semibold text-semear-green">Eventos concluídos podem virar memória do projeto</h3>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-semear-earth">Memória e histórico</p>
+            <h3 className="mt-1 text-2xl font-extrabold tracking-tight text-semear-green">Relatórios e Memória</h3>
           </div>
-          <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href="/memoria">
+          <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-stone-200 bg-white px-4 text-xs font-bold text-stone-700 shadow-premium-sm transition hover:bg-stone-50 active:scale-[0.98]" href="/memoria">
             Abrir memória
           </Link>
         </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
           {events.filter((event) => event.status === "done").slice(0, 4).map((event) => {
             const relatedEntries = getRelatedMemoryEntriesForEvent(memoryEntries, event.id);
             return (
-              <article className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4" key={event.id}>
-                <p className="font-semibold text-semear-green">{event.title}</p>
-                <p className="mt-1 text-xs text-stone-500">{getEventDateLabel(event)}</p>
-                <p className="mt-3 text-sm text-stone-700">
-                  {relatedEntries.length > 0
-                    ? `${relatedEntries.length} entrada(s) de memória já vinculada(s).`
-                    : "Evento concluído pronto para gerar memória ou ganhar vínculo com relatório semanal."}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Link className="inline-flex min-h-10 items-center justify-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href={`/agenda/${event.id}`}>
+              <article className="rounded-2xl border border-stone-200/60 bg-white/95 p-5 shadow-premium-sm transition duration-200 hover:-translate-y-0.5 flex flex-col justify-between" key={event.id}>
+                <div>
+                  <p className="font-bold text-semear-green text-base">{event.title}</p>
+                  <p className="mt-1 text-[10px] font-bold text-stone-400 uppercase tracking-wider">{getEventDateLabel(event)}</p>
+                  <p className="mt-3 text-xs leading-relaxed text-stone-600 font-medium">
+                    {relatedEntries.length > 0
+                      ? `${relatedEntries.length} entrada(s) de memória já vinculada(s).`
+                      : "Evento concluído pronto para gerar memória ou ganhar vínculo com relatório semanal."}
+                  </p>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2 pt-2 border-t border-stone-100">
+                  <Link className="inline-flex min-h-9 items-center justify-center rounded-lg bg-semear-green px-3 text-xs font-bold text-white shadow-premium-sm active:scale-[0.98] transition hover:bg-semear-green/90" href={`/agenda/${event.id}`}>
                     Abrir evento
                   </Link>
-                  <Link className="inline-flex min-h-10 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href={`/memoria/novo?eventId=${event.id}${event.action_id ? `&actionId=${event.action_id}` : ""}`}>
+                  <Link className="inline-flex min-h-9 items-center justify-center rounded-lg border border-stone-200 bg-white px-3 text-xs font-bold text-stone-700 shadow-premium-sm active:scale-[0.98] transition hover:bg-stone-50" href={`/memoria/novo?eventId=${event.id}${event.action_id ? `&actionId=${event.action_id}` : ""}`}>
                     Vincular relatório
                   </Link>
                 </div>
@@ -480,65 +482,65 @@ function EventList({
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-5">
       {events.map((event) => {
         const eventMembers = memberships.filter((membership) => membership.event_id === event.id);
         const ownMembership = linkedTeamMember ? eventMembers.find((membership) => membership.team_member_id === linkedTeamMember.id) ?? null : null;
 
         return (
-          <article className="rounded-[1.75rem] border border-semear-gray bg-white p-4 shadow-sm" key={event.id}>
+          <article className="rounded-3xl border border-white/60 bg-white/95 p-5 shadow-premium-sm md:p-6 transition duration-200 hover:-translate-y-0.5" key={event.id}>
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <StatusBadge label={getTeamCalendarEventTypeLabel(event.event_type)} tone="stone" />
                   <StatusBadge label={getTeamCalendarEventStatusLabel(event.status)} tone={getTeamCalendarEventStatusTone(event.status)} />
                 </div>
-                <h4 className="mt-3 text-xl font-semibold text-semear-green">{event.title}</h4>
-                <p className="mt-1 text-sm text-stone-500">{getEventDateLabel(event)}</p>
-                {event.description ? <p className="mt-3 text-sm leading-6 text-stone-700">{event.description}</p> : null}
-                <div className="mt-3 flex flex-wrap gap-2 text-xs text-stone-600">
-                  {event.actions ? <span className="rounded-full bg-semear-offwhite px-3 py-1">Ação: {event.actions.title}</span> : null}
-                  {event.neighborhoods ? <span className="rounded-full bg-semear-offwhite px-3 py-1">Território: {event.neighborhoods.name}</span> : null}
+                <h4 className="mt-3 text-xl font-extrabold tracking-tight text-semear-green">{event.title}</h4>
+                <p className="mt-1 text-xs font-bold text-stone-400 uppercase tracking-wider">{getEventDateLabel(event)}</p>
+                {event.description ? <p className="mt-3 text-xs leading-relaxed text-stone-600 font-medium">{event.description}</p> : null}
+                <div className="mt-3 flex flex-wrap gap-1.5 text-[10px] text-stone-500 font-bold uppercase tracking-wider">
+                  {event.actions ? <span className="rounded-full bg-stone-100 px-3 py-1">Ação: {event.actions.title}</span> : null}
+                  {event.neighborhoods ? <span className="rounded-full bg-stone-100 px-3 py-1">Território: {event.neighborhoods.name}</span> : null}
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Link className="inline-flex min-h-10 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" href={`/agenda/${event.id}`}>
+                <Link className="inline-flex min-h-10 items-center justify-center rounded-full border border-stone-200 bg-white px-4 text-xs font-bold text-stone-700 shadow-premium-sm transition hover:bg-stone-50 active:scale-[0.98]" href={`/agenda/${event.id}`}>
                   Abrir
                 </Link>
-                <Link className="inline-flex min-h-10 items-center justify-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href={`/agenda/${event.id}`}>
+                <Link className="inline-flex min-h-10 items-center justify-center rounded-full bg-semear-green px-4 text-xs font-bold text-white shadow-premium-sm transition hover:bg-semear-green/90 active:scale-[0.98]" href={`/agenda/${event.id}`}>
                   Detalhes
                 </Link>
               </div>
             </div>
 
-            <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_18rem]">
+            <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_18rem] border-t border-stone-100 pt-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-semear-earth">Equipe participante</p>
-                <div className="mt-3 flex flex-wrap gap-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Equipe participante</p>
+                <div className="mt-3 flex flex-wrap gap-1.5">
                   {eventMembers.map((membership) => {
                     const member = teamMembers.find((item) => item.id === membership.team_member_id);
                     return (
-                      <span className="rounded-full border border-semear-gray bg-semear-offwhite px-3 py-1 text-xs text-stone-700" key={membership.id}>
-                        {member?.display_name ?? "Membro"} · {getTeamCalendarAttendanceLabel(membership.attendance_status)}
+                      <span className="rounded-full border border-stone-200/50 bg-stone-50 px-3 py-1 text-xs font-semibold text-stone-700 shadow-premium-sm" key={membership.id}>
+                        {member?.display_name ?? "Membro"} · <span className="font-bold text-[10px] text-stone-400">{getTeamCalendarAttendanceLabel(membership.attendance_status)}</span>
                       </span>
                     );
                   })}
-                  {eventMembers.length === 0 ? <span className="text-sm text-stone-500">Nenhum participante vinculado.</span> : null}
+                  {eventMembers.length === 0 ? <span className="text-xs text-stone-500 font-medium">Nenhum participante vinculado.</span> : null}
                 </div>
               </div>
 
               {ownMembership ? (
-                <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4">
-                  <p className="text-sm font-semibold text-semear-green">Sua presença</p>
-                  <select className="mt-3 min-h-11 w-full rounded-xl border border-semear-gray bg-white px-3 text-sm outline-none focus:border-semear-green" value={ownMembership.attendance_status} onChange={(event) => onAttendanceChange(ownMembership.id, event.target.value as TeamCalendarAttendanceStatus)}>
+                <div className="rounded-2xl border border-white/60 bg-white/70 p-4 shadow-premium-sm backdrop-blur-sm">
+                  <p className="text-xs font-bold uppercase tracking-wider text-semear-green font-bold">Sua presença</p>
+                  <select className="mt-3 min-h-11 w-full rounded-xl border border-stone-200 bg-white/90 px-3 text-xs font-bold text-stone-700 shadow-premium-sm outline-none focus:border-semear-green" value={ownMembership.attendance_status} onChange={(event) => onAttendanceChange(ownMembership.id, event.target.value as TeamCalendarAttendanceStatus)}>
                     {teamCalendarAttendanceOptions.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>
                 </div>
               ) : (
-                <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4 text-sm text-stone-600">
-                  Se seu profile estiver vinculado em <strong>team_members</strong>, sua presença poderá ser marcada aqui com segurança.
+                <div className="rounded-2xl border border-white/60 bg-white/60 p-4 text-xs font-semibold text-stone-500 shadow-premium-sm backdrop-blur-sm flex items-center">
+                  Se seu profile estiver vinculado em <strong className="mx-1 text-semear-green">team_members</strong>, sua presença poderá ser marcada aqui com segurança.
                 </div>
               )}
             </div>
@@ -563,13 +565,13 @@ function MonthList({ events }: { events: EventWithRelations[] }) {
   return (
     <div className="space-y-4">
       {Object.entries(grouped).map(([date, dayEvents]) => (
-        <section className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4" key={date}>
-          <p className="text-sm font-semibold uppercase tracking-[0.12em] text-semear-earth">{date}</p>
+        <section className="rounded-2xl border border-white/60 bg-white/70 p-4 shadow-premium-sm backdrop-blur-sm" key={date}>
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-semear-earth">{date}</p>
           <div className="mt-3 space-y-2">
             {dayEvents.map((event) => (
-              <Link className="block rounded-xl bg-white px-4 py-3 text-sm text-semear-green" href={`/agenda/${event.id}`} key={event.id}>
-                <span className="block font-semibold">{event.title}</span>
-                <span className="text-xs text-stone-500">{getEventDateLabel(event)}</span>
+              <Link className="block rounded-xl border border-stone-200/50 bg-white/95 px-4 py-3 text-sm font-bold text-semear-green shadow-premium-sm transition duration-200 hover:-translate-y-0.5" href={`/agenda/${event.id}`} key={event.id}>
+                <span className="block font-bold">{event.title}</span>
+                <span className="text-xs font-semibold text-stone-500 mt-0.5">{getEventDateLabel(event)}</span>
               </Link>
             ))}
           </div>
@@ -591,17 +593,17 @@ function DiagnosticPanel({
   pendingClosures: number;
 }) {
   return (
-    <section className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
+    <section className="rounded-3xl border border-white/60 bg-white/80 p-5 shadow-premium-md backdrop-blur-sm">
       <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-semear-green-soft text-semear-green">
+        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-stone-50 text-semear-green border border-stone-200">
           <ClipboardList className="h-5 w-5" aria-hidden="true" />
         </div>
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Diagnóstico do sistema</p>
-          <h3 className="text-xl font-semibold text-semear-green">Eventos e sinais já existentes que podem entrar na agenda</h3>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-semear-earth">Diagnóstico do sistema</p>
+          <h3 className="text-xl font-bold tracking-tight text-semear-green">Escopo de Integração</h3>
         </div>
       </div>
-      <div className="mt-4 space-y-3 text-sm leading-6 text-stone-700">
+      <div className="mt-4 space-y-3 text-xs leading-relaxed text-stone-600 font-medium">
         <p><strong>Ações cadastradas:</strong> {totalActions}. São a fonte mais direta para eventos de campo, bancas, reuniões institucionais e devolutivas.</p>
         <p><strong>Relatórios semanais:</strong> {totalReports}. Funcionam como prazos e lembretes internos de fechamento semanal.</p>
         <p><strong>Devolutivas pendentes:</strong> {pendingDebriefs}. Entram como itens de acompanhamento interno até aprovação.</p>
@@ -628,7 +630,7 @@ function SectionedEventList({
 }) {
   return (
     <section>
-      <h4 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-semear-earth">{title}</h4>
+      <h4 className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-semear-earth">{title}</h4>
       <EventList events={events} memberships={memberships} teamMembers={teamMembers} linkedTeamMember={linkedTeamMember} onAttendanceChange={onAttendanceChange} />
     </section>
   );
@@ -637,20 +639,20 @@ function SectionedEventList({
 function StatusBadge({ label, tone }: { label: string; tone: "green" | "yellow" | "red" | "stone" }) {
   const className =
     tone === "green"
-      ? "bg-green-100 text-green-800"
+      ? "bg-green-50 text-green-700 border border-green-150"
       : tone === "yellow"
-        ? "bg-amber-100 text-amber-900"
+        ? "bg-amber-50 text-amber-800 border border-amber-150"
         : tone === "red"
-          ? "bg-red-100 text-red-800"
-          : "bg-stone-100 text-stone-700";
+          ? "bg-red-50 text-red-700 border border-red-150"
+          : "bg-stone-50 text-stone-600 border border-stone-150";
 
-  return <span className={`rounded-full px-3 py-1 text-xs font-semibold ${className}`}>{label}</span>;
+  return <span className={`rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${className}`}>{label}</span>;
 }
 
 function EmptyCard({ text }: { text: string }) {
-  return <div className="rounded-2xl border border-dashed border-semear-green/20 bg-white px-4 py-6 text-sm text-stone-500">{text}</div>;
+  return <div className="rounded-2xl border border-dashed border-stone-200 bg-white/70 px-4 py-6 text-xs text-stone-500 font-bold text-center">{text}</div>;
 }
 
 function StateBox({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "error" }) {
-  return <div className={`rounded-[1.5rem] p-6 text-sm shadow-soft ${tone === "error" ? "border border-red-200 bg-red-50 text-red-800" : "border border-white/80 bg-white/72 text-stone-600"}`}>{children}</div>;
+  return <div className={`rounded-2xl p-6 text-sm font-semibold shadow-premium-sm border ${tone === "error" ? "border-red-200 bg-red-50 text-red-800" : "border-white/60 bg-white/80 text-stone-600"}`}>{children}</div>;
 }

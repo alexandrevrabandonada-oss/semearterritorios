@@ -387,8 +387,8 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
 
   if (loading) {
     return (
-      <section className="rounded-[2rem] border border-white/80 bg-white/72 p-8 shadow-soft">
-        <p className="text-sm font-medium text-stone-600">Carregando formulário...</p>
+      <section className="rounded-3xl border border-white/60 bg-white/80 p-8 shadow-premium-md backdrop-blur-sm">
+        <p className="text-sm font-semibold text-stone-600 animate-pulse">Carregando formulário...</p>
       </section>
     );
   }
@@ -396,44 +396,44 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
   return (
     <section className="pb-10">
       <Link
-        className="mb-5 inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white/70 px-4 text-sm font-semibold text-semear-green transition hover:bg-white"
+        className="mb-5 inline-flex min-h-11 items-center gap-2 rounded-full border border-white/60 bg-white/80 px-4 text-sm font-bold text-semear-green shadow-premium-sm transition hover:bg-white active:scale-[0.98] duration-200"
         href="/acoes"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         Voltar para ações
       </Link>
 
-      <form className="rounded-[2rem] border border-white/80 bg-white/78 p-5 shadow-soft sm:p-8" onSubmit={handleSubmit}>
+      <form className="rounded-3xl border border-white/60 bg-white/85 p-6 shadow-premium-md backdrop-blur-sm sm:p-8" onSubmit={handleSubmit}>
         <div className="max-w-3xl">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">{mode === "create" ? "Nova ação" : "Editar ação"}</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-semear-green">Dados da ação territorial</h2>
-          <p className="mt-3 text-sm leading-6 text-stone-600">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-semear-earth">{mode === "create" ? "Nova ação" : "Editar ação"}</p>
+          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-semear-green">Dados da ação territorial</h2>
+          <p className="mt-3 text-sm leading-relaxed text-stone-600 font-medium">
             Para a primeira Banca de Escuta, use o tipo banca de escuta e registre apenas informações coletivas da atividade. Não inclua CPF, telefone, endereço pessoal ou dados identificáveis de participantes.
           </p>
-          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+          <div className="mt-4 rounded-2xl border border-amber-200/50 bg-amber-50/70 p-4 text-xs leading-relaxed text-amber-950 font-medium">
             Use apenas local coletivo: feira, praça, escola, CRAS, associação. Nunca residência ou endereço pessoal. Selecione apenas bairro oficial - territórios provisórios não aparecem neste formulário.
           </div>
         </div>
 
-        {error ? <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div> : null}
+        {error ? <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{error}</div> : null}
 
         <div className="mt-8 grid gap-5 lg:grid-cols-2">
-          <label className="lg:col-span-2">
-            <span className="text-sm font-semibold text-semear-green">Título</span>
+          <label className="lg:col-span-2 block">
+            <span className="text-xs font-bold uppercase tracking-[0.15em] text-stone-500">Título</span>
             <input
-              className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
+              className="mt-2 min-h-12 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 text-sm font-bold text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green"
               onChange={(event) => updateField("title", event.target.value)}
               placeholder={mode === "create" ? "Ex.: Banca de Escuta - Feira Livre - [bairro]" : undefined}
               required
               value={values.title}
             />
-            {mode === "create" ? <p className="mt-1.5 text-xs leading-5 text-stone-500">Sugestão de título: <em>Banca de Escuta - Feira Livre - [nome do bairro]</em></p> : null}
+            {mode === "create" ? <p className="mt-1.5 text-[10px] font-semibold text-stone-400">Sugestão de título: <em>Banca de Escuta - Feira Livre - [nome do bairro]</em></p> : null}
           </label>
 
-          <label>
-            <span className="text-sm font-semibold text-semear-green">Data</span>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-[0.15em] text-stone-500">Data</span>
             <input
-              className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
+              className="mt-2 min-h-12 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 text-sm font-bold text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green"
               onChange={(event) => updateActionDate(event.target.value)}
               required
               type="date"
@@ -441,41 +441,41 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
             />
           </label>
 
-          <label className="rounded-2xl border border-semear-gray bg-semear-offwhite px-4 py-3 text-sm text-stone-700">
-            <span className="flex items-center gap-3">
-              <input checked={values.all_day} onChange={(event) => updateField("all_day", event.target.checked)} type="checkbox" />
+          <label className="rounded-2xl border border-white/60 bg-white/90 px-4 py-3 text-sm text-stone-750 shadow-premium-sm flex items-center h-12 mt-6 cursor-pointer select-none">
+            <span className="flex items-center gap-3 font-bold text-stone-600">
+              <input checked={values.all_day} className="h-5 w-5 rounded border-stone-300 text-semear-green focus:ring-semear-green" onChange={(event) => updateField("all_day", event.target.checked)} type="checkbox" />
               Dia inteiro
             </span>
           </label>
 
-          <div className="rounded-2xl border border-semear-gray bg-semear-offwhite px-4 py-3 text-sm leading-6 text-stone-600">
+          <div className="rounded-2xl border border-white/40 bg-white/50 px-4 py-3 text-xs leading-relaxed text-stone-500 font-bold shadow-premium-sm flex items-center h-12 mt-6">
             Informe horário quando a atividade tiver período definido. Se ainda não souber, deixe como dia inteiro ou pendente.
           </div>
 
-          <label>
-            <span className="text-sm font-semibold text-semear-green">Início da atividade</span>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-[0.15em] text-stone-500">Início da atividade</span>
             <input
-              className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
+              className="mt-2 min-h-12 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 text-sm font-bold text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green"
               onChange={(event) => updateField("starts_at", values.all_day ? `${event.target.value}T00:00` : event.target.value)}
               type={values.all_day ? "date" : "datetime-local"}
               value={values.all_day ? values.starts_at.slice(0, 10) : values.starts_at}
             />
           </label>
 
-          <label>
-            <span className="text-sm font-semibold text-semear-green">Fim da atividade</span>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-[0.15em] text-stone-500">Fim da atividade</span>
             <input
-              className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
+              className="mt-2 min-h-12 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 text-sm font-bold text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green"
               onChange={(event) => updateField("ends_at", values.all_day ? `${event.target.value}T23:59` : event.target.value)}
               type={values.all_day ? "date" : "datetime-local"}
               value={values.all_day ? values.ends_at.slice(0, 10) : values.ends_at}
             />
           </label>
 
-          <label>
-            <span className="text-sm font-semibold text-semear-green">Bairro/Território</span>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-[0.15em] text-stone-500">Bairro/Território</span>
             <select
-              className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
+              className="mt-2 min-h-12 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 text-sm font-bold text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green"
               onChange={(event) => updateField("neighborhood_id", event.target.value)}
               value={values.neighborhood_id}
             >
@@ -484,13 +484,13 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
                 <option key={neighborhood.id} value={neighborhood.id}>{formatNeighborhoodOption(neighborhood)}</option>
               ))}
             </select>
-            <p className="mt-1.5 text-xs leading-5 text-stone-500">São exibidos apenas bairros oficiais validados. Territórios provisórios ficam disponíveis apenas na área administrativa.</p>
+            <p className="mt-1.5 text-[10px] font-semibold text-stone-400">São exibidos apenas bairros oficiais validados. Territórios provisórios ficam disponíveis apenas na área administrativa.</p>
           </label>
 
-          <label>
-            <span className="text-sm font-semibold text-semear-green">Tipo de ação</span>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-[0.15em] text-stone-500">Tipo de ação</span>
             <select
-              className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
+              className="mt-2 min-h-12 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 text-sm font-bold text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green"
               onChange={(event) => updateField("action_type", event.target.value as ActionType)}
               value={values.action_type}
             >
@@ -500,10 +500,10 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
             </select>
           </label>
 
-          <label>
-            <span className="text-sm font-semibold text-semear-green">Status</span>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-[0.15em] text-stone-500">Status</span>
             <select
-              className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
+              className="mt-2 min-h-12 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 text-sm font-bold text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green"
               onChange={(event) => updateField("status", event.target.value as ActionStatus)}
               value={values.status}
             >
@@ -513,44 +513,44 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
             </select>
           </label>
 
-          <label>
-            <span className="text-sm font-semibold text-semear-green">Local</span>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-[0.15em] text-stone-500">Local</span>
             <input
-              className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
+              className="mt-2 min-h-12 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 text-sm font-bold text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green"
               onChange={(event) => updateField("location_reference", event.target.value)}
               placeholder="Ex.: feira, praça, escola, CRAS ou equipamento coletivo"
               value={values.location_reference}
             />
           </label>
 
-          <label>
-            <span className="text-sm font-semibold text-semear-green">Equipe</span>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-[0.15em] text-stone-500">Equipe</span>
             <input
-              className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
+              className="mt-2 min-h-12 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 text-sm font-bold text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green"
               onChange={(event) => updateField("team", event.target.value)}
               placeholder="Nomes da equipe, sem dados pessoais do público"
               value={values.team}
             />
-            <p className="mt-1.5 text-xs leading-5 text-stone-500">Campo legado para observações de equipe. Use a seleção abaixo para participantes padronizados.</p>
+            <p className="mt-1.5 text-[10px] font-semibold text-stone-400">Campo legado para observações de equipe. Use a seleção abaixo para participantes padronizados.</p>
           </label>
 
-          <fieldset className="lg:col-span-2 rounded-2xl border border-semear-gray bg-semear-offwhite/60 p-4">
-            <legend className="px-1 text-sm font-semibold text-semear-green">Selecione quem participou da ação</legend>
-            <div className="mt-2 space-y-3">
+          <fieldset className="lg:col-span-2 rounded-2xl border border-white/60 bg-white/80 p-5 shadow-premium-sm backdrop-blur-sm">
+            <legend className="px-2 text-xs font-bold uppercase tracking-wider text-semear-green">Selecione quem participou da ação</legend>
+            <div className="mt-4 space-y-3">
               {teamMembers.map((member) => {
                 const checked = Object.prototype.hasOwnProperty.call(selectedTeamMembers, member.id);
                 return (
-                  <div className="rounded-xl border border-semear-gray bg-white p-3" key={member.id}>
+                  <div className="rounded-2xl border border-white/40 bg-white/90 p-4 shadow-premium-sm transition duration-200 hover:-translate-y-0.5" key={member.id}>
                     <label className="flex min-h-14 cursor-pointer items-center gap-3 text-sm font-medium text-stone-700">
-                      <input checked={checked} className="h-5 w-5 rounded border-semear-gray text-semear-green focus:ring-semear-green" onChange={(event) => updateParticipantSelection(member.id, event.target.checked)} type="checkbox" />
+                      <input checked={checked} className="h-5 w-5 rounded border-stone-300 text-semear-green focus:ring-semear-green" onChange={(event) => updateParticipantSelection(member.id, event.target.checked)} type="checkbox" />
                       <span className="flex-1">
-                        <span className="block font-semibold text-semear-green">{member.display_name}</span>
-                        <span className="text-xs text-stone-500">{member.role_label ?? "Sem função informada"}</span>
+                        <span className="block font-bold text-semear-green">{member.display_name}</span>
+                        <span className="text-xs font-semibold text-stone-400">{member.role_label ?? "Sem função informada"}</span>
                       </span>
                     </label>
                     {checked ? (
                       <input
-                        className="mt-3 min-h-11 w-full rounded-xl border border-semear-gray bg-white px-3 text-sm outline-none focus:border-semear-green"
+                        className="mt-3 min-h-11 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm font-bold text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green"
                         onChange={(event) => updateParticipantResponsibility(member.id, event.target.value)}
                         placeholder="Responsabilidade na ação (opcional)"
                         value={selectedTeamMembers[member.id] ?? ""}
@@ -562,10 +562,10 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
             </div>
           </fieldset>
 
-          <label>
-            <span className="text-sm font-semibold text-semear-green">Público estimado</span>
+          <label className="lg:col-span-2 block">
+            <span className="text-xs font-bold uppercase tracking-[0.15em] text-stone-500">Público estimado</span>
             <input
-              className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
+              className="mt-2 min-h-12 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 text-sm font-bold text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green"
               min={0}
               onChange={(event) => updateField("estimated_public", event.target.value)}
               type="number"
@@ -573,69 +573,71 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
             />
           </label>
 
-          <label className="lg:col-span-2">
-            <span className="text-sm font-semibold text-semear-green">Objetivo</span>
-            <textarea className="mt-2 min-h-28 w-full rounded-2xl border border-semear-gray bg-white px-4 py-3 text-sm outline-none focus:border-semear-green" onChange={(event) => updateField("objective", event.target.value)} value={values.objective} />
+          <label className="lg:col-span-2 block">
+            <span className="text-xs font-bold uppercase tracking-[0.15em] text-stone-500">Objetivo</span>
+            <textarea className="mt-2 min-h-28 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 py-3 text-sm leading-relaxed text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green" onChange={(event) => updateField("objective", event.target.value)} value={values.objective} />
           </label>
 
-          <label className="lg:col-span-2">
-            <span className="text-sm font-semibold text-semear-green">Resumo</span>
-            <textarea className="mt-2 min-h-32 w-full rounded-2xl border border-semear-gray bg-white px-4 py-3 text-sm outline-none focus:border-semear-green" onChange={(event) => updateField("summary", event.target.value)} value={values.summary} />
+          <label className="lg:col-span-2 block">
+            <span className="text-xs font-bold uppercase tracking-[0.15em] text-stone-500">Resumo</span>
+            <textarea className="mt-2 min-h-32 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 py-3 text-sm leading-relaxed text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green" onChange={(event) => updateField("summary", event.target.value)} value={values.summary} />
           </label>
 
-          <label className="lg:col-span-2">
-            <span className="text-sm font-semibold text-semear-green">Observações</span>
-            <textarea className="mt-2 min-h-28 w-full rounded-2xl border border-semear-gray bg-white px-4 py-3 text-sm outline-none focus:border-semear-green" onChange={(event) => updateField("notes", event.target.value)} value={values.notes} />
+          <label className="lg:col-span-2 block">
+            <span className="text-xs font-bold uppercase tracking-[0.15em] text-stone-500">Observações</span>
+            <textarea className="mt-2 min-h-28 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 py-3 text-sm leading-relaxed text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green" onChange={(event) => updateField("notes", event.target.value)} value={values.notes} />
           </label>
 
-          <fieldset className="lg:col-span-2 rounded-2xl border border-semear-gray bg-semear-offwhite/60 p-4">
-            <legend className="px-1 text-sm font-semibold text-semear-green">Agenda da equipe</legend>
-            {mode === "create" && canManageCalendar ? (
-              <>
-                <label className="flex items-center gap-3 rounded-xl bg-white px-4 py-3 text-sm text-stone-700">
-                  <input checked={createCalendarEvent} onChange={(event) => setCreateCalendarEvent(event.target.checked)} type="checkbox" />
-                  Criar evento na agenda da equipe
-                </label>
-                {createCalendarEvent ? (
-                  <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                    <label className="rounded-xl border border-semear-gray bg-white px-4 py-3 text-sm text-stone-700">
-                      <span className="flex items-center gap-3">
-                        <input checked={calendarAllDay} onChange={(event) => setCalendarAllDay(event.target.checked)} type="checkbox" />
-                        Dia inteiro
-                      </span>
-                    </label>
-                    <div className="rounded-xl border border-semear-green/15 bg-white px-4 py-3 text-sm leading-6 text-stone-600">
-                      O evento usa título, território, ação vinculada, horário estruturado e equipe participante desta ação. Se a ação ainda não tiver horário definido, o sistema sugere um horário padrão editável. Nada será criado sem sua confirmação ao salvar.
+          <fieldset className="lg:col-span-2 rounded-2xl border border-white/60 bg-white/80 p-5 shadow-premium-sm backdrop-blur-sm">
+            <legend className="px-2 text-xs font-bold uppercase tracking-wider text-semear-green">Agenda da equipe</legend>
+            <div className="mt-4">
+              {mode === "create" && canManageCalendar ? (
+                <>
+                  <label className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm text-stone-750 shadow-premium-sm font-bold cursor-pointer select-none">
+                    <input checked={createCalendarEvent} className="h-5 w-5 rounded border-stone-300 text-semear-green focus:ring-semear-green" onChange={(event) => setCreateCalendarEvent(event.target.checked)} type="checkbox" />
+                    Criar evento na agenda da equipe
+                  </label>
+                  {createCalendarEvent ? (
+                    <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                      <label className="rounded-2xl border border-white/40 bg-white px-4 py-3 text-sm text-stone-750 shadow-premium-sm flex items-center font-bold cursor-pointer select-none">
+                        <span className="flex items-center gap-3">
+                          <input checked={calendarAllDay} className="h-5 w-5 rounded border-stone-300 text-semear-green focus:ring-semear-green" onChange={(event) => setCalendarAllDay(event.target.checked)} type="checkbox" />
+                          Dia inteiro
+                        </span>
+                      </label>
+                      <div className="rounded-2xl border border-white/40 bg-white/50 px-4 py-3 text-xs leading-relaxed text-stone-500 font-bold shadow-premium-sm">
+                        O evento usa título, território, ação vinculada, horário estruturado e equipe participante desta ação. Se a ação ainda não tiver horário definido, o sistema sugere um horário padrão editável. Nada será criado sem sua confirmação ao salvar.
+                      </div>
+                      <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-[0.15em] text-stone-500">Início do evento</span>
+                        <input className="mt-2 min-h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm font-bold text-stone-750 outline-none shadow-premium-sm transition focus:border-semear-green focus:ring-1 focus:ring-semear-green" type={calendarAllDay ? "date" : "datetime-local"} value={calendarAllDay ? calendarStartsAt.slice(0, 10) : calendarStartsAt} onChange={(event) => setCalendarStartsAt(calendarAllDay ? `${event.target.value}T00:00` : event.target.value)} />
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-[0.15em] text-stone-500">Fim do evento</span>
+                        <input className="mt-2 min-h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm font-bold text-stone-750 outline-none shadow-premium-sm transition focus:border-semear-green focus:ring-1 focus:ring-semear-green" type={calendarAllDay ? "date" : "datetime-local"} value={calendarAllDay ? calendarEndsAt.slice(0, 10) : calendarEndsAt} onChange={(event) => setCalendarEndsAt(calendarAllDay ? `${event.target.value}T23:59` : event.target.value)} />
+                      </label>
                     </div>
-                    <label>
-                      <span className="text-sm font-semibold text-semear-green">Início do evento</span>
-                      <input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" type={calendarAllDay ? "date" : "datetime-local"} value={calendarAllDay ? calendarStartsAt.slice(0, 10) : calendarStartsAt} onChange={(event) => setCalendarStartsAt(calendarAllDay ? `${event.target.value}T00:00` : event.target.value)} />
-                    </label>
-                    <label>
-                      <span className="text-sm font-semibold text-semear-green">Fim do evento</span>
-                      <input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" type={calendarAllDay ? "date" : "datetime-local"} value={calendarAllDay ? calendarEndsAt.slice(0, 10) : calendarEndsAt} onChange={(event) => setCalendarEndsAt(calendarAllDay ? `${event.target.value}T23:59` : event.target.value)} />
-                    </label>
-                  </div>
-                ) : null}
-              </>
-            ) : mode === "edit" ? (
-              <div className="rounded-xl border border-semear-gray bg-white px-4 py-3 text-sm leading-6 text-stone-600">
-                Para ações já cadastradas, use os atalhos da página da ação para criar evento, agendar devolutiva, dossiê ou revisão. A criação continua sendo opcional e sem automatismo.
-              </div>
-            ) : (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
-                A agenda é visível para toda a equipe, mas somente coordenação e admin podem criar eventos nela. A ação continua podendo ser cadastrada normalmente.
-              </div>
-            )}
+                  ) : null}
+                </>
+              ) : mode === "edit" ? (
+                <div className="rounded-2xl border border-white/40 bg-white/50 px-4 py-3 text-xs leading-relaxed text-stone-500 font-bold shadow-premium-sm">
+                  Para ações já cadastradas, use os atalhos da página da ação para criar evento, agendar devolutiva, dossiê ou revisão. A criação continua sendo opcional e sem automatismo.
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-amber-200/50 bg-amber-50/70 px-4 py-3 text-xs leading-relaxed text-amber-950 font-bold shadow-premium-sm">
+                  A agenda é visível para toda a equipe, mas somente coordenação e admin podem criar eventos nela. A ação continua podendo ser cadastrada normalmente.
+                </div>
+              )}
+            </div>
           </fieldset>
         </div>
 
-        <div className="sticky bottom-20 z-20 mt-8 flex flex-wrap gap-3 rounded-[1.5rem] border border-semear-green/15 bg-white/95 p-4 shadow-soft backdrop-blur md:bottom-4">
-          <button className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full bg-semear-green px-5 text-sm font-semibold text-white transition hover:bg-semear-green/92 disabled:cursor-not-allowed disabled:opacity-60" disabled={saving} type="submit">
+        <div className="sticky bottom-20 z-20 mt-8 flex flex-wrap gap-3 rounded-2xl border border-white/60 bg-white/90 p-4 shadow-premium-md backdrop-blur-sm md:bottom-4">
+          <button className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full bg-semear-green px-5 text-sm font-bold text-white shadow-premium-sm transition hover:bg-semear-green/90 active:scale-[0.98] duration-200 disabled:cursor-not-allowed disabled:opacity-60" disabled={saving} type="submit">
             <Save className="h-4 w-4" aria-hidden="true" />
             {saving ? "Salvando..." : "Salvar ação"}
           </button>
-          <Link className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full border border-semear-green/15 bg-white px-5 text-sm font-semibold text-semear-green" href="/acoes">Cancelar</Link>
+          <Link className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full border border-white/60 bg-white px-5 text-sm font-bold text-semear-green shadow-premium-sm transition hover:bg-stone-50 active:scale-[0.98] duration-200" href="/acoes">Cancelar</Link>
         </div>
       </form>
     </section>

@@ -11,10 +11,32 @@
   box-sizing: border-box;
 }
 
+/* Scrollbar Moderno e Elegante */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f5f1e7;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c5c1b5;
+  border-radius: 9999px;
+  border: 2px solid #f5f1e7;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #174A37;
+}
+
 body {
   margin: 0;
-  background: #f7f4ec;
+  background: #faf8f1;
   color: #1d2b25;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a {
@@ -29,11 +51,67 @@ a {
 
 ::selection {
   background: rgba(228, 184, 78, 0.45);
+  color: #174A37;
 }
 
 :focus-visible {
   outline: 2px solid #174A37;
   outline-offset: 2px;
+}
+
+/* Inputs, Textareas e Selects com Foco Glow */
+input, select, textarea {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #174A37 !important;
+  box-shadow: 0 0 0 4px rgba(23, 74, 55, 0.08) !important;
+}
+
+/* Transições e Hover de Cards Premium */
+.premium-card-hover {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.premium-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px rgba(23, 74, 55, 0.075);
+}
+
+.semear-text-link {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 0.75rem;
+  color: #174A37;
+  font-size: 0.875rem;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.semear-text-link:hover {
+  color: #b8792c;
+  transform: translateX(2px);
+}
+
+.semear-modern-row {
+  border: 1px solid rgba(214, 208, 192, 0.5);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 20px rgba(23, 74, 55, 0.025);
+  transition: all 0.2s ease;
+}
+
+.semear-modern-row:hover {
+  border-color: rgba(23, 74, 55, 0.2);
+  box-shadow: 0 10px 25px rgba(23, 74, 55, 0.05);
+}
+
+.semear-soft-panel {
+  border: 1px solid rgba(214, 208, 192, 0.5);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(8px);
 }
 
 .print-only {

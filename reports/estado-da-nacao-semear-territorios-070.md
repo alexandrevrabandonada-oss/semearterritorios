@@ -1,5 +1,71 @@
 # Estado da Nação — SEMEAR Territórios — Tijolo 070
 
+## Complemento de Redesign Visual 070 - 18/05/2026
+
+Este complemento registra a segunda passada visual solicitada em 18/05/2026 para aproximar o sistema real do mockup moderno.
+
+### Diagnóstico pós-069
+
+O app já tinha primitives novas, mas ainda mantinha aparência de intranet em várias rotas: cards bege dentro de cards, blocos grandes com pouco conteúdo, botões "Ver todos" chamativos, radius exagerado, tabelas/listas simples e barras sticky com sensação de sobreposição.
+
+### Mudanças aplicadas
+
+- Primitives `SemearPageHeader`, `SemearCard`, `SemearMetricCard` e `SemearAlert` foram refinados com cards brancos, sombra leve, radius moderado, título mais forte e botão primário mostarda.
+- Sidebar recebeu verde escuro em gradiente, item ativo mostarda, ícones mais leves e perfil inferior mais discreto.
+- Dashboard recebeu melhora direta via primitives e substituição de blocos bege locais por cards brancos e links textuais "Ver todos →".
+- `/mapa` foi redesenhada com cards territoriais compactos, mini-KPIs, chips e ranking lateral com barras horizontais.
+- `/acoes/[id]/dossie` ganhou status executivo à direita, checklist documental colapsável e barra de ação sticky com fundo, sombra e padding.
+- `/acoes/[id]/devolutiva` ficou mais editorial no modo público e separou melhor os controles técnicos.
+- `/escutas/lote` reduziu blocos bege, corrigiu sticky inferior e clareou os blocos de fala/território.
+- `/memoria` modernizou cards de relatório e linha do tempo com linhas brancas, chips suaves e links menores.
+
+### Componentes substituídos
+
+- `SemearAppShell`
+- `components/ui/semear-primitives.tsx`
+- `components/dashboard.tsx`
+- `components/mapa/territorial-listening-map.tsx`
+- `components/actions/action-dossier-page.tsx`
+- `components/actions/action-debrief-page.tsx`
+- `components/listening-records/listening-record-batch-form.tsx`
+- `components/memory/project-memory-dashboard.tsx`
+- `app/globals.css`
+
+### Checklist visual
+
+Checklist comparativo criado em `reports/redesign-visual-checklist-070.md`.
+
+### Verificação
+
+- `npm run lint`: passou sem warnings ou erros.
+- `npm run build`: passou.
+- `npm run verify`: passou.
+- Testes: 4 arquivos de transparência, 14 testes aprovados.
+
+### Screenshots
+
+Foram criados:
+
+- `reports/screenshots/redesign-070-dashboard.png`
+- `reports/screenshots/redesign-070-mapa.png`
+- `reports/screenshots/redesign-070-lote.png`
+
+Limitação: sem sessão autenticada no navegador automatizado, as rotas protegidas redirecionaram para `/login`; os screenshots registram esse bloqueio, não o visual interno. `redesign-070-dossie.png` não foi gerado porque a rota exige ID real e sessão autenticada.
+
+### Confirmação de segurança
+
+Não houve alteração em banco, migrations, RLS, autenticação, storage, uploads ou regras de negócio. As mudanças ficaram restritas a React/CSS e relatórios.
+
+### Riscos restantes
+
+- `/relatorios` e `/pos-banca` receberam melhoria indireta via primitives, mas ainda precisam de redesenho dedicado.
+- Alguns painéis analíticos internos podem preservar micro-padrões antigos.
+- Validação visual automatizada completa depende de uma sessão autenticada com dados reais.
+
+---
+
+## Registro histórico anterior do Tijolo 070
+
 **Data:** 2026-05-12  
 **Tijolo:** 070 — Preparação Operacional de Papéis Reais e Rodada de Aceite Assistido Presencial  
 **Status geral:** ⚠️ Parcial (regularização concluída; aceite presencial pendente)

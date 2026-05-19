@@ -262,19 +262,19 @@ export function Dashboard() {
         description="Sínteses territoriais para leitura coletiva"
         filters={(
           <>
-            <select aria-label="Período" className="min-h-11 rounded-xl border border-semear-gray bg-white px-3 text-sm font-semibold text-stone-700 shadow-sm outline-none focus:border-semear-green" onChange={(event) => updateFilter("month", event.target.value)} value={filters.month}>
+            <select aria-label="Período" className="min-h-11 rounded-2xl border border-stone-200 bg-white/95 px-4 py-2 text-sm font-bold text-stone-700 shadow-premium-sm outline-none transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green" onChange={(event) => updateFilter("month", event.target.value)} value={filters.month}>
               <option value="">Todo o período</option>
               {recordsByMonth.map((item) => <option key={item.name} value={item.name}>{formatMonth(item.name)}</option>)}
             </select>
-            <select aria-label="Território da ação" className="min-h-11 rounded-xl border border-semear-gray bg-white px-3 text-sm font-semibold text-stone-700 shadow-sm outline-none focus:border-semear-green" onChange={(event) => updateFilter("actionNeighborhoodId", event.target.value)} value={filters.actionNeighborhoodId}>
+            <select aria-label="Território da ação" className="min-h-11 rounded-2xl border border-stone-200 bg-white/95 px-4 py-2 text-sm font-bold text-stone-700 shadow-premium-sm outline-none transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green" onChange={(event) => updateFilter("actionNeighborhoodId", event.target.value)} value={filters.actionNeighborhoodId}>
               <option value="">Todos os territórios da ação</option>
               {neighborhoods.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
-            <select aria-label="Território de referência do entrevistado" className="min-h-11 rounded-xl border border-semear-gray bg-white px-3 text-sm font-semibold text-stone-700 shadow-sm outline-none focus:border-semear-green" onChange={(event) => updateFilter("respondentNeighborhoodId", event.target.value)} value={filters.respondentNeighborhoodId}>
+            <select aria-label="Território de referência do entrevistado" className="min-h-11 rounded-2xl border border-stone-200 bg-white/95 px-4 py-2 text-sm font-bold text-stone-700 shadow-premium-sm outline-none transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green" onChange={(event) => updateFilter("respondentNeighborhoodId", event.target.value)} value={filters.respondentNeighborhoodId}>
               <option value="">Todos os territórios de referência</option>
               {neighborhoods.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
-            <select aria-label="Tema" className="min-h-11 rounded-xl border border-semear-gray bg-white px-3 text-sm font-semibold text-stone-700 shadow-sm outline-none focus:border-semear-green" onChange={(event) => updateFilter("themeId", event.target.value)} value={filters.themeId}>
+            <select aria-label="Tema" className="min-h-11 rounded-2xl border border-stone-200 bg-white/95 px-4 py-2 text-sm font-bold text-stone-700 shadow-premium-sm outline-none transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green" onChange={(event) => updateFilter("themeId", event.target.value)} value={filters.themeId}>
               <option value="">Todos os temas</option>
               {themes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
@@ -339,20 +339,20 @@ export function Dashboard() {
         </div>
       )}
 
-      <section className="hidden overflow-hidden rounded-2xl border border-semear-gray/80 bg-white shadow-[0_12px_32px_rgba(23,74,55,0.06)] lg:block">
+      <section className="hidden overflow-hidden rounded-2xl border border-white/60 bg-white/80 shadow-premium-sm backdrop-blur-sm lg:block">
         <div className="grid gap-5 p-5 lg:grid-cols-[1fr_25rem] lg:items-center">
           <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-semear-green text-semear-yellow">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-semear-green text-semear-yellow shadow-premium-sm">
               <Sprout className="h-7 w-7" aria-hidden="true" />
             </div>
             <div>
-              <p className="max-w-3xl text-sm leading-6 text-stone-700">
+              <p className="max-w-3xl text-sm leading-relaxed text-stone-700">
                 Este painel reúne os principais indicadores e padrões das escutas realizadas nos territórios. Use os filtros para explorar os dados e apoiar decisões da equipe.
               </p>
               <Link className="mt-2 inline-flex text-sm font-semibold text-semear-green hover:underline" href="/ajuda">Saiba mais sobre os indicadores</Link>
             </div>
           </div>
-          <div className="hidden h-24 rounded-xl bg-[linear-gradient(135deg,#eef5e8,#cfe0c2)] lg:block" aria-hidden="true" />
+          <div className="hidden h-24 rounded-xl bg-gradient-to-br from-semear-green-soft/40 to-semear-yellow/10 border border-white/40 lg:block" aria-hidden="true" />
         </div>
       </section>
 
@@ -368,68 +368,70 @@ export function Dashboard() {
             <SemearMetricCard icon={<MapPinned className="h-5 w-5" />} label="Bairros de referência dos entrevistados" note="Território de referência" value={respondentNeighborhoodIds.size} />
           </div>
 
-          <section className="mt-4 rounded-2xl border border-semear-gray/80 bg-white p-5 shadow-[0_12px_32px_rgba(23,74,55,0.06)]">
+          <section className="mt-4 rounded-2xl border border-white/60 bg-white/85 p-6 shadow-premium-sm backdrop-blur-sm transition-all duration-300">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">Qualidade territorial</p>
-                <h3 className="mt-2 text-2xl font-semibold tracking-tight text-semear-green">{respondentQualityMetrics.coveragePercent}% de cobertura</h3>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-semear-earth">Qualidade territorial</p>
+                <h3 className="mt-2 text-2xl font-extrabold tracking-tight text-semear-green">{respondentQualityMetrics.coveragePercent}% de cobertura</h3>
+                <p className="mt-2 max-w-3xl text-sm leading-relaxed text-stone-600">
                   Mostra quantas escutas têm território de referência do entrevistado preenchido. Não é endereço nem geolocalização.
                 </p>
               </div>
-              <Link className="inline-flex min-h-12 items-center justify-center rounded-xl bg-semear-green px-4 text-sm font-semibold text-white" href="/escutas/revisao-territorial?tab=qualidade">
+              <Link className="inline-flex min-h-12 items-center justify-center rounded-xl bg-semear-green px-4 text-xs font-bold text-white shadow-premium-sm transition hover:bg-semear-green/90 active:scale-[0.98]" href="/escutas/revisao-territorial?tab=qualidade">
                 Revisar escutas sem território
               </Link>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-xl border border-semear-gray bg-semear-offwhite p-4 text-sm">
+              <div className="rounded-xl border border-white/60 bg-white/90 p-4 text-sm shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium-md">
                 <p className="font-semibold text-semear-green">Total de escutas</p>
-                <p className="mt-2 text-2xl font-semibold text-stone-900">{respondentQualityMetrics.totalRecords}</p>
+                <p className="mt-2 text-2xl font-bold text-stone-900">{respondentQualityMetrics.totalRecords}</p>
               </div>
-              <div className="rounded-xl border border-semear-gray bg-semear-offwhite p-4 text-sm">
+              <div className="rounded-xl border border-white/60 bg-white/90 p-4 text-sm shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium-md">
                 <p className="font-semibold text-semear-green">Com território</p>
-                <p className="mt-2 text-2xl font-semibold text-green-800">{respondentQualityMetrics.recordsWithRespondentTerritory}</p>
+                <p className="mt-2 text-2xl font-bold text-green-800">{respondentQualityMetrics.recordsWithRespondentTerritory}</p>
               </div>
-              <div className="rounded-xl border border-semear-gray bg-semear-offwhite p-4 text-sm">
+              <div className="rounded-xl border border-white/60 bg-white/90 p-4 text-sm shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium-md">
                 <p className="font-semibold text-semear-green">Sem território</p>
-                <p className="mt-2 text-2xl font-semibold text-amber-900">{respondentQualityMetrics.recordsWithoutRespondentTerritory}</p>
+                <p className="mt-2 text-2xl font-bold text-amber-900">{respondentQualityMetrics.recordsWithoutRespondentTerritory}</p>
               </div>
-              <div className="rounded-xl border border-semear-gray bg-semear-offwhite p-4 text-sm">
+              <div className="rounded-xl border border-white/60 bg-white/90 p-4 text-sm shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium-md">
                 <p className="font-semibold text-semear-green">Status</p>
-                <p className="mt-2 inline-flex rounded-full bg-white px-3 py-1 text-sm font-semibold text-stone-800">
-                  {respondentQualityLabel.icon} {respondentQualityLabel.label}
-                </p>
+                <div className="mt-2">
+                  <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider ${respondentQualityMetrics.qualityStatus === "boa" ? "bg-green-50 border-green-200/50 text-green-700" : respondentQualityMetrics.qualityStatus === "atenção" ? "bg-amber-50 border-amber-200/50 text-amber-700" : "bg-red-50 border-red-200/50 text-red-700"}`}>
+                    {respondentQualityLabel.icon} <span className="ml-1">{respondentQualityLabel.label}</span>
+                  </span>
+                </div>
               </div>
             </div>
-            <div className="mt-4 h-2.5 rounded-full bg-semear-green-soft">
-              <div className={`h-2.5 rounded-full ${respondentQualityMetrics.qualityStatus === "boa" ? "bg-green-600" : respondentQualityMetrics.qualityStatus === "atenção" ? "bg-amber-500" : "bg-red-600"}`} style={{ width: `${Math.min(respondentQualityMetrics.coveragePercent, 100)}%` }} />
+            <div className="mt-4 h-2.5 rounded-full bg-semear-green-soft/40 border border-stone-200/20">
+              <div className={`h-2 rounded-full transition-all duration-500 ${respondentQualityMetrics.qualityStatus === "boa" ? "bg-green-600" : respondentQualityMetrics.qualityStatus === "atenção" ? "bg-amber-500" : "bg-red-600"}`} style={{ width: `${Math.min(respondentQualityMetrics.coveragePercent, 100)}%` }} />
             </div>
           </section>
 
-          <section className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
-            <p className="font-semibold text-amber-900">Como ler este indicador</p>
+          <section className="mt-4 rounded-2xl border border-amber-200/50 bg-amber-50/75 p-5 text-sm leading-relaxed text-amber-950 backdrop-blur-sm">
+            <p className="font-bold text-amber-900 uppercase tracking-wider text-xs">Como ler este indicador</p>
             <p className="mt-1">
               Território de referência indica de onde a pessoa fala, mora, circula ou a qual território se refere. Quando a cobertura está baixa, leituras por bairro devem ser vistas com cautela.
             </p>
-            <p className="mt-1 text-xs text-amber-900">
+            <p className="mt-1 text-xs text-amber-900/80">
               Cobertura baixa afeta a interpretação de relatórios mensais e snapshots da Transparência Viva.
             </p>
           </section>
 
-          <section className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+          <section className="mt-4 rounded-2xl border border-blue-200/50 bg-blue-50/75 p-5 text-sm leading-relaxed text-blue-900 backdrop-blur-sm">
             <strong>Leitura territorial:</strong> Uma ação pode acontecer em um bairro e ouvir pessoas de vários territórios.
           </section>
 
           <section className="mt-4 grid gap-4 xl:grid-cols-2">
             <Panel title="Operação territorial" icon={<MapPinned className="h-5 w-5" />}>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-semear-gray bg-semear-offwhite p-4 text-sm">
+                <div className="rounded-xl border border-white/60 bg-white/90 p-4 text-sm shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium-md">
                   <p className="font-semibold text-semear-green">Escutas coletadas por ação</p>
-                  <p className="mt-2 text-stone-700">{filteredActions.length > 0 ? (filteredRecords.length / filteredActions.length).toFixed(1) : "0.0"} em média</p>
+                  <p className="mt-2 text-stone-700 font-bold">{filteredActions.length > 0 ? (filteredRecords.length / filteredActions.length).toFixed(1) : "0.0"} em média</p>
                 </div>
-                <div className="rounded-xl border border-semear-gray bg-semear-offwhite p-4 text-sm">
+                <div className="rounded-xl border border-white/60 bg-white/90 p-4 text-sm shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium-md">
                   <p className="font-semibold text-semear-green">Territórios de referência alcançados</p>
-                  <p className="mt-2 text-stone-700">{reachedRespondentTerritoriesFromActions}</p>
+                  <p className="mt-2 text-stone-700 font-bold">{reachedRespondentTerritoriesFromActions}</p>
                 </div>
               </div>
               {actionsByTerritory.length > 0 ? <SimpleTable headers={["Território da ação", "Ações"]} rows={actionsByTerritory.map((item) => [item.name, item.count.toString()])} /> : <PedagogicEmpty text="Sem ações com território da ação definido neste recorte." />}
@@ -437,25 +439,25 @@ export function Dashboard() {
 
             <Panel title="Escuta territorial" icon={<MessageSquareText className="h-5 w-5" />}>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-semear-gray bg-semear-offwhite p-4 text-sm">
+                <div className="rounded-xl border border-white/60 bg-white/90 p-4 text-sm shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium-md">
                   <p className="font-semibold text-semear-green">Escutas sem território de referência</p>
-                  <p className="mt-2 text-stone-700">{recordsWithoutRespondentTerritory}</p>
+                  <p className="mt-2 text-stone-700 font-bold">{recordsWithoutRespondentTerritory}</p>
                 </div>
-                <div className="rounded-xl border border-semear-gray bg-semear-offwhite p-4 text-sm">
+                <div className="rounded-xl border border-white/60 bg-white/90 p-4 text-sm shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium-md">
                   <p className="font-semibold text-semear-green">Pendências de revisão</p>
-                  <p className="mt-2 text-stone-700">{pendingRecords.length}</p>
+                  <p className="mt-2 text-stone-700 font-bold">{pendingRecords.length}</p>
                 </div>
               </div>
               {recordsByRespondentTerritory.length > 0 ? <SimpleTable headers={["Território de referência", "Escutas"]} rows={recordsByRespondentTerritory.map((item) => [item.name, item.count.toString()])} /> : <PedagogicEmpty text="Sem território de referência preenchido no recorte atual." />}
             </Panel>
           </section>
 
-          <section className="mt-4 rounded-2xl border border-semear-gray/80 bg-white p-5 shadow-[0_12px_32px_rgba(23,74,55,0.06)]">
+          <section className="mt-6 rounded-3xl border border-white/60 bg-white/80 backdrop-blur-md p-6 shadow-premium-md transition duration-200 hover:shadow-premium-lg">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">Próxima operação</p>
-                <h3 className="mt-2 text-2xl font-semibold tracking-tight text-semear-green">{nextEvent ? nextEvent.title : "Atalhos para homologação e primeira banca"}</h3>
-                <p className="mt-1 text-sm leading-6 text-stone-600">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-semear-earth">Próxima operação</p>
+                <h3 className="mt-2 text-2xl font-extrabold tracking-tight text-semear-green">{nextEvent ? nextEvent.title : "Atalhos para homologação e primeira banca"}</h3>
+                <p className="mt-1 text-sm leading-6 text-stone-600 font-semibold">
                   {nextEvent
                     ? `${getEventDateLabel(nextEvent)} · ${nextEventNeighborhood?.name ?? "Sem território"} · ${nextEvent.status}`
                     : "Acompanhe o andamento dos dossiês e acesse rapidamente suas próximas atividades."}
@@ -595,7 +597,7 @@ export function Dashboard() {
                   {wordCounts.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
                       {wordCounts.slice(0, 16).map((item) => (
-                        <span className="rounded-full border border-semear-gray bg-semear-offwhite px-2.5 py-1 text-xs font-semibold text-stone-700" key={item.name}>
+                        <span className="rounded-full border border-white/60 bg-white px-2.5 py-1 text-xs font-bold text-stone-750 shadow-premium-sm" key={item.name}>
                           {item.name} <span className="text-semear-earth">{item.count}</span>
                         </span>
                       ))}
@@ -604,20 +606,20 @@ export function Dashboard() {
                 </Panel>
               </div>
 
-              <section className="mt-4 rounded-2xl border border-semear-gray/80 bg-white p-5 shadow-[0_12px_32px_rgba(23,74,55,0.06)]">
+              <section className="mt-4 rounded-2xl border border-white/60 bg-white/80 p-5 shadow-premium-sm backdrop-blur-sm transition-all duration-300">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-semear-green-soft text-semear-green">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-semear-green-soft text-semear-green shadow-premium-sm">
                       <MapIcon className="h-5 w-5" aria-hidden="true" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-semibold text-semear-green">Mapa-lista territorial</h3>
+                      <h3 className="text-xl font-bold text-semear-green">Mapa-lista territorial</h3>
                       <p className="mt-1 text-sm text-stone-600">Lista viva dos bairros de referência dos entrevistados neste recorte.</p>
                     </div>
                   </div>
                   <div className="relative w-full max-w-sm">
                     <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-stone-400" aria-hidden="true" />
-                    <input className="min-h-11 w-full rounded-xl border border-semear-gray bg-white pl-9 pr-3 text-sm outline-none focus:border-semear-green" onChange={(event) => setTerritorySearch(event.target.value)} placeholder="Buscar território de referência..." value={territorySearch} />
+                    <input className="min-h-11 w-full rounded-2xl border border-stone-200 bg-white/95 pl-9 pr-4 text-sm font-bold outline-none transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green" onChange={(event) => setTerritorySearch(event.target.value)} placeholder="Buscar território de referência..." value={territorySearch} />
                   </div>
                 </div>
                 <div className="mt-4 grid gap-3 md:grid-cols-2 2xl:grid-cols-4">
@@ -628,9 +630,9 @@ export function Dashboard() {
                 {territoryCards.length === 0 ? <PedagogicEmpty text="Nenhum território de referência encontrado neste recorte. Ajuste os filtros ou revise as escutas." /> : null}
               </section>
 
-              <section className="mt-4 rounded-2xl border border-semear-gray/80 bg-white p-5 shadow-[0_12px_32px_rgba(23,74,55,0.06)]">
+              <section className="mt-4 rounded-2xl border border-white/60 bg-white/80 p-5 shadow-premium-sm backdrop-blur-sm transition-all duration-300">
                 <div className="mb-4">
-                  <h3 className="text-xl font-semibold text-semear-green">Ações com baixa cobertura territorial</h3>
+                  <h3 className="text-xl font-bold text-semear-green">Ações com baixa cobertura territorial</h3>
                   <p className="mt-1 text-sm text-stone-600">
                     Crítica (&lt; 50%): {criticalActionsCount} · Atenção (50% a 79%): {attentionActionsCount}
                   </p>
@@ -639,15 +641,15 @@ export function Dashboard() {
               </section>
 
               {canSeeTeamGuidance && interviewerGuidance.length > 0 ? (
-                <section className="mt-4 rounded-2xl border border-semear-gray/80 bg-white p-5 shadow-[0_12px_32px_rgba(23,74,55,0.06)]">
-                  <h3 className="text-xl font-semibold text-semear-green">Onde orientar a equipe</h3>
+                <section className="mt-4 rounded-2xl border border-white/60 bg-white/80 p-5 shadow-premium-sm backdrop-blur-sm transition-all duration-300">
+                  <h3 className="text-xl font-bold text-semear-green">Onde orientar a equipe</h3>
                   <p className="mt-1 text-sm text-stone-600">
                     Visão interna para coordenação e admin, focada em suporte e treinamento para melhorar o preenchimento territorial.
                   </p>
                   <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     {interviewerGuidance.map((item) => (
-                      <div className="rounded-xl border border-semear-gray bg-semear-offwhite p-4 text-sm" key={item.teamMemberId}>
-                        <p className="font-semibold text-semear-green">{item.teamMemberName}</p>
+                      <div className="rounded-xl border border-white/60 bg-white/95 p-4 text-sm shadow-premium-sm transition hover:-translate-y-0.5 hover:shadow-premium-md" key={item.teamMemberId}>
+                        <p className="font-bold text-semear-green">{item.teamMemberName}</p>
                         <p className="mt-2 text-stone-700">Escutas sem território: <strong>{item.recordsWithoutRespondentTerritory}</strong></p>
                         <p className="text-stone-700">Cobertura atual: <strong>{item.coveragePercent}%</strong></p>
                       </div>
@@ -656,7 +658,7 @@ export function Dashboard() {
                 </section>
               ) : null}
 
-              <section className="mt-4 rounded-2xl border border-semear-gray/80 bg-white p-5 shadow-[0_12px_32px_rgba(23,74,55,0.06)]">
+              <section className="mt-4 rounded-2xl border border-white/60 bg-white/80 p-5 shadow-premium-sm backdrop-blur-sm transition-all duration-300">
                 <div className="grid gap-5 lg:grid-cols-[1fr_28rem] lg:items-center">
                   <div className="flex items-start gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-semear-green-soft text-semear-green">
@@ -669,10 +671,10 @@ export function Dashboard() {
                       </p>
                     </div>
                   </div>
-                  <div className="rounded-xl border border-semear-gray bg-semear-offwhite p-4">
-                    <p className="text-sm font-semibold text-semear-green">{latestSnapshot ? latestSnapshot.title : "Área pública em desenvolvimento"}</p>
-                    <p className="mt-1 text-xs text-stone-500">{latestSnapshot ? `Status: ${latestSnapshot.status}` : "Em breve disponível para a comunidade."}</p>
-                    <Link className="mt-3 inline-flex min-h-10 items-center rounded-xl border border-semear-green/15 bg-white px-3 text-sm font-semibold text-semear-green" href="/transparencia/snapshots">Saiba mais</Link>
+                  <div className="rounded-2xl border border-white/60 bg-white/80 p-5 shadow-premium-sm backdrop-blur-sm">
+                    <p className="text-sm font-bold text-semear-green">{latestSnapshot ? latestSnapshot.title : "Área pública em desenvolvimento"}</p>
+                    <p className="mt-1 text-xs text-stone-500 font-semibold">{latestSnapshot ? `Status: ${latestSnapshot.status}` : "Em breve disponível para a comunidade."}</p>
+                    <Link className="mt-3 inline-flex min-h-10 items-center rounded-full border border-white/60 bg-white/90 px-4 text-xs font-bold text-semear-green shadow-premium-sm transition hover:bg-stone-50 active:scale-[0.98] duration-200" href="/transparencia/snapshots">Saiba mais</Link>
                   </div>
                 </div>
               </section>
@@ -716,7 +718,7 @@ export function Dashboard() {
 
 function PrimaryAction({ href, icon, label }: { href: string; icon: ReactNode; label: string }) {
   return (
-    <Link className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-semear-yellow px-4 text-sm font-semibold text-semear-green shadow-sm transition hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-semear-green" href={href}>
+    <Link className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-semear-yellow px-4 text-sm font-bold text-semear-green shadow-premium-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-semear-green" href={href}>
       {icon}
       {label}
     </Link>
@@ -725,27 +727,27 @@ function PrimaryAction({ href, icon, label }: { href: string; icon: ReactNode; l
 
 function SecondaryAction({ href, icon, label, tone = "green", strong = false }: { href: string; icon: ReactNode; label: string; tone?: "green" | "yellow"; strong?: boolean }) {
   const className = tone === "yellow"
-    ? "bg-semear-yellow text-semear-green"
+    ? "bg-semear-yellow text-semear-green hover:bg-semear-yellow/90"
     : strong
-      ? "bg-semear-green text-white"
-      : "border border-semear-green/15 bg-white text-semear-green";
-  return <Link className={`inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold shadow-sm ${className}`} href={href}>{icon}{label}</Link>;
+      ? "bg-semear-green text-white hover:bg-semear-green/90"
+      : "border border-white/60 bg-white/80 text-semear-green hover:bg-white";
+  return <Link className={`inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-bold shadow-premium-sm transition-all duration-200 active:scale-[0.98] ${className}`} href={href}>{icon}{label}</Link>;
 }
 
 function OperationList({ title, items, count, empty = "Nenhum item.", tone = "green" }: { title: string; items: string[]; count: number; empty?: string; tone?: "green" | "yellow" | "earth" }) {
   const toneClass = tone === "yellow" ? "bg-semear-yellow text-semear-green" : tone === "earth" ? "bg-semear-earth text-white" : "bg-green-100 text-green-800";
   return (
-    <div className="rounded-xl border border-semear-gray bg-white p-4">
+    <div className="rounded-2xl border border-white/60 bg-white/60 p-4 shadow-premium-sm">
       <div className="flex items-center gap-2">
-        <p className="font-semibold text-semear-green">{title}</p>
-        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${toneClass}`}>{count}</span>
+        <p className="font-bold text-semear-green">{title}</p>
+        <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${toneClass}`}>{count}</span>
       </div>
       {items.length > 0 ? (
-        <ul className="mt-3 divide-y divide-semear-gray text-sm leading-6 text-stone-700">
-          {items.map((item) => <li className="py-2" key={item}>{item}</li>)}
+        <ul className="mt-3 divide-y divide-stone-100 text-sm leading-6 text-stone-700">
+          {items.map((item) => <li className="py-2 font-medium" key={item}>{item}</li>)}
         </ul>
       ) : (
-        <p className="mt-3 text-sm text-stone-500">{empty}</p>
+        <p className="mt-3 text-sm text-stone-500 font-medium">{empty}</p>
       )}
     </div>
   );
@@ -753,18 +755,18 @@ function OperationList({ title, items, count, empty = "Nenhum item.", tone = "gr
 
 function CompactRanking({ title, items, empty }: { title: string; items: string[]; empty: string }) {
   return (
-    <div className="rounded-xl border border-semear-gray bg-semear-offwhite/70 p-4">
-      <p className="text-sm font-semibold text-semear-green">{title}</p>
+    <div className="rounded-2xl border border-white/60 bg-white/80 p-5 shadow-premium-sm">
+      <p className="text-sm font-bold text-semear-green">{title}</p>
       {items.length > 0 ? (
         <ul className="mt-3 space-y-2 text-sm leading-6 text-stone-700">
           {items.map((item) => (
-            <li className="rounded-xl bg-white px-3 py-2" key={item}>
+            <li className="rounded-2xl border border-white/40 bg-white/50 px-3.5 py-2.5 font-bold text-stone-700 shadow-premium-sm" key={item}>
               {item}
             </li>
           ))}
         </ul>
       ) : (
-        <p className="mt-3 text-sm text-stone-500">{empty}</p>
+        <p className="mt-3 text-sm text-stone-500 font-semibold">{empty}</p>
       )}
     </div>
   );
@@ -772,13 +774,13 @@ function CompactRanking({ title, items, empty }: { title: string; items: string[
 
 function Panel({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
   return (
-    <section className="rounded-2xl border border-semear-gray/80 bg-white p-5 shadow-[0_12px_30px_rgba(23,74,55,0.06)]">
+    <section className="rounded-2xl border border-white/60 bg-white/80 p-5 shadow-premium-sm backdrop-blur-sm transition-all duration-300">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-semear-green-soft text-semear-green">{icon}</div>
-          <h3 className="font-semibold text-semear-green">{title}</h3>
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-semear-green-soft text-semear-green shadow-premium-sm">{icon}</div>
+          <h3 className="font-bold text-semear-green">{title}</h3>
         </div>
-        <SemearStatusBadge tone="green">Ver todos</SemearStatusBadge>
+        <Link className="semear-text-link font-bold text-xs" href="/leituras">Ver todos →</Link>
       </div>
       {children}
     </section>
@@ -789,12 +791,12 @@ function SimpleTable({ headers, rows }: { headers: string[]; rows: string[][] })
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
-        <thead className="text-xs uppercase tracking-[0.12em] text-stone-500">
-          <tr>{headers.map((header) => <th className="border-b border-semear-gray pb-2 pr-3" key={header}>{header}</th>)}</tr>
+        <thead className="text-xs uppercase tracking-[0.15em] text-stone-500 font-bold">
+          <tr>{headers.map((header) => <th className="border-b border-stone-200/50 pb-2 pr-3" key={header}>{header}</th>)}</tr>
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.join("|")}>{row.map((cell, index) => <td className="border-b border-semear-gray/70 py-2.5 pr-3 text-stone-700" key={`${cell}-${index}`}>{cell}</td>)}</tr>
+            <tr key={row.join("|")}>{row.map((cell, index) => <td className="border-b border-stone-100 py-3 pr-3 text-stone-700 font-medium" key={`${cell}-${index}`}>{cell}</td>)}</tr>
           ))}
         </tbody>
       </table>
@@ -804,17 +806,17 @@ function SimpleTable({ headers, rows }: { headers: string[]; rows: string[][] })
 
 function TerritoryCard({ territory }: { territory: TerritoryCardData }) {
   return (
-    <article className="rounded-xl border border-semear-gray bg-white p-4">
+    <article className="rounded-xl border border-white/60 bg-white/90 p-4 shadow-premium-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-premium-md hover:ring-1 hover:ring-semear-green/5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h4 className="font-semibold text-semear-green">{territory.name}</h4>
-          <p className="mt-1 text-xs text-stone-500">{territory.status}</p>
+          <h4 className="font-bold text-semear-green">{territory.name}</h4>
+          <p className="mt-0.5 text-xs text-stone-400 font-medium">{territory.status}</p>
         </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${territory.status === "Escutado" ? "bg-green-50 text-green-800" : territory.status === "Em revisão" ? "bg-amber-50 text-amber-900" : "bg-orange-50 text-orange-800"}`}>
+        <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${territory.status === "Escutado" ? "bg-green-50 border-green-200 text-green-700" : territory.status === "Em revisão" ? "bg-amber-50 border-amber-200 text-amber-700" : "bg-orange-50 border-orange-200 text-orange-700"}`}>
           {territory.status}
         </span>
       </div>
-      <div className="mt-4 grid grid-cols-4 gap-2 text-xs">
+      <div className="mt-4 grid grid-cols-4 gap-2 text-[10px]">
         <TerritoryStat label="Escutas" value={territory.records.toString()} />
         <TerritoryStat label="Temas" value={territory.themes.toString()} />
         <TerritoryStat label="Ações" value={territory.actions.toString()} />
@@ -825,23 +827,22 @@ function TerritoryCard({ territory }: { territory: TerritoryCardData }) {
 }
 
 function TerritoryStat({ label, value }: { label: string; value: string }) {
-  return <div><p className="text-stone-500">{label}</p><p className="mt-1 font-semibold text-stone-900">{value}</p></div>;
+  return <div><p className="text-stone-400 font-semibold">{label}</p><p className="mt-0.5 font-bold text-stone-800">{value}</p></div>;
 }
 
 function StateBox({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "error" }) {
-  return <div className={`mt-5 rounded-xl p-5 text-sm shadow-soft ${tone === "error" ? "border border-red-200 bg-red-50 text-red-800" : "border border-semear-gray bg-white text-stone-600"}`}>{children}</div>;
+  return <div className={`mt-5 rounded-xl p-5 text-sm shadow-premium-sm ${tone === "error" ? "border border-red-200 bg-red-50 text-red-800" : "border border-white/60 bg-white/90 text-stone-600"}`}>{children}</div>;
 }
 
 function PedagogicEmpty({ text }: { text: string }) {
-  return <div className="rounded-xl border border-dashed border-semear-green/25 bg-semear-offwhite p-4 text-sm leading-6 text-stone-600">{text}</div>;
+  return <div className="rounded-xl border border-dashed border-semear-green/20 bg-white/50 p-4 text-sm leading-relaxed text-stone-500 font-medium">{text}</div>;
 }
 
 function EmptyDashboard() {
   return (
-    <div className="mt-4 rounded-xl border border-dashed border-semear-green/25 bg-white p-8 text-center">
-      <h3 className="text-lg font-semibold text-semear-green">Ainda não há dados para sintetizar</h3>
-      <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-stone-600">Você ainda não tem escutas neste recorte. Comece digitando fichas de uma ação.</p>
-      <Link className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-semear-yellow px-4 text-sm font-semibold text-semear-green" href="/escutas/lote">Digitar fichas</Link>
+    <div className="mt-4 rounded-xl border border-dashed border-semear-green/20 bg-white/50 p-8 text-center backdrop-blur-sm">
+      <h3 className="text-lg font-bold text-semear-green">Ainda não há dados para sintetizar</h3>
+      <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-stone-500">Você ainda não tem escutas neste recorte. Comece digitando fichas de uma ação.</p>
     </div>
   );
 }

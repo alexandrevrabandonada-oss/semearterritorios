@@ -561,30 +561,31 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
   return (
     <section className="pb-10">
       <div className="mb-5 flex flex-wrap gap-3">
-        <Link className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white/70 px-4 text-sm font-semibold text-semear-green transition hover:bg-white" href="/agenda">
+        <Link className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/60 bg-white/80 px-4 text-sm font-semibold text-semear-green shadow-premium-sm hover:shadow-premium-md hover:bg-white active:scale-[0.98] transition-all duration-200" href="/agenda">
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Voltar para agenda
         </Link>
         {canManage ? (
-          <Link className="inline-flex min-h-11 items-center gap-2 rounded-full bg-semear-green px-4 text-sm font-semibold text-white transition hover:bg-semear-green/92" href={`/agenda/${eventId}?editar=1`}>
+          <Link className="inline-flex min-h-11 items-center gap-2 rounded-full bg-semear-green px-4 text-sm font-semibold text-white shadow-premium-sm hover:bg-semear-green/92 active:scale-[0.98] transition-all duration-200" href={`/agenda/${eventId}?editar=1`}>
             <Edit3 className="h-4 w-4" aria-hidden="true" />
             Editar evento
           </Link>
         ) : null}
       </div>
 
-      <article className="rounded-[2rem] border border-white/80 bg-white/80 p-5 shadow-soft sm:p-8">
+      <article className="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-md p-5 shadow-premium-md sm:p-8 hover:shadow-premium-lg transition-all duration-200">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="flex flex-wrap gap-2">
               <Badge tone="stone" label={getTeamCalendarEventTypeLabel(event.event_type)} />
               <Badge tone={getTeamCalendarEventStatusTone(event.status)} label={getTeamCalendarEventStatusLabel(event.status)} />
             </div>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-semear-green">{event.title}</h2>
-            <p className="mt-2 text-sm leading-6 text-stone-600">{getEventDateLabel(event)}</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-semear-green">{event.title}</h2>
+            <p className="mt-2 text-sm leading-6 text-stone-600 font-medium">{getEventDateLabel(event)}</p>
             {event.description ? <p className="mt-4 max-w-3xl text-sm leading-6 text-stone-700">{event.description}</p> : null}
           </div>
-          <div className="rounded-2xl bg-semear-green-soft px-4 py-3 text-sm font-semibold text-semear-green">
+          <div className="rounded-full bg-semear-green-soft border border-semear-green/10 px-4 py-1.5 text-xs font-semibold text-semear-green flex items-center gap-1.5 self-start shadow-premium-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-semear-green animate-pulse" />
             Evento interno da equipe
           </div>
         </div>
@@ -595,7 +596,7 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
             <InfoCard icon={<CalendarCheck2 className="h-5 w-5" />} label="Ação vinculada" value={event.actions?.title ?? "Sem ação vinculada"} />
             {!event.action_id && canManage && (
               <button
-                className="mt-1 inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-semear-green/10 text-xs font-bold text-semear-green transition hover:bg-semear-green/20 disabled:opacity-50"
+                className="mt-1 inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-semear-green/10 text-xs font-bold text-semear-green transition-all duration-200 hover:bg-semear-green/20 active:scale-[0.98] disabled:opacity-50"
                 onClick={handleTransformToAction}
                 disabled={transforming}
               >
@@ -605,7 +606,7 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
             {event.actions && (
               <Link
                 href={`/acoes/${event.actions.id}`}
-                className="mt-1 inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-semear-green/10 text-xs font-bold text-semear-green transition hover:bg-semear-green/20"
+                className="mt-1 inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-semear-green/10 text-xs font-bold text-semear-green transition-all duration-200 hover:bg-semear-green/20 active:scale-[0.98]"
               >
                 Ver detalhes da ação
               </Link>
@@ -616,14 +617,14 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
       </article>
 
       <div className="mt-6 grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-        <section className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
+        <section className="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-md p-5 shadow-premium-md hover:shadow-premium-lg transition-all duration-200">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-semear-green-soft text-semear-green">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-semear-green-soft text-semear-green border border-semear-green/10">
               <UsersRound className="h-5 w-5" aria-hidden="true" />
             </div>
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Presença</p>
-              <h3 className="text-xl font-semibold text-semear-green">Equipe participante</h3>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">Presença</p>
+              <h3 className="text-xl font-bold text-semear-green">Equipe participante</h3>
             </div>
           </div>
 
@@ -631,14 +632,14 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
             {memberships.map((membership) => {
               const teamMember = teamMembers.find((item) => item.id === membership.team_member_id);
               return (
-                <article className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4" key={membership.id}>
+                <article className="rounded-2xl border border-white/40 bg-white/60 p-4 shadow-premium-sm hover:bg-white/80 transition-all duration-200" key={membership.id}>
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="font-semibold text-semear-green">{teamMember?.display_name ?? "Membro"}</p>
                       <p className="mt-1 text-xs text-stone-500">{teamMember?.role_label ?? "Sem função informada"}</p>
                       <p className="mt-2 text-sm text-stone-700">{membership.responsibility ? `Responsabilidade: ${membership.responsibility}` : "Responsabilidade não informada."}</p>
                       {!teamMember?.profile_id ? (
-                        <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
+                        <p className="mt-2 rounded-xl border border-amber-200/50 bg-amber-50/80 px-3 py-2 text-xs leading-5 text-amber-950 backdrop-blur-sm shadow-premium-sm">
                           Este membro não pode atualizar presença sozinho porque não há login vinculado.
                         </p>
                       ) : null}
@@ -652,9 +653,9 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
           </div>
 
           {ownMembership ? (
-            <div className="mt-5 rounded-2xl border border-semear-gray bg-white p-4">
-              <p className="text-sm font-semibold text-semear-green">Atualizar sua presença</p>
-              <select className="mt-3 min-h-11 w-full rounded-xl border border-semear-gray bg-white px-3 text-sm outline-none focus:border-semear-green" value={ownMembership.attendance_status} onChange={(event) => void updateAttendance(event.target.value as TeamCalendarAttendanceStatus)}>
+            <div className="mt-5 rounded-2xl border border-white/60 bg-white/90 p-4 shadow-premium-sm">
+              <p className="text-sm font-bold text-semear-green">Atualizar sua presença</p>
+              <select className="mt-3 min-h-11 w-full rounded-2xl border border-white/60 bg-white px-3 text-sm font-bold text-stone-700 outline-none focus:border-semear-green focus:ring-1 focus:ring-semear-green shadow-premium-sm transition-all duration-200" value={ownMembership.attendance_status} onChange={(event) => void updateAttendance(event.target.value as TeamCalendarAttendanceStatus)}>
                 {teamCalendarAttendanceOptions.map((option) => (
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
@@ -662,21 +663,21 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
             </div>
           ) : null}
           {!ownMembership && linkedTeamMember ? (
-            <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+            <div className="mt-5 rounded-2xl border border-amber-200/50 bg-amber-50/80 p-4 text-sm leading-6 text-amber-950 backdrop-blur-sm shadow-premium-sm font-bold">
               Seu login não está vinculado a este evento como participante. A presença continua sendo controlada sem conceder acesso automático.
             </div>
           ) : null}
         </section>
 
         <section className="space-y-5">
-          <section className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
+          <section className="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-md p-5 shadow-premium-md hover:shadow-premium-lg transition-all duration-200">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-semear-green-soft text-semear-green">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-semear-green-soft text-semear-green border border-semear-green/10">
                 <CalendarCheck2 className="h-5 w-5" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Google Calendar</p>
-                <h3 className="text-xl font-semibold text-semear-green">Espelho operacional manual</h3>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-semear-earth">Google Calendar</p>
+                <h3 className="text-xl font-extrabold text-semear-green">Espelho operacional manual</h3>
               </div>
             </div>
 
@@ -689,64 +690,64 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <Badge tone={getGoogleCalendarSyncStatusTone(event.google_sync_status)} label={getGoogleCalendarSyncStatusLabel(event.google_sync_status)} />
-              <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-700">
+              <span className="rounded-full border border-white/60 bg-white/85 backdrop-blur-sm px-3 py-1 text-xs font-bold text-stone-700 shadow-premium-sm">
                 {membersWithEmailCount} participante(s) com e-mail para convite operacional
               </span>
-              <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-700">
+              <span className="rounded-full border border-white/60 bg-white/85 backdrop-blur-sm px-3 py-1 text-xs font-bold text-stone-700 shadow-premium-sm">
                 Convites por e-mail: {event.google_send_invites ? "ativados para este evento" : "desativados para este evento"}
               </span>
-              <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-700">
+              <span className="rounded-full border border-white/60 bg-white/85 backdrop-blur-sm px-3 py-1 text-xs font-bold text-stone-700 shadow-premium-sm">
                 {connectionLabel}
               </span>
               {hasPendingLocalChanges ? (
-                <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">
+                <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-900 shadow-premium-sm animate-pulse">
                   Alterações locais ainda não sincronizadas
                 </span>
               ) : null}
             </div>
 
             {membersWithoutEmail.length > 0 ? (
-              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+              <div className="mt-4 rounded-2xl border border-amber-200/50 bg-amber-50/80 p-4 text-sm leading-6 text-amber-950 backdrop-blur-sm shadow-premium-sm font-bold">
                 Participantes sem e-mail para convite no Google: {membersWithoutEmail.join(", ")}.
               </div>
             ) : null}
 
             {inactiveParticipants.length > 0 ? (
-              <div className="mt-4 rounded-2xl border border-stone-300 bg-stone-100 p-4 text-sm leading-6 text-stone-700">
+              <div className="mt-4 rounded-3xl border border-white/60 bg-white/60 p-4 text-sm leading-6 text-stone-700 backdrop-blur-sm shadow-premium-sm font-bold">
                 Participantes inativos no cadastro da equipe não entram em attendees: {inactiveParticipants.join(", ")}.
               </div>
             ) : null}
 
-            <div className="mt-4 rounded-2xl border border-semear-gray bg-semear-offwhite p-4 text-sm leading-6 text-stone-700">
+            <div className="mt-4 rounded-2xl border border-white/60 bg-white/90 p-4 text-sm leading-6 text-stone-700 shadow-premium-sm">
               O SEMEAR continua como fonte principal. O Google Calendar recebe apenas resumo operacional sanitizado, sem escutas, relatórios completos, anexos ou dados sensíveis.
             </div>
 
-            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+            <div className="mt-4 rounded-2xl border border-amber-200/50 bg-amber-50/80 p-4 text-sm leading-6 text-amber-950 backdrop-blur-sm shadow-premium-sm">
               O SEMEAR é a fonte principal deste evento. Alterações feitas diretamente no Google Calendar não voltam automaticamente para o SEMEAR nesta versão.
             </div>
 
-            <div className="mt-4 rounded-2xl border border-semear-gray bg-white p-4 text-sm leading-6 text-stone-700">
+            <div className="mt-4 rounded-2xl border border-white/60 bg-white/90 p-4 text-sm leading-6 text-stone-700 shadow-premium-sm">
               <p><strong>Status operacional:</strong> {getGoogleCalendarSyncStatusDescription(event.google_sync_status, hasPendingLocalChanges)}</p>
             </div>
 
-            <div className="mt-4 rounded-2xl border border-white/80 bg-semear-offwhite p-4 text-sm leading-6 text-stone-700">
+            <div className="mt-4 rounded-2xl border border-white/60 bg-white/90 p-4 text-sm leading-6 text-stone-700 shadow-premium-sm">
               <p className="font-semibold text-semear-green">Convites por e-mail</p>
               <p className="mt-2">
                 Status atual: <strong>{event.google_send_invites ? "ativados para este evento" : "desativados"}</strong>.
               </p>
-              <p className="mt-2">
+              <p className="mt-2 text-xs leading-5">
                 Convites são opcionais e só devem ser usados para membros da equipe com e-mail cadastrado. Nunca convide entrevistados.
               </p>
-              <p className="mt-2 text-xs text-stone-500">
+              <p className="mt-2 text-xs text-stone-500 leading-5">
                 Mesmo com convites ativados, o Google receberá apenas resumo operacional sanitizado.
               </p>
-              <p className="mt-2 text-xs text-stone-500">
+              <p className="mt-2 text-xs text-stone-500 leading-5">
                 Política atual de `sendUpdates`: <strong>none</strong>. O evento pode levar attendees válidos, mas o SEMEAR não dispara e-mail automático nesta versão.
               </p>
               {canManage ? (
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
-                    className="inline-flex min-h-10 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex min-h-10 items-center justify-center rounded-full border border-white/60 bg-white px-4 text-sm font-semibold text-semear-green shadow-premium-sm hover:bg-stone-50 active:scale-[0.98] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60"
                     disabled={invitePolicyLoading !== null || syncActionLoading !== null || connectionActionLoading !== null}
                     onClick={() => void handleInvitePolicyToggle(!event.google_send_invites)}
                     type="button"
@@ -754,15 +755,15 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
                     {invitePolicyLoading === "toggle_invites"
                       ? "Salvando..."
                       : event.google_send_invites
-                        ? "Desativar convites deste evento"
-                        : "Ativar convites deste evento"}
+                        ? "Desativar convites"
+                        : "Ativar convites"}
                   </button>
                 </div>
               ) : null}
             </div>
 
             {payloadPreview ? (
-              <div className="mt-4 rounded-2xl border border-white/80 bg-white p-4 text-sm leading-6 text-stone-700">
+              <div className="mt-4 rounded-2xl border border-white/60 bg-white/90 p-4 text-sm leading-6 text-stone-700 shadow-premium-sm">
                 <p className="font-semibold text-semear-green">Prévia do que será enviado ao Google</p>
                 <div className="mt-3 grid gap-3 md:grid-cols-2">
                   <InfoCard icon={<CalendarCheck2 className="h-5 w-5" />} label="Título" value={payloadPreview.payload.summary} />
@@ -770,12 +771,12 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
                   <InfoCard icon={<MapPin className="h-5 w-5" />} label="Local coletivo" value={payloadPreview.payload.location ?? event.neighborhoods?.name ?? "Sem local coletivo"} />
                   <InfoCard icon={<UsersRound className="h-5 w-5" />} label="Convidados preparados" value={event.google_send_invites ? String(payloadPreview.payload.attendees?.length ?? 0) : "Convites desativados"} />
                 </div>
-                <div className="mt-3 rounded-2xl border border-semear-gray bg-semear-offwhite p-4">
+                <div className="mt-3 rounded-2xl border border-white/40 bg-stone-50/50 p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.12em] text-semear-earth">Descrição sanitizada</p>
                   <pre className="mt-2 whitespace-pre-wrap font-sans text-sm leading-6 text-stone-700">{payloadPreview.payload.description}</pre>
                 </div>
                 {event.google_send_invites ? (
-                  <div className="mt-3 rounded-2xl border border-semear-gray bg-semear-offwhite p-4">
+                  <div className="mt-3 rounded-2xl border border-white/40 bg-stone-50/50 p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.12em] text-semear-earth">Convidados que entrarão em attendees</p>
                     <p className="mt-2 text-sm text-stone-700">
                       {payloadPreview.payload.attendees && payloadPreview.payload.attendees.length > 0
@@ -785,41 +786,41 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
                   </div>
                 ) : null}
                 {membersWithoutEmail.length > 0 ? (
-                  <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                  <div className="mt-3 rounded-2xl border border-amber-200/50 bg-amber-50/80 p-4 text-sm text-amber-950 shadow-premium-sm">
                     Sem e-mail cadastrado: {membersWithoutEmail.join(", ")}.
                   </div>
                 ) : null}
-                <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                <div className="mt-3 rounded-2xl border border-amber-200/50 bg-amber-50/80 p-4 text-sm text-amber-950 shadow-premium-sm">
                   Prévia segura: sem token, sem escutas, sem fala original, sem anexos e sem relatório interno.
                 </div>
               </div>
             ) : null}
 
             {canManage && !googleConnection?.service_account_available ? (
-              <div className="mt-4 rounded-2xl border border-semear-gray bg-white p-4 text-sm leading-6 text-stone-700">
-                <p><strong>Conexao Google da coordenação/admin:</strong> {googleConnection?.connection?.connected ? "ativa" : "pendente"}.</p>
-                <p className="mt-2">
-                  Quando a service account institucional nao estiver disponivel, o SEMEAR usa a autorizacao manual da pessoa coordenadora/admin para escrever no calendario institucional compartilhado.
+              <div className="mt-4 rounded-2xl border border-white/60 bg-white/90 p-4 text-sm leading-6 text-stone-700 shadow-premium-sm">
+                <p><strong>Conexão Google da coordenação/admin:</strong> {googleConnection?.connection?.connected ? "ativa" : "pendente"}.</p>
+                <p className="mt-2 text-xs leading-5">
+                  Quando a service account institucional não estiver disponível, o SEMEAR usa a autorização manual da pessoa coordenadora/admin para escrever no calendário institucional compartilhado.
                 </p>
                 {googleConnection?.connection?.has_refresh_token ? (
                   <p className="mt-2 text-xs text-stone-500">Refresh token presente para reprocessamento server-side sem expor segredo no frontend.</p>
                 ) : (
-                  <p className="mt-2 text-xs text-amber-800">Ainda sem refresh token salvo. Reconecte o Google Calendar com consentimento offline se a conexao expirar.</p>
+                  <p className="mt-2 text-xs text-amber-800">Ainda sem refresh token salvo. Reconecte o Google Calendar com consentimento offline se a conexão expirar.</p>
                 )}
               </div>
             ) : null}
 
             {syncMessage ? (
-              <div className={`mt-4 rounded-2xl border p-4 text-sm ${syncMessage.tone === "success" ? "border-green-200 bg-green-50 text-green-800" : syncMessage.tone === "info" ? "border-stone-200 bg-stone-50 text-stone-700" : "border-red-200 bg-red-50 text-red-800"}`}>
-                <p>{syncMessage.text}</p>
-                {syncMessage.hint ? <p className="mt-2">{syncMessage.hint}</p> : null}
+              <div className={`mt-4 rounded-2xl border p-4 text-sm shadow-premium-sm ${syncMessage.tone === "success" ? "border-green-200 bg-green-50/85 text-green-800" : syncMessage.tone === "info" ? "border-stone-200 bg-stone-50/85 text-stone-700" : "border-red-200 bg-red-50/85 text-red-800"}`}>
+                <p className="font-semibold">{syncMessage.text}</p>
+                {syncMessage.hint ? <p className="mt-2 text-xs leading-5">{syncMessage.hint}</p> : null}
                 {shouldShowPermissionGuide ? (
-                  <p className="mt-2">
+                  <p className="mt-2 text-xs leading-5">
                     Confira o compartilhamento do calendário institucional e garanta permissão de edição para a conta conectada.
                   </p>
                 ) : null}
                 {shouldShowGoogleSetupGuide ? (
-                  <p className="mt-2">
+                  <p className="mt-2 text-xs leading-5">
                     Revise a configuração do projeto Google Cloud, da API Google Calendar e das envs do ambiente.
                   </p>
                 ) : null}
@@ -831,7 +832,7 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
                 {!googleConnection?.service_account_available ? (
                   <div className="grid gap-2 sm:grid-cols-2">
                     <button
-                      className="inline-flex min-h-11 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/60 bg-white/80 px-4 text-sm font-bold text-semear-green shadow-premium-sm hover:bg-white active:scale-[0.98] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60"
                       disabled={connectionActionLoading !== null || syncActionLoading !== null}
                       onClick={() => void handleConnectGoogleCalendar()}
                       type="button"
@@ -843,27 +844,27 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
                           : "Conectar Google Calendar"}
                     </button>
                     <button
-                      className="inline-flex min-h-11 items-center justify-center rounded-full border border-stone-300 bg-stone-100 px-4 text-sm font-semibold text-stone-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/60 bg-white/85 px-4 text-sm font-bold text-stone-750 shadow-premium-sm hover:bg-white active:scale-[0.98] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60"
                       disabled={!googleConnection?.connection?.connected || connectionActionLoading !== null || syncActionLoading !== null}
                       onClick={() => void handleDisconnectGoogleCalendar()}
                       type="button"
                     >
-                      {connectionActionLoading === "disconnect" ? "Desconectando..." : "Remover conexao Google"}
+                      {connectionActionLoading === "disconnect" ? "Desconectando..." : "Remover conexão Google"}
                     </button>
                   </div>
                 ) : null}
 
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <button className="inline-flex min-h-11 items-center justify-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" disabled={syncActionLoading !== null || connectionActionLoading !== null || syncUnavailable} onClick={() => void handleGoogleSync("create")} type="button">
+                  <button className="inline-flex min-h-11 items-center justify-center rounded-full bg-semear-green px-4 text-sm font-bold text-white shadow-premium-sm hover:bg-semear-green/90 active:scale-[0.98] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60" disabled={syncActionLoading !== null || connectionActionLoading !== null || syncUnavailable} onClick={() => void handleGoogleSync("create")} type="button">
                   {syncActionLoading === "create" ? "Sincronizando..." : "Sincronizar com Google"}
                   </button>
-                  <button className="inline-flex min-h-11 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green disabled:cursor-not-allowed disabled:opacity-60" disabled={syncActionLoading !== null || connectionActionLoading !== null || syncUnavailable} onClick={() => void handleGoogleSync("update")} type="button">
+                  <button className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/60 bg-white/85 px-4 text-sm font-bold text-semear-green shadow-premium-sm hover:bg-white active:scale-[0.98] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60" disabled={syncActionLoading !== null || connectionActionLoading !== null || syncUnavailable} onClick={() => void handleGoogleSync("update")} type="button">
                   {syncActionLoading === "update" ? "Atualizando..." : "Atualizar evento Google"}
                   </button>
-                  <button className="inline-flex min-h-11 items-center justify-center rounded-full border border-amber-300 bg-amber-50 px-4 text-sm font-semibold text-amber-900 disabled:cursor-not-allowed disabled:opacity-60" disabled={syncActionLoading !== null || connectionActionLoading !== null || syncUnavailable} onClick={() => void handleGoogleSync("cancel")} type="button">
+                  <button className="inline-flex min-h-11 items-center justify-center rounded-full border border-amber-200 bg-amber-50 px-4 text-sm font-bold text-amber-900 shadow-premium-sm hover:bg-amber-100/90 active:scale-[0.98] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60" disabled={syncActionLoading !== null || connectionActionLoading !== null || syncUnavailable} onClick={() => void handleGoogleSync("cancel")} type="button">
                   {syncActionLoading === "cancel" ? "Cancelando..." : "Cancelar evento Google"}
                   </button>
-                  <button className="inline-flex min-h-11 items-center justify-center rounded-full border border-stone-300 bg-stone-100 px-4 text-sm font-semibold text-stone-700 disabled:cursor-not-allowed disabled:opacity-60" disabled={syncActionLoading !== null || connectionActionLoading !== null} onClick={() => void handleGoogleSync("unlink")} type="button">
+                  <button className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/60 bg-white/85 px-4 text-sm font-bold text-stone-700 shadow-premium-sm hover:bg-white active:scale-[0.98] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60" disabled={syncActionLoading !== null || connectionActionLoading !== null} onClick={() => void handleGoogleSync("unlink")} type="button">
                   {syncActionLoading === "unlink" ? "Desvinculando..." : "Desvincular do Google"}
                   </button>
                 </div>
@@ -871,7 +872,7 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
                 {shouldOfferReconnect ? (
                   <div className="flex flex-wrap gap-2">
                     <button
-                      className="inline-flex min-h-11 items-center justify-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/60 bg-white px-4 text-sm font-bold text-semear-green shadow-premium-sm hover:bg-stone-50 active:scale-[0.98] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60"
                       disabled={connectionActionLoading !== null || syncActionLoading !== null}
                       onClick={() => void handleConnectGoogleCalendar()}
                       type="button"
@@ -879,7 +880,7 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
                       {connectionActionLoading === "connect" ? "Reconectando..." : "Reconectar Google Calendar"}
                     </button>
                     <Link
-                      className="inline-flex min-h-11 items-center justify-center rounded-full border border-stone-300 bg-stone-100 px-4 text-sm font-semibold text-stone-700"
+                      className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/60 bg-white/85 px-4 text-sm font-bold text-stone-700 shadow-premium-sm hover:bg-white active:scale-[0.98] transition-all duration-200"
                       href="/ajuda#google-calendar-manual"
                     >
                       Ver configuração
@@ -888,7 +889,7 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
                 ) : null}
               </div>
             ) : (
-              <div className="mt-5 rounded-2xl border border-semear-gray bg-semear-offwhite p-4 text-sm leading-6 text-stone-700">
+              <div className="mt-5 rounded-2xl border border-white/60 bg-white/90 p-4 text-sm leading-6 text-stone-700 shadow-premium-sm">
                 Apenas coordenação e admin podem acionar sincronização manual. A equipe visualiza o status e o histórico sem ganhar acesso externo.
               </div>
             )}
@@ -910,20 +911,20 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
             ) : null}
           </section>
 
-          <section className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
+          <section className="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-md p-5 shadow-premium-md hover:shadow-premium-lg transition-all duration-200">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-semear-green-soft text-semear-green">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-semear-green-soft text-semear-green border border-semear-green/10">
                 <FileText className="h-5 w-5" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Relatórios semanais</p>
-                <h3 className="text-xl font-semibold text-semear-green">Vínculo com fechamento interno</h3>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">Relatórios semanais</p>
+                <h3 className="text-xl font-bold text-semear-green">Vínculo com fechamento interno</h3>
               </div>
             </div>
 
             <div className="mt-4 space-y-3">
               {weeklyReports.map((report) => (
-                <Link className="block rounded-2xl border border-semear-gray bg-semear-offwhite p-4" href={`/memoria/${report.id}`} key={report.id}>
+                <Link className="block rounded-2xl border border-white/40 bg-white/60 p-4 shadow-premium-sm hover:shadow-premium-md hover:bg-white/80 active:scale-[0.98] transition-all duration-200" href={`/memoria/${report.id}`} key={report.id}>
                   <p className="font-semibold text-semear-green">{report.title}</p>
                   <p className="mt-1 text-xs text-stone-500">{report.team_members?.display_name ?? "Equipe"} · {report.week_start} a {report.week_end}</p>
                 </Link>
@@ -932,26 +933,26 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
             </div>
 
             <div className="mt-4 flex flex-wrap gap-2">
-              <Link className="inline-flex min-h-11 items-center justify-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href={`/memoria/novo?eventId=${event.id}${event.action_id ? `&actionId=${event.action_id}` : ""}`}>
+              <Link className="inline-flex min-h-11 items-center justify-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white shadow-premium-sm hover:bg-semear-green/92 active:scale-[0.98] transition-all duration-200" href={`/memoria/novo?eventId=${event.id}${event.action_id ? `&actionId=${event.action_id}` : ""}`}>
                 Vincular relatório semanal
               </Link>
             </div>
           </section>
 
-          <section className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
+          <section className="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-md p-5 shadow-premium-md hover:shadow-premium-lg transition-all duration-200">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-semear-green-soft text-semear-green">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-semear-green-soft text-semear-green border border-semear-green/10">
                 <LibraryBig className="h-5 w-5" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Memória do projeto</p>
-                <h3 className="text-xl font-semibold text-semear-green">Evento concluído pode virar memória</h3>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">Memória do projeto</p>
+                <h3 className="text-xl font-bold text-semear-green">Evento concluído pode virar memória</h3>
               </div>
             </div>
 
             <div className="mt-4 space-y-3">
               {memoryEntries.map((entry) => (
-                <Link className="block rounded-2xl border border-semear-gray bg-semear-offwhite p-4" href={`/memoria/entradas/${entry.id}`} key={entry.id}>
+                <Link className="block rounded-2xl border border-white/40 bg-white/60 p-4 shadow-premium-sm hover:shadow-premium-md hover:bg-white/80 active:scale-[0.98] transition-all duration-200" href={`/memoria/entradas/${entry.id}`} key={entry.id}>
                   <p className="font-semibold text-semear-green">{entry.title}</p>
                   <p className="mt-1 text-xs text-stone-500">{entry.entry_date} · {entry.memory_type}</p>
                 </Link>
@@ -961,31 +962,31 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
 
             {event.status === "done" ? (
               <div className="mt-4 flex flex-wrap gap-2">
-                <Link className="inline-flex min-h-11 items-center justify-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white" href={`/memoria/novo?eventId=${event.id}${event.action_id ? `&actionId=${event.action_id}` : ""}`}>
+                <Link className="inline-flex min-h-11 items-center justify-center rounded-full bg-semear-green px-4 text-sm font-semibold text-white shadow-premium-sm hover:bg-semear-green/92 active:scale-[0.98] transition-all duration-200" href={`/memoria/novo?eventId=${event.id}${event.action_id ? `&actionId=${event.action_id}` : ""}`}>
                   Criar memória relacionada
                 </Link>
               </div>
             ) : (
-              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+              <div className="mt-4 rounded-2xl border border-amber-200/50 bg-amber-50/80 p-4 text-sm text-amber-950 backdrop-blur-sm shadow-premium-sm">
                 Marque o evento como concluído para usar este fluxo como base de memória institucional.
               </div>
             )}
           </section>
 
-          <section className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
+          <section className="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-md p-5 shadow-premium-md hover:shadow-premium-lg transition-all duration-200">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-semear-green-soft text-semear-green">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-semear-green-soft text-semear-green border border-semear-green/10">
                 <FileText className="h-5 w-5" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Histórico de sync</p>
-                <h3 className="text-xl font-semibold text-semear-green">Rastro auditável</h3>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">Histórico de sync</p>
+                <h3 className="text-xl font-bold text-semear-green">Rastro auditável</h3>
               </div>
             </div>
 
             <div className="mt-4 space-y-3">
               {syncLogs.map((log) => (
-                <article className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4" key={log.id}>
+                <article className="rounded-2xl border border-white/40 bg-white/60 p-4 shadow-premium-sm hover:bg-white/80 transition-all duration-200" key={log.id}>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="font-semibold capitalize text-semear-green">{log.action}</p>
@@ -999,9 +1000,9 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
                   {log.payload_summary ? (
                     <dl className="mt-3 grid gap-2 text-xs leading-5 text-stone-600 sm:grid-cols-2">
                       {buildPayloadSummaryEntries(log.payload_summary).map((entry) => (
-                        <div className="rounded-xl border border-white/80 bg-white/70 px-3 py-2" key={`${log.id}-${entry.label}`}>
+                        <div className="rounded-xl border border-white/60 bg-white/80 px-3 py-2 shadow-premium-sm" key={`${log.id}-${entry.label}`}>
                           <dt className="font-semibold uppercase tracking-[0.08em] text-stone-500">{entry.label}</dt>
-                          <dd className="mt-1 text-stone-700">{entry.value}</dd>
+                          <dd className="mt-1 text-stone-700 font-semibold">{entry.value}</dd>
                         </div>
                       ))}
                     </dl>
@@ -1019,12 +1020,14 @@ export function TeamCalendarEventDetail({ eventId }: EventDetailProps) {
 
 function InfoCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <section className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4">
+    <section className="rounded-2xl border border-white/60 bg-white/90 p-4 shadow-premium-sm hover:shadow-premium-md transition-all duration-200">
       <div className="flex items-center gap-2 text-semear-green">
-        {icon}
-        <p className="text-xs font-semibold uppercase tracking-[0.12em]">{label}</p>
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-semear-green-soft text-semear-green">
+          {icon}
+        </div>
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{label}</p>
       </div>
-      <p className="mt-2 text-sm font-semibold text-semear-green">{value}</p>
+      <p className="mt-2 text-sm font-bold text-semear-green">{value}</p>
     </section>
   );
 }
@@ -1032,22 +1035,30 @@ function InfoCard({ icon, label, value }: { icon: React.ReactNode; label: string
 function Badge({ label, tone }: { label: string; tone: "green" | "yellow" | "red" | "stone" }) {
   const className =
     tone === "green"
-      ? "bg-green-100 text-green-800"
+      ? "bg-green-50 text-green-700 border-green-200/60"
       : tone === "yellow"
-        ? "bg-amber-100 text-amber-900"
+        ? "bg-amber-50 text-amber-800 border-amber-200/60"
         : tone === "red"
-          ? "bg-red-100 text-red-800"
-          : "bg-stone-100 text-stone-700";
+          ? "bg-red-50 text-red-700 border-red-200/60"
+          : "bg-stone-50 text-stone-700 border-stone-200/60";
 
-  return <span className={`rounded-full px-3 py-1 text-xs font-semibold ${className}`}>{label}</span>;
+  return <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-all duration-200 ${className}`}>{label}</span>;
 }
 
 function EmptyBox({ text }: { text: string }) {
-  return <div className="rounded-2xl border border-dashed border-semear-green/20 bg-white px-4 py-5 text-sm text-stone-500">{text}</div>;
+  return <div className="rounded-2xl border border-dashed border-semear-green/20 bg-white/50 px-4 py-5 text-sm text-stone-500 shadow-premium-sm text-center">{text}</div>;
 }
 
 function StateBox({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "error" }) {
-  return <div className={`rounded-[1.5rem] p-6 text-sm shadow-soft ${tone === "error" ? "border border-red-200 bg-red-50 text-red-800" : "border border-white/80 bg-white/72 text-stone-600"}`}>{children}</div>;
+  return (
+    <div className={`rounded-2xl p-6 text-sm shadow-premium-md backdrop-blur-md border ${
+      tone === "error" 
+        ? "border-red-200 bg-red-50/90 text-red-800" 
+        : "border-white/60 bg-white/80 text-stone-600"
+    }`}>
+      {children}
+    </div>
+  );
 }
 
 function getGoogleCalendarSyncStatusDescription(status: TeamCalendarEvent["google_sync_status"], hasPendingLocalChanges: boolean) {

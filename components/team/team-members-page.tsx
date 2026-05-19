@@ -180,24 +180,28 @@ export function TeamMembersPage() {
   }
 
   if (loading) {
-    return <section className="rounded-[2rem] border border-white/80 bg-white/72 p-8 shadow-soft text-sm text-stone-600">Carregando equipe...</section>;
+    return (
+      <section className="rounded-3xl border border-white/60 bg-white/85 backdrop-blur-md p-8 shadow-premium-md text-sm font-medium text-stone-600">
+        Carregando equipe...
+      </section>
+    );
   }
 
   return (
     <section className="pb-10">
-      <div className="rounded-[2rem] border border-white/80 bg-white/78 p-6 shadow-soft sm:p-8">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Equipe operacional</p>
-        <h2 className="mt-3 text-4xl font-semibold tracking-tight text-semear-green">Membros da equipe</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-stone-600">
+      <div className="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-md p-6 shadow-premium-md sm:p-8 hover:shadow-premium-lg transition-all duration-200">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">Equipe operacional</p>
+        <h2 className="mt-2 text-3xl font-bold tracking-tight text-semear-green">Membros da equipe</h2>
+        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-stone-600">
           Cadastro operacional. Não concede acesso ao sistema. Permissões continuam sendo controladas por profiles e RLS.
         </p>
       </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h3 className="font-semibold text-semear-green">Lista da equipe</h3>
-            <div className="flex gap-2">
+        <div className="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-md p-5 shadow-premium-md hover:shadow-premium-lg transition-all duration-200">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <h3 className="font-bold text-semear-green">Lista da equipe</h3>
+            <div className="flex gap-1.5">
               <FilterButton active={filter === "ativos"} onClick={() => setFilter("ativos")} label="Ativos" />
               <FilterButton active={filter === "inativos"} onClick={() => setFilter("inativos")} label="Inativos" />
               <FilterButton active={filter === "todos"} onClick={() => setFilter("todos")} label="Todos" />
@@ -209,105 +213,109 @@ export function TeamMembersPage() {
               const isEditing = editingId === member.id;
               return (
                 <article
-                  className={`rounded-2xl border p-4 transition-all ${
+                  className={`rounded-2xl border p-4 shadow-premium-sm transition-all duration-200 ${
                     isEditing
-                      ? "border-semear-green bg-semear-green-soft/30 shadow-md ring-1 ring-semear-green/20"
-                      : "border-semear-gray bg-semear-offwhite"
+                      ? "border-semear-green bg-semear-green-soft/40 ring-1 ring-semear-green/10"
+                      : "border-white/40 bg-white/60 hover:bg-white/85"
                   }`}
                   key={member.id}
                 >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-semear-green">{member.display_name}</p>
-                    <p className="mt-1 text-xs text-stone-600">
-                      {member.role_label || "Sem função informada"}
-                      {member.email ? ` · ${member.email}` : ""}
-                    </p>
-                    <p className="mt-2 text-xs text-stone-500">
-                      {member.active ? "Ativo" : "Inativo"} · {member.can_interview ? "Pode entrevistar" : "Não entrevista"} · {member.can_join_actions ? "Participa de ações" : "Não participa de ações"}
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${member.profile_id ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-900"}`}>
-                        {member.profile_id ? "com login vinculado" : "sem login vinculado"}
-                      </span>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-semear-green">{member.display_name}</p>
+                      <p className="mt-1 text-xs text-stone-600 font-medium">
+                        {member.role_label || "Sem função informada"}
+                        {member.email ? ` · ${member.email}` : ""}
+                      </p>
+                      <p className="mt-2 text-xs text-stone-500 font-medium">
+                        {member.active ? "Ativo" : "Inativo"} · {member.can_interview ? "Pode entrevistar" : "Não entrevista"} · {member.can_join_actions ? "Participa de ações" : "Não participa de ações"}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${member.profile_id ? "bg-green-50 text-green-700 border-green-200/50" : "bg-amber-50 text-amber-800 border-amber-200/50"}`}>
+                          {member.profile_id ? "com login vinculado" : "sem login vinculado"}
+                        </span>
+                      </div>
                     </div>
+                    {canManage ? (
+                      <button
+                        className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/60 bg-white px-4 text-xs font-bold text-semear-green shadow-premium-sm hover:shadow-premium-md hover:bg-stone-50 active:scale-[0.98] transition-all duration-200"
+                        onClick={() => fillForm(member)}
+                        type="button"
+                      >
+                        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                        Editar
+                      </button>
+                    ) : null}
                   </div>
-                  {canManage ? (
-                    <button className="inline-flex min-h-10 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-3 text-xs font-semibold text-semear-green" onClick={() => fillForm(member)} type="button">
-                      <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                      Editar
-                    </button>
-                  ) : null}
-                </div>
-              </article>
-            );
-          })}
-            {filteredMembers.length === 0 ? <p className="text-sm text-stone-500">Nenhum membro para o filtro atual.</p> : null}
+                </article>
+              );
+            })}
+            {filteredMembers.length === 0 ? <p className="text-sm text-stone-500 font-medium py-4 text-center">Nenhum membro para o filtro atual.</p> : null}
           </div>
         </div>
 
         <div className="lg:sticky lg:top-5 h-fit">
-          <form ref={formRef} className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft" onSubmit={handleSave}>
-          <div className="flex items-center gap-2 text-semear-green">
-            <UsersRound className="h-5 w-5" aria-hidden="true" />
-            <h3 className="font-semibold">{editingId ? "Editar membro" : "Novo membro"}</h3>
-          </div>
+          <form ref={formRef} className="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-md p-5 shadow-premium-md hover:shadow-premium-lg transition-all duration-200" onSubmit={handleSave}>
+            <div className="flex items-center gap-2 text-semear-green">
+              <UsersRound className="h-5 w-5" aria-hidden="true" />
+              <h3 className="font-extrabold">{editingId ? "Editar membro" : "Novo membro"}</h3>
+            </div>
 
-          <label className="mt-4 block">
-            <span className="text-sm font-semibold text-semear-green">Nome exibido</span>
-            <input className="mt-2 min-h-11 w-full rounded-2xl border border-semear-gray bg-white px-3 text-sm outline-none focus:border-semear-green" value={formValues.display_name} onChange={(e) => updateField("display_name", e.target.value)} required />
-          </label>
+            <label className="mt-4 block">
+              <span className="text-sm font-bold text-semear-green">Nome exibido</span>
+              <input className="mt-2 min-h-11 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 text-sm font-bold text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green" value={formValues.display_name} onChange={(e) => updateField("display_name", e.target.value)} required />
+            </label>
 
-          <label className="mt-3 block">
-            <span className="text-sm font-semibold text-semear-green">E-mail (opcional)</span>
-            <input className="mt-2 min-h-11 w-full rounded-2xl border border-semear-gray bg-white px-3 text-sm outline-none focus:border-semear-green" value={formValues.email} onChange={(e) => updateField("email", e.target.value)} />
-          </label>
+            <label className="mt-3 block">
+              <span className="text-sm font-bold text-semear-green">E-mail (opcional)</span>
+              <input className="mt-2 min-h-11 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 text-sm font-bold text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green" value={formValues.email} onChange={(e) => updateField("email", e.target.value)} />
+            </label>
 
-          <label className="mt-3 block">
-            <span className="text-sm font-semibold text-semear-green">Função no projeto</span>
-            <input className="mt-2 min-h-11 w-full rounded-2xl border border-semear-gray bg-white px-3 text-sm outline-none focus:border-semear-green" value={formValues.role_label} onChange={(e) => updateField("role_label", e.target.value)} placeholder="Ex.: articulação territorial, facilitação" />
-          </label>
+            <label className="mt-3 block">
+              <span className="text-sm font-bold text-semear-green">Função no projeto</span>
+              <input className="mt-2 min-h-11 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 text-sm font-bold text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green" value={formValues.role_label} onChange={(e) => updateField("role_label", e.target.value)} placeholder="Ex.: articulação territorial, facilitação" />
+            </label>
 
-          <label className="mt-3 block">
-            <span className="text-sm font-semibold text-semear-green">Vincular profile (opcional)</span>
-            <select className="mt-2 min-h-11 w-full rounded-2xl border border-semear-gray bg-white px-3 text-sm outline-none focus:border-semear-green" value={formValues.profile_id} onChange={(e) => updateField("profile_id", e.target.value)}>
-              <option value="">Sem vínculo</option>
-              {profiles.map((profile) => (
-                <option key={profile.id} value={profile.id}>{profile.full_name ?? profile.id} {profile.role ? `(${profile.role})` : ""}</option>
-              ))}
-            </select>
-          </label>
+            <label className="mt-3 block">
+              <span className="text-sm font-bold text-semear-green">Vincular profile (opcional)</span>
+              <select className="mt-2 min-h-11 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 text-sm font-bold text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green" value={formValues.profile_id} onChange={(e) => updateField("profile_id", e.target.value)}>
+                <option value="">Sem vínculo</option>
+                {profiles.map((profile) => (
+                  <option key={profile.id} value={profile.id}>{profile.full_name ?? profile.id} {profile.role ? `(${profile.role})` : ""}</option>
+                ))}
+              </select>
+            </label>
 
-          <div className="mt-4 grid gap-2">
-            <CheckField label="Ativo" checked={formValues.active} onChange={(value) => updateField("active", value)} />
-            <CheckField label="Pode entrevistar" checked={formValues.can_interview} onChange={(value) => updateField("can_interview", value)} />
-            <CheckField label="Pode participar de ações" checked={formValues.can_join_actions} onChange={(value) => updateField("can_join_actions", value)} />
-          </div>
+            <div className="mt-4 grid gap-2">
+              <CheckField label="Ativo" checked={formValues.active} onChange={(value) => updateField("active", value)} />
+              <CheckField label="Pode entrevistar" checked={formValues.can_interview} onChange={(value) => updateField("can_interview", value)} />
+              <CheckField label="Pode participar de ações" checked={formValues.can_join_actions} onChange={(value) => updateField("can_join_actions", value)} />
+            </div>
 
-          <label className="mt-3 block">
-            <span className="text-sm font-semibold text-semear-green">Observações internas</span>
-            <textarea className="mt-2 min-h-24 w-full rounded-2xl border border-semear-gray bg-white px-3 py-2 text-sm outline-none focus:border-semear-green" value={formValues.notes} onChange={(e) => updateField("notes", e.target.value)} />
-          </label>
+            <label className="mt-3 block">
+              <span className="text-sm font-bold text-semear-green">Observações internas</span>
+              <textarea className="mt-2 min-h-24 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 py-3 text-sm leading-relaxed font-bold text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green" value={formValues.notes} onChange={(e) => updateField("notes", e.target.value)} />
+            </label>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-semear-green px-4 text-sm font-semibold text-white disabled:opacity-60" type="submit" disabled={saving || !canManage}>
-              {editingId ? <Pencil className="h-4 w-4" aria-hidden="true" /> : <Plus className="h-4 w-4" aria-hidden="true" />}
-              {saving ? "Salvando..." : editingId ? "Salvar alterações" : "Cadastrar membro"}
-            </button>
-            {editingId ? (
-              <button className="inline-flex min-h-11 items-center rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" type="button" onClick={resetForm}>
-                Cancelar edição
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-semear-green px-5 text-sm font-bold text-white shadow-premium-sm hover:bg-semear-green/90 active:scale-[0.98] transition-all duration-200 disabled:opacity-60" type="submit" disabled={saving || !canManage}>
+                {editingId ? <Pencil className="h-4 w-4" aria-hidden="true" /> : <Plus className="h-4 w-4" aria-hidden="true" />}
+                {saving ? "Salvando..." : editingId ? "Salvar alterações" : "Cadastrar membro"}
               </button>
-            ) : null}
-          </div>
+              {editingId ? (
+                <button className="inline-flex min-h-11 items-center rounded-full border border-white/60 bg-white px-5 text-sm font-bold text-semear-green shadow-premium-sm hover:bg-stone-50 active:scale-[0.98] transition-all duration-200" type="button" onClick={resetForm}>
+                  Cancelar
+                </button>
+              ) : null}
+            </div>
 
-          {!canManage ? <p className="mt-3 text-xs text-stone-500">Somente coordenação/admin podem alterar cadastro.</p> : null}
-          {feedback ? <p className="mt-3 text-sm font-semibold text-semear-green">{feedback}</p> : null}
-          {error ? <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p> : null}
+            {!canManage ? <p className="mt-3 text-xs text-stone-500 font-bold">Somente coordenação/admin podem alterar cadastro.</p> : null}
+            {feedback ? <p className="mt-3 text-sm font-bold text-semear-green">{feedback}</p> : null}
+            {error ? <p className="mt-3 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800">{error}</p> : null}
 
-          <div className="mt-4 rounded-xl border border-semear-green/20 bg-semear-green-soft/40 p-3 text-xs leading-5 text-stone-600">
-            Este cadastro é interno e operacional. Estar em team_members não concede acesso ao sistema.
-          </div>
+            <div className="mt-4 rounded-2xl border border-semear-green/20 bg-semear-green-soft/40 p-3 text-xs leading-5 text-stone-600 font-bold shadow-premium-sm">
+              Este cadastro é interno e operacional. Estar em team_members não concede acesso ao sistema.
+            </div>
           </form>
         </div>
       </div>
@@ -317,9 +325,9 @@ export function TeamMembersPage() {
 
 function CheckField({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) {
   return (
-    <label className="flex items-center gap-2 rounded-xl border border-semear-gray bg-semear-offwhite px-3 py-2 text-sm text-stone-700">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      {label}
+    <label className="flex items-center gap-2.5 rounded-2xl border border-white/60 bg-white/60 px-3 py-2.5 text-sm text-stone-750 font-bold shadow-premium-sm cursor-pointer hover:bg-white/80 active:scale-[0.99] transition-all duration-200">
+      <input type="checkbox" className="h-4 w-4 rounded border-stone-300 text-semear-green focus:ring-semear-green" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <span>{label}</span>
       {checked ? <CheckCircle2 className="ml-auto h-4 w-4 text-green-600" aria-hidden="true" /> : null}
     </label>
   );
@@ -328,7 +336,11 @@ function CheckField({ label, checked, onChange }: { label: string; checked: bool
 function FilterButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   return (
     <button
-      className={`rounded-full px-3 py-1.5 text-xs font-semibold ${active ? "bg-semear-green text-white" : "border border-semear-green/15 bg-white text-semear-green"}`}
+      className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all duration-200 active:scale-95 ${
+        active 
+          ? "bg-semear-green text-white shadow-premium-sm" 
+          : "border border-white/60 bg-white/80 text-semear-green shadow-premium-sm hover:shadow-premium-md hover:bg-white"
+      }`}
       onClick={onClick}
       type="button"
     >

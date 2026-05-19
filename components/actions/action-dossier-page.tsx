@@ -424,267 +424,327 @@ ${publicQuotes.length > 0 ? publicQuotes.map((quote) => `- [${quote.status}] ${(
           )}
         />
         <SemearCard as="div" className="sm:p-7">
-          <p className="text-sm leading-6 text-stone-600">
-              {new Date(`${loadedAction.action_date}T00:00:00`).toLocaleDateString("pt-BR")} · {loadedAction.neighborhoods?.name ?? "Sem bairro"} · {getActionTypeLabel(loadedAction.action_type)} · {getActionStatusLabel(loadedAction.status)}
-            </p>
-            <p className="mt-2 text-sm leading-6 text-stone-600">
-              Dossiê aberto organiza pendências; fechado registra decisão operacional e memória interna da ação.
-            </p>
-
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <SemearMetricCard label="Escutas" value={metrics.total} />
-          <SemearMetricCard label="Revisadas" value={metrics.reviewed} />
-          <SemearMetricCard label="Rascunhos" value={metrics.draft} tone={metrics.draft > 0 ? "red" : "green"} />
-          <SemearMetricCard label="% revisado" value={`${reviewedPercent}%`} />
-          <SemearMetricCard label="Dado sensível" value={metrics.possibleSensitive} tone={metrics.possibleSensitive > 0 ? "red" : "green"} />
-        </div>
-
-        <SemearAlert tone={respondentTerritoryNote.status === "boa" ? "green" : respondentTerritoryNote.status === "atenção" ? "yellow" : "red"}>
-          <p><strong>Qualidade territorial do dossiê:</strong> cobertura {respondentTerritoryMetrics.coveragePercent}% ({respondentTerritoryMetrics.recordsWithRespondentTerritory}/{respondentTerritoryMetrics.totalRecords}) · status {respondentTerritoryNote.status}</p>
-          <p className="mt-1">Escutas sem território de referência: {respondentTerritoryMetrics.recordsWithoutRespondentTerritory}. Correções auditadas em listening_record_field_audits: {territorialAuditCount}.</p>
-          <p className="mt-1">{respondentTerritoryNote.shortText}</p>
-          {respondentTerritoryNote.status !== "boa" ? (
-            <SemearButton className="mt-2 min-h-10 px-3 text-xs" href={`/escutas/revisao-territorial?tab=qualidade&actionId=${loadedAction.id}`} variant="primary">
-              Revisar cobertura territorial antes da publicação
-            </SemearButton>
-          ) : null}
-        </SemearAlert>
-
-        <div className="mt-6 grid gap-5 lg:grid-cols-2">
-          <Panel title="Checklist documental" icon={<FolderCheck className="h-5 w-5" />}>
-            <ChecklistRow label="ação cadastrada" done={Boolean(loadedAction.id)} />
-            <ChecklistRow label="bairro definido" done={Boolean(loadedAction.neighborhood_id)} />
-            <ChecklistRow label="data definida" done={Boolean(loadedAction.action_date)} />
-            <ChecklistRow label="equipe registrada" done={Boolean(loadedAction.team?.trim())} />
-            <ChecklistRow label="fichas digitadas" done={metrics.total > 0} />
-            <ChecklistRow label="escutas revisadas" done={metrics.reviewed > 0} />
-            <ChecklistRow label="devolutiva gerada" done={Boolean(debrief)} />
-            <ChecklistRow label="devolutiva aprovada" done={debrief?.status === "approved"} />
-            <ChecklistToggle label="evidências organizadas" checked={form.documentation_checklist.evidenceOrganized} onChange={(value) => updateChecklist("evidenceOrganized", value)} />
-            <ChecklistToggle label="relatório mensal vinculado/preparado" checked={form.documentation_checklist.monthlyReportPrepared} onChange={(value) => updateChecklist("monthlyReportPrepared", value)} />
-          </Panel>
-
-          <Panel title="Devolutiva" icon={<FileText className="h-5 w-5" />}>
-            <p className="text-sm leading-6 text-stone-700">Status: <strong>{debrief ? debrief.status : "não criada"}</strong></p>
-            <p className="mt-2 text-sm leading-6 text-stone-700">Aprovação: {debrief?.approved_at ? new Date(debrief.approved_at).toLocaleString("pt-BR") : "não aprovada"}</p>
-            <p className="mt-2 text-sm leading-6 text-stone-700">Atualizada em: {debrief?.updated_at ? new Date(debrief.updated_at).toLocaleString("pt-BR") : "sem registro"}</p>
-            <SemearButton className="no-print mt-4" href={`/acoes/${actionId}/devolutiva`} variant="primary">
-              Abrir devolutiva
-            </SemearButton>
-            {debrief?.status !== "approved" ? <Warning text="A devolutiva ainda não está aprovada." /> : null}
-          </Panel>
-        </div>
-
-        <div className="mt-6 grid gap-5 lg:grid-cols-2">
-          <Panel title="Síntese determinística" icon={<FileText className="h-5 w-5" />}>
-            <Mini title="Temas mais citados" items={metrics.topThemes.map((item) => `${item.label} (${item.count})`)} />
-            <Mini title="Palavras recorrentes" items={metrics.topWords.map((item) => `${item.label} (${item.count})`)} />
-            <Mini title="Lugares mencionados" items={metrics.places.map((item) => `${item.label} (${item.count})`)} />
-            <Mini title="Prioridades apontadas" items={metrics.priorities.map((item) => `${item.label} (${item.count})`)} />
-            <Mini title="Ocupações (agregado)" items={occupationSummary.groups.map((item) => `${item.label} (${item.count})`)} />
-            <Mini title="Escutas sem ocupação informada" items={[occupationSummary.withoutOccupation.toString()]} />
-            <Mini title="Observações inesperadas" items={metrics.unexpected} />
-          </Panel>
-
-          <Panel title="Equipe e entrevistadores" icon={<FolderCheck className="h-5 w-5" />}>
-            <Mini
-              title="Participantes da ação"
-              items={
-                participants.length > 0
-                  ? participants.map((participant) => {
-                      const name = participant.team_members?.display_name ?? "Membro não encontrado";
-                      const role = participant.team_members?.role_label ?? "Sem função";
-                      const responsibility = participant.responsibility ? ` · ${participant.responsibility}` : "";
-                      return `${name} (${role})${responsibility}`;
-                    })
-                  : ["Sem participantes vinculados em cadastro padronizado."]
-              }
-            />
-            <Mini
-              title="Escutas por entrevistador"
-              items={
-                interviewerCounts.length > 0
-                  ? interviewerCounts.map((item) => `${item.name} (${item.count})`)
-                  : ["Sem escutas registradas."]
-              }
-            />
-            {loadedAction.team ? <Mini title="Registro legado de equipe" items={[loadedAction.team]} /> : null}
-          </Panel>
-        </div>
-
-        {/* NEW: Analytical panels */}
-        {analytics && (
-          <>
-            <div className="mt-6 grid gap-5">
-              {analytics.topSignals.length > 0 && (
-                <AnalyticalSignalsPanel signals={analytics.topSignals} />
-              )}
+          <div className="grid gap-5 lg:grid-cols-[1fr_18rem] lg:items-start">
+            <div>
+              <p className="text-sm leading-6 text-stone-600">
+                {new Date(`${loadedAction.action_date}T00:00:00`).toLocaleDateString("pt-BR")} · {loadedAction.neighborhoods?.name ?? "Sem bairro"} · {getActionTypeLabel(loadedAction.action_type)} · {getActionStatusLabel(loadedAction.status)}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-stone-600">
+                Leitura executiva para fechamento da ação, encaminhamentos e memória institucional.
+              </p>
             </div>
-
-            <div className="mt-6 grid gap-5 lg:grid-cols-2">
-              <ThemeMatrixPanel analytics={analytics} />
-              <ThemeCooccurrencePanel cooccurrences={analytics.themeCooccurrences} />
+            <div className="rounded-3xl border border-white/60 bg-white/60 p-5 shadow-premium-sm backdrop-blur-md">
+              <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-semear-earth">Status</p>
+              <p className="mt-2 text-2xl font-extrabold text-semear-green">{getClosureStatusLabel(form.status)}</p>
+              <p className="mt-1 text-xs text-stone-600 font-bold">{canClose.ok ? "Pronto para decisão" : "Com pendências de fechamento"}</p>
             </div>
+          </div>
 
-            <div className="mt-6">
-              <TerritorialReadingPanel analytics={analytics} />
-            </div>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <SemearMetricCard label="Escutas" value={metrics.total} />
+            <SemearMetricCard label="Revisadas" value={metrics.reviewed} />
+            <SemearMetricCard label="Rascunhos" value={metrics.draft} tone={metrics.draft > 0 ? "red" : "green"} />
+            <SemearMetricCard label="% revisado" value={`${reviewedPercent}%`} />
+            <SemearMetricCard label="Dado sensível" value={metrics.possibleSensitive} tone={metrics.possibleSensitive > 0 ? "red" : "green"} />
+          </div>
 
-            <div className="mt-6 grid gap-5 lg:grid-cols-2">
-              <OccupationReadingPanel occupations={analytics.occupationSummary} withoutCount={analytics.occupationWithoutCount} />
-              <PlacesPanelImproved places={analytics.placeRanking} />
-            </div>
+          <SemearAlert tone={respondentTerritoryNote.status === "boa" ? "green" : respondentTerritoryNote.status === "atenção" ? "yellow" : "red"}>
+            <p><strong>Qualidade territorial do dossiê:</strong> cobertura {respondentTerritoryMetrics.coveragePercent}% ({respondentTerritoryMetrics.recordsWithRespondentTerritory}/{respondentTerritoryMetrics.totalRecords}) · status {respondentTerritoryNote.status}</p>
+            <p className="mt-1">Escutas sem território de referência: {respondentTerritoryMetrics.recordsWithoutRespondentTerritory}. Correções auditadas em listening_record_field_audits: {territorialAuditCount}.</p>
+            <p className="mt-1">{respondentTerritoryNote.shortText}</p>
+            {respondentTerritoryNote.status !== "boa" ? (
+              <SemearButton className="mt-2 min-h-10 px-3 text-xs" href={`/escutas/revisao-territorial?tab=qualidade&actionId=${loadedAction.id}`} variant="primary">
+                Revisar cobertura territorial antes da publicação
+              </SemearButton>
+            ) : null}
+          </SemearAlert>
 
-            {analytics.methodologicalWarnings.length > 0 && (
-              <div className="mt-6">
-                <MethodologicalWarningsPanel warnings={analytics.methodologicalWarnings} />
-              </div>
-            )}
-
-            {analytics.suggestedNextSteps.length > 0 && (
-              <div className="mt-6">
-                <SuggestedNextStepsPanel steps={analytics.suggestedNextSteps} />
-              </div>
-            )}
-
-            <div className="mt-6 grid gap-5 lg:grid-cols-2">
-              <Panel title="Falas representativas revisadas (internas)" icon={<FileText className="h-5 w-5" />}>
-                {publicQuotes.filter((quote) => quote.status === "approved_internal").length === 0 ? (
-                  <p className="text-sm text-stone-600">Ainda nao ha falas aprovadas internamente para esta acao.</p>
-                ) : (
-                  <ul className="space-y-3 text-sm leading-6 text-stone-700">
-                    {publicQuotes
-                      .filter((quote) => quote.status === "approved_internal")
-                      .map((quote) => (
-                        <li className="rounded-xl border border-semear-gray bg-semear-offwhite p-3" key={quote.id}>
-                          <p>{(quote.sanitized_text?.trim() || quote.quote_text).trim()}</p>
-                          <p className="mt-1 text-xs text-stone-500">
-                            {quote.theme_label ? `Tema: ${quote.theme_label}. ` : ""}
-                            {quote.context_note ? `Contexto: ${quote.context_note}.` : ""}
-                            {quote.sensitive_risk ? " Alerta de risco registrado." : ""}
-                          </p>
-                        </li>
-                      ))}
-                  </ul>
-                )}
+          <details className="mt-6 rounded-3xl border border-white/60 bg-white/60 p-5 shadow-premium-md backdrop-blur-md">
+            <summary className="cursor-pointer text-sm font-bold text-semear-green outline-none select-none transition hover:text-semear-green/80">Checklist documental e devolutiva técnica</summary>
+            <div className="mt-4 grid gap-5 lg:grid-cols-2">
+              <Panel title="Checklist documental" icon={<FolderCheck className="h-5 w-5" />}>
+                <ChecklistRow label="ação cadastrada" done={Boolean(loadedAction.id)} />
+                <ChecklistRow label="bairro definido" done={Boolean(loadedAction.neighborhood_id)} />
+                <ChecklistRow label="data definida" done={Boolean(loadedAction.action_date)} />
+                <ChecklistRow label="equipe registrada" done={Boolean(loadedAction.team?.trim())} />
+                <ChecklistRow label="fichas digitadas" done={metrics.total > 0} />
+                <ChecklistRow label="escutas revisadas" done={metrics.reviewed > 0} />
+                <ChecklistRow label="devolutiva gerada" done={Boolean(debrief)} />
+                <ChecklistRow label="devolutiva aprovada" done={debrief?.status === "approved"} />
+                <ChecklistToggle label="evidências organizadas" checked={form.documentation_checklist.evidenceOrganized} onChange={(value) => updateChecklist("evidenceOrganized", value)} />
+                <ChecklistToggle label="relatório mensal vinculado/preparado" checked={form.documentation_checklist.monthlyReportPrepared} onChange={(value) => updateChecklist("monthlyReportPrepared", value)} />
               </Panel>
-              <Panel title="Falas representativas aprovadas para o público" icon={<FileText className="h-5 w-5" />}>
-                {publicQuotes.filter((quote) => quote.status === "approved_public").length === 0 ? (
-                  <p className="text-sm text-stone-600">Ainda nao ha falas aprovadas para uso publico nesta acao.</p>
-                ) : (
-                  <ul className="space-y-3 text-sm leading-6 text-stone-700">
-                    {publicQuotes
-                      .filter((quote) => quote.status === "approved_public")
-                      .map((quote) => (
-                        <li className="rounded-xl border border-green-200 bg-green-50 p-3" key={quote.id}>
-                          <p>{(quote.sanitized_text?.trim() || quote.quote_text).trim()}</p>
-                          <p className="mt-1 text-xs text-green-800">
-                            {quote.theme_label ? `Tema: ${quote.theme_label}. ` : ""}
-                            {quote.context_note ? `Contexto: ${quote.context_note}.` : ""}
-                            Status: aprovado_public.
-                          </p>
-                        </li>
-                      ))}
-                  </ul>
-                )}
-                <Link className="no-print mt-3 inline-flex min-h-10 items-center rounded-full border border-semear-green/20 bg-white px-4 text-xs font-semibold text-semear-green" href="/escutas/falas">
-                  Abrir fila editorial de falas
-                </Link>
+
+              <Panel title="Devolutiva" icon={<FileText className="h-5 w-5" />}>
+                <p className="text-sm leading-6 text-stone-700 font-medium">Status: <strong className="text-semear-green">{debrief ? debrief.status : "não criada"}</strong></p>
+                <p className="mt-2 text-sm leading-6 text-stone-700 font-medium">Aprovação: {debrief?.approved_at ? new Date(debrief.approved_at).toLocaleString("pt-BR") : "não aprovada"}</p>
+                <p className="mt-2 text-sm leading-6 text-stone-700 font-medium">Atualizada em: {debrief?.updated_at ? new Date(debrief.updated_at).toLocaleString("pt-BR") : "sem registro"}</p>
+                <SemearButton className="no-print mt-4" href={`/acoes/${actionId}/devolutiva`} variant="primary">
+                  Abrir devolutiva
+                </SemearButton>
+                {debrief?.status !== "approved" ? <Warning text="A devolutiva ainda não está aprovada." /> : null}
               </Panel>
             </div>
+          </details>
 
-            <div className="mt-6">
-              <Panel title="Governança editorial das falas" icon={<AlertTriangle className="h-5 w-5" />}>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <Mini title="Total" items={[String(publicQuotes.length)]} />
-                  <Mini title="Draft / Revisão" items={[`${quotesByStatus.draft} / ${quotesByStatus.needs_review}`]} />
-                  <Mini title="Aprovadas" items={[`Interna: ${quotesByStatus.approved_internal}`, `Pública: ${quotesByStatus.approved_public}`]} />
-                  <Mini title="Rejeitadas / Arquivadas" items={[`${quotesByStatus.rejected} / ${quotesByStatus.archived}`]} />
-                  <Mini title="Com risco crítico" items={[String(quotesWithRisk)]} />
-                  <Mini title="Cobertura de auditoria" items={[`${publicQuotes.length > 0 ? Math.round((quoteIdsWithAudit.size / publicQuotes.length) * 100) : 0}%`]} />
-                  <Mini title="Edição pós-aprovação" items={[String(editedAfterApproval)]} />
-                  <Mini title="Pendências de justificativa" items={[String(pendingJustification)]} />
+          <div className="mt-6 grid gap-5 lg:grid-cols-2">
+            <Panel title="Síntese determinística" icon={<FileText className="h-5 w-5" />}>
+              <Mini title="Temas mais citados" items={metrics.topThemes.map((item) => `${item.label} (${item.count})`)} />
+              <Mini title="Palavras recorrentes" items={metrics.topWords.map((item) => `${item.label} (${item.count})`)} />
+              <Mini title="Lugares mencionados" items={metrics.places.map((item) => `${item.label} (${item.count})`)} />
+              <Mini title="Prioridades apontadas" items={metrics.priorities.map((item) => `${item.label} (${item.count})`)} />
+              <Mini title="Ocupações (agregado)" items={occupationSummary.groups.map((item) => `${item.label} (${item.count})`)} />
+              <Mini title="Escutas sem ocupação informada" items={[occupationSummary.withoutOccupation.toString()]} />
+              <Mini title="Observações inesperadas" items={metrics.unexpected} />
+            </Panel>
+
+            <Panel title="Equipe e entrevistadores" icon={<FolderCheck className="h-5 w-5" />}>
+              <Mini
+                title="Participantes da ação"
+                items={
+                  participants.length > 0
+                    ? participants.map((participant) => {
+                        const name = participant.team_members?.display_name ?? "Membro não encontrado";
+                        const role = participant.team_members?.role_label ?? "Sem função";
+                        const responsibility = participant.responsibility ? ` · ${participant.responsibility}` : "";
+                        return `${name} (${role})${responsibility}`;
+                      })
+                    : ["Sem participantes vinculados em cadastro padronizado."]
+                }
+              />
+              <Mini
+                title="Escutas por entrevistador"
+                items={
+                  interviewerCounts.length > 0
+                    ? interviewerCounts.map((item) => `${item.name} (${item.count})`)
+                    : ["Sem escutas registradas."]
+                }
+              />
+              {loadedAction.team ? <Mini title="Registro legado de equipe" items={[loadedAction.team]} /> : null}
+            </Panel>
+          </div>
+
+          {/* NEW: Analytical panels */}
+          {analytics && (
+            <>
+              <div className="mt-6 grid gap-5">
+                {analytics.topSignals.length > 0 && (
+                  <AnalyticalSignalsPanel signals={analytics.topSignals} />
+                )}
+              </div>
+
+              <div className="mt-6 grid gap-5 lg:grid-cols-2">
+                <ThemeMatrixPanel analytics={analytics} />
+                <ThemeCooccurrencePanel cooccurrences={analytics.themeCooccurrences} />
+              </div>
+
+              <div className="mt-6">
+                <TerritorialReadingPanel analytics={analytics} />
+              </div>
+
+              <div className="mt-6 grid gap-5 lg:grid-cols-2">
+                <OccupationReadingPanel occupations={analytics.occupationSummary} withoutCount={analytics.occupationWithoutCount} />
+                <PlacesPanelImproved places={analytics.placeRanking} />
+              </div>
+
+              {analytics.methodologicalWarnings.length > 0 && (
+                <div className="mt-6">
+                  <MethodologicalWarningsPanel warnings={analytics.methodologicalWarnings} />
                 </div>
-                <Link className="no-print mt-4 inline-flex min-h-10 items-center rounded-full border border-semear-green/20 bg-white px-4 text-xs font-semibold text-semear-green" href={`/escutas/falas?actionId=${loadedAction.id}`}>
-                  Abrir fila desta ação
-                </Link>
-              </Panel>
-            </div>
-          </>
-        )}
+              )}
 
-        <div className="mt-6 grid gap-5 lg:grid-cols-2">
-          <Panel title="Decisão da coordenação e notas" icon={<CheckCircle2 className="h-5 w-5" />}>
-            <label className={`flex items-start gap-3 rounded-2xl border border-semear-gray bg-semear-offwhite p-4 text-sm ${!canCoordinate ? "opacity-60" : ""}`}>
-              <input checked={form.coordination_sufficiency} disabled={!canCoordinate} onChange={(event) => updateField("coordination_sufficiency", event.target.checked)} type="checkbox" />
-              <span>Coordenação considera a revisão suficiente para fechamento</span>
-            </label>
-            <Textarea label="Justificativa de suficiência" value={form.sufficiency_reason} onChange={(value) => updateField("sufficiency_reason", value)} disabled={!canCoordinate} />
-            <Textarea label="Observações de documentação/evidências" value={form.evidence_notes} onChange={(value) => updateField("evidence_notes", value)} />
-            <Textarea label="Observações internas da coordenação" value={form.internal_notes} onChange={(value) => updateField("internal_notes", value)} />
-            <p className="text-sm text-stone-600">Fechado em: {closure?.closed_at ? new Date(closure.closed_at).toLocaleString("pt-BR") : "não fechado"}</p>
-            <p className="text-sm text-stone-600">Reaberto em: {closure?.reopened_at ? new Date(closure.reopened_at).toLocaleString("pt-BR") : "não reaberto"}</p>
-          </Panel>
-        </div>
+              {analytics.suggestedNextSteps.length > 0 && (
+                <div className="mt-6">
+                  <SuggestedNextStepsPanel steps={analytics.suggestedNextSteps} />
+                </div>
+              )}
 
-        <footer className="print-only mt-10 border-t border-semear-gray pt-4 text-sm font-semibold text-semear-green">
-          Projeto SEMEAR — UFF + APS
-        </footer>
+              <div className="mt-6 grid gap-5 lg:grid-cols-2">
+                <Panel title="Falas representativas revisadas (internas)" icon={<FileText className="h-5 w-5" />}>
+                  {publicQuotes.filter((quote) => quote.status === "approved_internal").length === 0 ? (
+                    <p className="text-sm text-stone-500 font-medium">Ainda não há falas aprovadas internamente para esta ação.</p>
+                  ) : (
+                    <ul className="space-y-3 text-sm leading-relaxed text-stone-700 font-medium">
+                      {publicQuotes
+                        .filter((quote) => quote.status === "approved_internal")
+                        .map((quote) => (
+                          <li className="rounded-2xl border border-white/60 bg-white/80 p-3 shadow-premium-sm" key={quote.id}>
+                            <p>{(quote.sanitized_text?.trim() || quote.quote_text).trim()}</p>
+                            <p className="mt-1 text-xs text-stone-400">
+                              {quote.theme_label ? `Tema: ${quote.theme_label}. ` : ""}
+                              {quote.context_note ? `Contexto: ${quote.context_note}.` : ""}
+                              {quote.sensitive_risk ? " Alerta de risco registrado." : ""}
+                            </p>
+                          </li>
+                        ))}
+                    </ul>
+                  )}
+                </Panel>
+                <Panel title="Falas representativas aprovadas para o público" icon={<FileText className="h-5 w-5" />}>
+                  {publicQuotes.filter((quote) => quote.status === "approved_public").length === 0 ? (
+                    <p className="text-sm text-stone-500 font-medium">Ainda não há falas aprovadas para uso público nesta ação.</p>
+                  ) : (
+                    <ul className="space-y-3 text-sm leading-relaxed text-stone-700 font-medium">
+                      {publicQuotes
+                        .filter((quote) => quote.status === "approved_public")
+                        .map((quote) => (
+                          <li className="rounded-2xl border border-green-200 bg-green-50/60 p-3 shadow-premium-sm" key={quote.id}>
+                            <p>{(quote.sanitized_text?.trim() || quote.quote_text).trim()}</p>
+                            <p className="mt-1 text-xs text-green-800">
+                              {quote.theme_label ? `Tema: ${quote.theme_label}. ` : ""}
+                              {quote.context_note ? `Contexto: ${quote.context_note}.` : ""}
+                              Status: aprovado_public.
+                            </p>
+                          </li>
+                        ))}
+                    </ul>
+                  )}
+                  <Link className="no-print mt-3 inline-flex min-h-10 items-center rounded-full border border-white/60 bg-white px-4 text-xs font-bold text-semear-green shadow-premium-sm transition hover:bg-stone-50 active:scale-95 duration-200" href="/escutas/falas">
+                    Abrir fila editorial de falas
+                  </Link>
+                </Panel>
+              </div>
+
+              <div className="mt-6">
+                <Panel title="Governança editorial das falas" icon={<AlertTriangle className="h-5 w-5" />}>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <Mini title="Total" items={[String(publicQuotes.length)]} />
+                    <Mini title="Draft / Revisão" items={[`${quotesByStatus.draft} / ${quotesByStatus.needs_review}`]} />
+                    <Mini title="Aprovadas" items={[`Interna: ${quotesByStatus.approved_internal}`, `Pública: ${quotesByStatus.approved_public}`]} />
+                    <Mini title="Rejeitadas / Arquivadas" items={[`${quotesByStatus.rejected} / ${quotesByStatus.archived}`]} />
+                    <Mini title="Com risco crítico" items={[String(quotesWithRisk)]} />
+                    <Mini title="Cobertura de auditoria" items={[`${publicQuotes.length > 0 ? Math.round((quoteIdsWithAudit.size / publicQuotes.length) * 100) : 0}%`]} />
+                    <Mini title="Edição pós-aprovação" items={[String(editedAfterApproval)]} />
+                    <Mini title="Pendências de justificativa" items={[String(pendingJustification)]} />
+                  </div>
+                  <Link className="no-print mt-4 inline-flex min-h-10 items-center rounded-full border border-white/60 bg-white px-4 text-xs font-bold text-semear-green shadow-premium-sm transition hover:bg-stone-50 active:scale-95 duration-200" href={`/escutas/falas?actionId=${loadedAction.id}`}>
+                    Abrir fila desta ação
+                  </Link>
+                </Panel>
+              </div>
+            </>
+          )}
+
+          <div className="mt-6 grid gap-5 lg:grid-cols-2">
+            <Panel title="Decisão da coordenação e notas" icon={<CheckCircle2 className="h-5 w-5" />}>
+              <label className={`flex items-start gap-3 rounded-2xl border border-white/60 bg-white/80 p-4 text-sm font-bold shadow-premium-sm ${!canCoordinate ? "opacity-60" : ""}`}>
+                <input checked={form.coordination_sufficiency} disabled={!canCoordinate} onChange={(event) => updateField("coordination_sufficiency", event.target.checked)} type="checkbox" />
+                <span>Coordenação considera a revisão suficiente para fechamento</span>
+              </label>
+              <Textarea label="Justificativa de suficiência" value={form.sufficiency_reason} onChange={(value) => updateField("sufficiency_reason", value)} disabled={!canCoordinate} />
+              <Textarea label="Observações de documentação/evidências" value={form.evidence_notes} onChange={(value) => updateField("evidence_notes", value)} />
+              <Textarea label="Observações internas da coordenação" value={form.internal_notes} onChange={(value) => updateField("internal_notes", value)} />
+              <p className="text-sm text-stone-600 font-medium mt-3">Fechado em: {closure?.closed_at ? new Date(closure.closed_at).toLocaleString("pt-BR") : "não fechado"}</p>
+              <p className="text-sm text-stone-600 font-medium">Reaberto em: {closure?.reopened_at ? new Date(closure.reopened_at).toLocaleString("pt-BR") : "não reaberto"}</p>
+            </Panel>
+          </div>
+
+          <footer className="print-only mt-10 border-t border-semear-gray pt-4 text-sm font-semibold text-semear-green">
+            Projeto SEMEAR — UFF + APS
+          </footer>
         </SemearCard>
       </article>
 
-      <div className="no-print mt-5 rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft">
+      <div className="no-print sticky bottom-4 z-20 mt-5 rounded-3xl border border-white/60 bg-white/90 p-5 shadow-premium-lg backdrop-blur-lg">
         <div className="flex flex-wrap gap-3">
-          <button className="inline-flex min-h-12 items-center gap-2 rounded-full bg-semear-green px-5 text-sm font-semibold text-white disabled:opacity-60" disabled={saving} onClick={() => void save()} type="button">
+          <button className="inline-flex min-h-12 items-center gap-2 rounded-full bg-semear-green px-5 text-sm font-bold text-white shadow-premium-sm hover:bg-semear-green/92 active:scale-[0.98] transition-all duration-200 disabled:opacity-60" disabled={saving} onClick={() => void save()} type="button">
             <Save className="h-4 w-4" aria-hidden="true" />
             Salvar dossiê
           </button>
-          <button className="inline-flex min-h-12 items-center gap-2 rounded-full bg-stone-900 px-5 text-sm font-semibold text-white disabled:opacity-60" disabled={saving || !canCoordinate} onClick={() => void closeAction()} type="button">
+          <button className="inline-flex min-h-12 items-center gap-2 rounded-full bg-stone-900 px-5 text-sm font-bold text-white shadow-premium-sm hover:bg-stone-800 active:scale-[0.98] transition-all duration-200 disabled:opacity-60" disabled={saving || !canCoordinate} onClick={() => void closeAction()} type="button">
             <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
             Fechar ação
           </button>
-          <button className="inline-flex min-h-12 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-5 text-sm font-semibold text-semear-green disabled:opacity-60" disabled={saving || !canCoordinate} onClick={() => void reopenAction()} type="button">
+          <button className="inline-flex min-h-12 items-center gap-2 rounded-full border border-white/60 bg-white px-5 text-sm font-bold text-semear-green shadow-premium-sm hover:bg-stone-50 active:scale-[0.98] transition-all duration-200 disabled:opacity-60" disabled={saving || !canCoordinate} onClick={() => void reopenAction()} type="button">
             <RotateCcw className="h-4 w-4" aria-hidden="true" />
             Reabrir ação
           </button>
         </div>
-        <p className="mt-4 text-sm text-stone-600">{canClose.reason}</p>
+        <p className="mt-4 text-sm text-stone-600 font-medium">{canClose.reason}</p>
         {debrief?.status !== "approved" ? <Warning text="A devolutiva não aprovada gera alerta, mas não bloqueia o fechamento." /> : null}
         {feedback ? <p className="mt-4 text-sm font-semibold text-semear-green">{feedback}</p> : null}
-        {error ? <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p> : null}
+        {error ? <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 font-semibold shadow-premium-sm">{error}</p> : null}
       </div>
     </section>
   );
 }
 
 function Metric({ label, value, danger = false }: { label: string; value: number; danger?: boolean }) {
-  return <div className={`rounded-2xl border p-4 ${danger ? "border-red-100 bg-red-50" : "border-semear-gray bg-semear-offwhite"}`}><p className={`text-xs font-semibold uppercase tracking-[0.12em] ${danger ? "text-red-800" : "text-stone-500"}`}>{label}</p><strong className={`mt-2 block text-3xl font-semibold ${danger ? "text-red-800" : "text-semear-green"}`}>{value}</strong></div>;
+  return (
+    <div className={`rounded-2xl border p-4 shadow-premium-sm ${danger ? "border-red-200 bg-red-50" : "border-white/60 bg-white/80"}`}>
+      <p className={`text-xs font-semibold uppercase tracking-[0.12em] ${danger ? "text-red-850" : "text-stone-500"}`}>{label}</p>
+      <strong className={`mt-2 block text-3xl font-extrabold ${danger ? "text-red-850" : "text-semear-green"}`}>{value}</strong>
+    </div>
+  );
 }
 
 function Panel({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
-  return <section className="rounded-[2rem] border border-white/80 bg-white p-5 shadow-soft"><div className="mb-4 flex items-center gap-3 text-semear-green">{icon}<h3 className="font-semibold">{title}</h3></div>{children}</section>;
+  return (
+    <section className="rounded-3xl border border-white/60 bg-white/60 p-5 shadow-premium-sm backdrop-blur-md">
+      <div className="mb-4 flex items-center gap-3 text-semear-green">
+        <div className="text-semear-green">{icon}</div>
+        <h3 className="font-bold">{title}</h3>
+      </div>
+      {children}
+    </section>
+  );
 }
 
 function ChecklistRow({ label, done }: { label: string; done: boolean }) {
-  return <div className="mb-2 flex items-center gap-3 rounded-2xl border border-semear-gray bg-semear-offwhite p-3 text-sm">{done ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <AlertTriangle className="h-4 w-4 text-amber-700" />}<span>{label}</span></div>;
+  return (
+    <div className="mb-2 flex items-center gap-3 rounded-2xl border border-white/60 bg-white/80 p-3 text-sm font-bold shadow-premium-sm">
+      {done ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <AlertTriangle className="h-4 w-4 text-amber-700" />}
+      <span>{label}</span>
+    </div>
+  );
 }
 
 function ChecklistToggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) {
-  return <label className="mb-2 flex items-center gap-3 rounded-2xl border border-semear-gray bg-semear-offwhite p-3 text-sm"><input checked={checked} onChange={(event) => onChange(event.target.checked)} type="checkbox" /><span>{label}</span></label>;
+  return (
+    <label className="mb-2 flex items-center gap-3 rounded-2xl border border-white/60 bg-white/80 p-3 text-sm font-bold shadow-premium-sm cursor-pointer select-none transition hover:bg-white/40">
+      <input checked={checked} onChange={(event) => onChange(event.target.checked)} type="checkbox" />
+      <span>{label}</span>
+    </label>
+  );
 }
 
 function Mini({ title, items }: { title: string; items: string[] }) {
-  return <div className="mb-4 rounded-2xl bg-semear-offwhite p-4"><p className="font-semibold text-semear-green">{title}</p><p className="mt-2 text-sm leading-6 text-stone-700">{items.length > 0 ? items.slice(0, 8).join(", ") : "Não registrado."}</p></div>;
+  return (
+    <div className="mb-4 rounded-2xl border border-white/60 bg-white/80 p-4 shadow-premium-sm">
+      <p className="font-bold text-semear-green">{title}</p>
+      <p className="mt-2 text-sm leading-relaxed text-stone-700 font-medium">
+        {items.length > 0 ? items.slice(0, 8).join(", ") : "Não registrado."}
+      </p>
+    </div>
+  );
 }
 
 function Textarea({ label, value, onChange, disabled = false }: { label: string; value: string; onChange: (value: string) => void; disabled?: boolean }) {
-  return <label className="mt-4 block"><span className="text-sm font-semibold text-semear-green">{label}</span><textarea className="mt-2 min-h-28 w-full rounded-2xl border border-semear-gray bg-white px-4 py-3 text-sm leading-6 outline-none focus:border-semear-green disabled:opacity-60" disabled={disabled} value={value} onChange={(event) => onChange(event.target.value)} /></label>;
+  return (
+    <label className="mt-4 block">
+      <span className="text-sm font-bold text-semear-green">{label}</span>
+      <textarea 
+        className="mt-2 min-h-28 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 py-3 text-sm leading-relaxed text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green disabled:opacity-60" 
+        disabled={disabled} 
+        value={value} 
+        onChange={(event) => onChange(event.target.value)} 
+      />
+    </label>
+  );
 }
 
 function Warning({ text }: { text: string }) {
-  return <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-900">{text}</p>;
+  return (
+    <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900 shadow-premium-sm">
+      {text}
+    </p>
+  );
 }
 
 function StateBox({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "error" }) {
-  return <div className={`rounded-[1.5rem] p-6 text-sm shadow-soft ${tone === "error" ? "border border-red-200 bg-red-50 text-red-800" : "bg-white/72 text-stone-600"}`}>{children}</div>;
+  return (
+    <div className={`rounded-3xl p-6 text-sm font-medium shadow-premium-md backdrop-blur-md ${tone === "error" ? "border border-red-200 bg-red-50 text-red-800" : "border border-white/60 bg-white/80 text-stone-600"}`}>
+      {children}
+    </div>
+  );
 }
