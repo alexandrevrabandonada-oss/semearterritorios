@@ -493,7 +493,7 @@ export function TeamCalendarEventForm({ eventId }: EventFormProps) {
           </fieldset>
         </div>
 
-        <div className="sticky bottom-20 z-20 mt-8 flex flex-wrap gap-3 rounded-2xl border border-white/60 bg-white/95 p-4 shadow-premium-md backdrop-blur md:bottom-4">
+        <div className="sticky bottom-[calc(env(safe-area-inset-bottom,0px)+5.85rem)] z-20 mt-8 flex flex-wrap gap-3 rounded-2xl border border-white/60 bg-white/95 p-4 shadow-premium-md backdrop-blur md:bottom-4">
           <button className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full bg-semear-green px-5 text-xs font-bold text-white shadow-premium-sm transition hover:bg-semear-green/90 disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.98] duration-200" disabled={saving} type="submit">
             {eventId ? <Save className="h-4 w-4" aria-hidden="true" /> : <CalendarPlus className="h-4 w-4" aria-hidden="true" />}
             {saving ? "Salvando..." : eventId ? "Salvar evento" : "Criar evento"}
@@ -507,4 +507,3 @@ export function TeamCalendarEventForm({ eventId }: EventFormProps) {
 
 const inputClassName = "mt-2 min-h-12 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 text-xs font-bold text-stone-750 outline-none focus:border-semear-green shadow-premium-sm";
 const textareaClassName = "mt-2 min-h-28 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 py-3 text-xs font-bold text-stone-750 outline-none focus:border-semear-green shadow-premium-sm";
-

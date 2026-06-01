@@ -15,9 +15,10 @@ import {
   UsersRound,
   Save,
   Tag,
-  Sparkles,
-  Bot,
-  Printer
+  Printer,
+  ShieldCheck,
+  Lightbulb,
+  Route
 } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Action, ActionClosure, ActionDebrief, ListeningRecord, Neighborhood, Theme } from "@/lib/database.types";
@@ -30,6 +31,7 @@ import {
   buildMonthlyReportCsv,
   formatMonthLabel,
   isMonthValue,
+  type MonthlyReportMode,
   type MonthlyReportData
 } from "@/lib/monthly-reports";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -59,9 +61,7 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
-  const [generatingAi, setGeneratingAi] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
+  const [reportMode, setReportMode] = useState<MonthlyReportMode>("internal");
 
   useEffect(() => {
     let ignore = false;
@@ -109,54 +109,9 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
   }, [month, supabase]);
 
   const report = useMemo<MonthlyReportData>(() => buildMonthlyReportData(month, actions, records), [actions, month, records]);
-  const plainText = useMemo(() => buildMonthlyReportPlainText(report), [report]);
-  const markdown = useMemo(() => buildMonthlyReportMarkdown(report), [report]);
+  const plainText = useMemo(() => buildMonthlyReportPlainText(report, reportMode), [report, reportMode]);
+  const markdown = useMemo(() => buildMonthlyReportMarkdown(report, reportMode), [report, reportMode]);
   const actionsWithoutClosedDossier = actions.filter((action) => closures.find((closure) => closure.action_id === action.id)?.status !== "closed");
-
-  async function handleGenerateAi() {
-    setGeneratingAi(true);
-    setAiError(null);
-    try {
-      const recordsData = report.records.map(r => ({
-        territorio_acao: r.neighborhoods?.name ?? "Território da ação não informado",
-        territorio_referencia_entrevistado: r.respondent_neighborhoods?.name ?? "Não informado",
-        acao: r.actions?.title ?? "Sem ação",
-        origem: getSourceTypeLabel(r.source_type),
-        ocupacao: r.respondent_occupation ?? "não informado",
-        temas: r.listening_record_themes.map(t => t.themes?.name).filter(Boolean),
-        prioridade: r.priority_mentioned ?? "",
-        inesperado: r.unexpected_notes ?? "",
-        fala_limpa: r.free_speech_text
-      }));
-      const actionsSummary = report.actions.map(a => ({
-        titulo: a.title,
-        tipo: getActionTypeLabel(a.action_type),
-        territorio_acao: a.neighborhoods?.name ?? "Território da ação não informado"
-      }));
-
-      const res = await fetch("/api/gerar-sintese", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          month: formatMonthLabel(month),
-          actionsSummary,
-          recordsData,
-        })
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => null);
-        throw new Error(errorData?.error ?? "Falha ao gerar síntese");
-      }
-
-      const data = await res.json();
-      setAiSuggestion(data.text);
-    } catch (err: any) {
-      setAiError(err.message || "Erro desconhecido");
-    } finally {
-      setGeneratingAi(false);
-    }
-  }
 
   async function handleSaveReport() {
     setError(null);
@@ -171,7 +126,7 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
         reference_month: `${month}-01`,
         title: report.title,
         free_speech_highlights: null,
-        team_analysis: aiSuggestion || "Gerado sem IA",
+        team_analysis: report.executiveSummary,
         recurring_themes: null,
         territorial_notes: null,
         review_status: "reviewed" as const,
@@ -241,6 +196,14 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
+            <div className="inline-flex rounded-full border border-semear-green/15 bg-white p-1">
+              <button className={`min-h-10 rounded-full px-4 text-sm font-semibold ${reportMode === "internal" ? "bg-semear-green text-white" : "text-semear-green"}`} onClick={() => setReportMode("internal")} type="button">
+                Interno
+              </button>
+              <button className={`min-h-10 rounded-full px-4 text-sm font-semibold ${reportMode === "public" ? "bg-semear-green text-white" : "text-semear-green"}`} onClick={() => setReportMode("public")} type="button">
+                Público
+              </button>
+            </div>
             <button className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white px-4 text-sm font-semibold text-semear-green" onClick={() => void copyContent(plainText, "Texto do relatório")} type="button">
               <Copy className="h-4 w-4" aria-hidden="true" />
               Copiar texto
@@ -253,10 +216,12 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
               <Save className="h-4 w-4" aria-hidden="true" />
               Salvar no banco
             </button>
-            <button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-stone-800 px-4 text-sm font-semibold text-white" onClick={exportCsv} type="button">
-              <Download className="h-4 w-4" aria-hidden="true" />
-              Exportar CSV
-            </button>
+            {reportMode === "internal" ? (
+              <button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-stone-800 px-4 text-sm font-semibold text-white" onClick={exportCsv} type="button">
+                <Download className="h-4 w-4" aria-hidden="true" />
+                Exportar CSV
+              </button>
+            ) : null}
             <button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-semear-earth px-4 text-sm font-semibold text-white" onClick={() => window.print()} type="button">
               <Printer className="h-4 w-4" aria-hidden="true" />
               Exportar PDF
@@ -264,7 +229,7 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
           </div>
         </div>
         {feedback ? <p className="mt-4 text-sm font-medium text-semear-green">{feedback}</p> : null}
-        {actionsWithoutClosedDossier.length > 0 ? (
+        {reportMode === "internal" && actionsWithoutClosedDossier.length > 0 ? (
           <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
             Há ações do mês sem dossiê fechado.
           </p>
@@ -275,8 +240,21 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
         <MetricCard icon={<ClipboardList className="h-5 w-5" />} label="Ações" value={report.totalActions} />
         <MetricCard icon={<MessageSquareText className="h-5 w-5" />} label="Escutas" value={report.totalRecords} />
         <MetricCard icon={<MapPinned className="h-5 w-5" />} label="Bairros onde houve ação" value={report.operationNeighborhoods.length} />
-        <MetricCard icon={<Tag className="h-5 w-5" />} label="Temas" value={report.topThemes.length} />
-        <MetricCard icon={<Layers3 className="h-5 w-5" />} label="Pendências" value={report.pendingReviews.length} />
+        <MetricCard icon={<ShieldCheck className="h-5 w-5" />} label="Cobertura territorial" value={`${report.territorialQuality.coveragePercent}%`} />
+        {reportMode === "internal" ? (
+          <MetricCard icon={<Layers3 className="h-5 w-5" />} label="Pendências" value={report.pendingReviews.length} />
+        ) : (
+          <MetricCard icon={<Tag className="h-5 w-5" />} label="Temas dominantes" value={report.topThemes.length} />
+        )}
+      </div>
+
+      <div className="mt-5 grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+        <Panel title="Leitura executiva" icon={<FileText className="h-5 w-5" />}>
+          <p className="text-sm leading-7 text-stone-700">{report.executiveSummary}</p>
+        </Panel>
+        <Panel title="Temas dominantes" icon={<Tag className="h-5 w-5" />}>
+          {report.topThemes.length > 0 ? <TagList items={report.topThemes.map((item) => `${item.name} (${item.count})`)} /> : <PedagogicEmpty text="Nenhum tema marcado nas escutas do mês." />}
+        </Panel>
       </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-2">
@@ -284,9 +262,7 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
           <p className="text-sm leading-6 text-stone-700">Onde fizemos ações e volume coletado por território da ação.</p>
           <div className="mt-3 space-y-2">
             {report.actionTerritoryCounts.length > 0 ? report.actionTerritoryCounts.map((item) => (
-              <p className="rounded-xl bg-semear-offwhite px-3 py-2 text-sm text-stone-700" key={item.name}>
-                <strong className="text-semear-green">{item.name}</strong>: {item.count} ação(ões)
-              </p>
+              <BarRow item={item} max={Math.max(...report.actionTerritoryCounts.map((count) => count.count), 1)} key={item.name} suffix={item.count === 1 ? "ação" : "ações"} />
             )) : <PedagogicEmpty text="Nenhum território da ação informado no mês." />}
           </div>
         </Panel>
@@ -295,9 +271,7 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
           <p className="text-sm leading-6 text-stone-700">De onde vêm/as quais territórios se referem os entrevistados.</p>
           <div className="mt-3 space-y-2">
             {report.respondentTerritoryCounts.length > 0 ? report.respondentTerritoryCounts.map((item) => (
-              <p className="rounded-xl bg-semear-offwhite px-3 py-2 text-sm text-stone-700" key={item.name}>
-                <strong className="text-semear-green">{item.name}</strong>: {item.count} escuta(s)
-              </p>
+              <BarRow item={item} max={Math.max(...report.respondentTerritoryCounts.map((count) => count.count), 1)} key={item.name} suffix={item.count === 1 ? "escuta" : "escutas"} />
             )) : <PedagogicEmpty text="Nenhum território de referência informado no mês." />}
             <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
               Escutas sem território de referência: {report.respondentWithoutNeighborhood}
@@ -335,62 +309,12 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
             <p className="text-sm leading-7 text-stone-700">{report.pedagogicalSummary}</p>
           </Panel>
 
-          <Panel title="Assistente de Síntese (IA)" icon={<Bot className="h-5 w-5" />}>
-            <div className="space-y-4">
-              <p className="text-sm leading-6 text-stone-600">
-                Gere uma sugestão de texto contendo resumo do mês, temas recorrentes e padrões separados entre território da ação e território de referência do entrevistado. Nomes e identificadores não são enviados.
-                Esta sugestão não é relatório oficial; use apenas como apoio exploratório e revise antes de qualquer uso.
-              </p>
-              {!aiSuggestion && !generatingAi ? (
-                <button
-                  onClick={() => void handleGenerateAi()}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-semear-earth px-5 text-sm font-semibold text-white transition hover:bg-semear-earth/90"
-                  type="button"
-                >
-                  <Sparkles className="h-4 w-4" aria-hidden="true" />
-                  Gerar sugestão de síntese
-                </button>
-              ) : null}
-              {generatingAi ? (
-                <p className="text-sm font-medium text-semear-earth animate-pulse">Gerando análise exploratória...</p>
-              ) : null}
-              {aiError ? (
-                <p className="text-sm font-medium text-red-600">{aiError}</p>
-              ) : null}
-              {aiSuggestion ? (
-                <div className="space-y-3">
-                  <div className="rounded-2xl border border-semear-yellow/40 bg-semear-yellow/20 p-4 text-sm font-medium leading-6 text-semear-green">
-                    ⚠️ Síntese gerada automaticamente, revisar antes de usar. A IA pode apresentar informações imprecisas ou errôneas.
-                  </div>
-                  <textarea
-                    className="min-h-[400px] w-full rounded-2xl border border-semear-green/20 bg-white p-4 text-sm leading-7 text-stone-700 outline-none focus:border-semear-green"
-                    value={aiSuggestion}
-                    onChange={(e) => setAiSuggestion(e.target.value)}
-                  />
-                  <div className="flex justify-end gap-3">
-                    <button
-                      onClick={() => void copyContent(aiSuggestion, "Sugestão da IA")}
-                      className="text-sm font-semibold text-semear-green hover:underline"
-                      type="button"
-                    >
-                      Copiar texto
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </Panel>
-
           <Panel title="Markdown do relatório" icon={<FileText className="h-5 w-5" />}>
             <pre className="overflow-x-auto whitespace-pre-wrap rounded-2xl bg-semear-offwhite p-4 text-sm leading-6 text-stone-700">{markdown}</pre>
           </Panel>
         </div>
 
         <div className="space-y-5">
-          <Panel title="Temas mais recorrentes" icon={<Tag className="h-5 w-5" />}>
-            {report.topThemes.length > 0 ? <TagList items={report.topThemes.map((item) => `${item.name} (${item.count})`)} /> : <PedagogicEmpty text="Nenhum tema marcado nas escutas do mês." />}
-          </Panel>
-
           <Panel title="Tipos de ação" icon={<ClipboardList className="h-5 w-5" />}>
             {report.actionTypeCounts.length > 0 ? <TagList items={report.actionTypeCounts.map((item) => `${item.name} (${item.count})`)} /> : <PedagogicEmpty text="Nenhuma ação registrada neste mês." />}
           </Panel>
@@ -399,23 +323,30 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
             {report.occupationCounts.length > 0 ? <TagList items={report.occupationCounts.map((item) => `${item.name} (${item.count})`)} /> : <PedagogicEmpty text="Sem ocupações com frequência suficiente para leitura agregada segura." />}
           </Panel>
 
-          <Panel title="Prioridades apontadas" icon={<AlertCircle className="h-5 w-5" />}>
-            {report.priorities.length > 0 ? <TagList items={report.priorities.map((item) => `${item.name} (${item.count})`)} /> : <PedagogicEmpty text="Nenhuma prioridade apontada nas escutas do mês." />}
-          </Panel>
-
-          <Panel title="Temas inesperados" icon={<Layers3 className="h-5 w-5" />}>
-            {report.unexpectedTopics.length > 0 ? (
+          <Panel title="Sinais qualitativos relevantes" icon={<Layers3 className="h-5 w-5" />}>
+            {report.qualitativeSignals.length > 0 ? (
               <div className="space-y-3">
-                {report.unexpectedTopics.map((item) => (
-                  <div className="rounded-2xl bg-semear-offwhite p-4" key={item.name}>
-                    <p className="text-sm font-semibold text-semear-green">{item.name}</p>
-                    <p className="mt-1 text-xs uppercase tracking-[0.12em] text-stone-500">{item.count} ocorrência(s)</p>
+                {report.qualitativeSignals.map((item) => (
+                  <div className="rounded-2xl bg-semear-offwhite p-4" key={item.type}>
+                    <p className="text-sm font-semibold text-semear-green">{item.type}</p>
+                    <p className="mt-1 text-xs uppercase tracking-[0.12em] text-stone-500">{item.count} ocorrência{item.count === 1 ? "" : "s"}</p>
+                    {item.examples.length > 0 ? <p className="mt-2 text-xs leading-5 text-stone-600">{item.examples.join("; ")}</p> : null}
                   </div>
                 ))}
               </div>
             ) : <PedagogicEmpty text="Nenhuma observação inesperada foi preenchida no mês." />}
           </Panel>
         </div>
+      </div>
+
+      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+        <Panel title="O que aprendemos neste mês" icon={<Lightbulb className="h-5 w-5" />}>
+          <SimpleList items={filterModeItems(report.monthlyLearnings, reportMode)} />
+        </Panel>
+
+        <Panel title="Encaminhamentos recomendados" icon={<Route className="h-5 w-5" />}>
+          <SimpleList items={filterModeItems(report.recommendedReferrals, reportMode)} />
+        </Panel>
       </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-2">
@@ -430,18 +361,21 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
                     <span>{action.neighborhoods?.name ?? "Território da ação não informado"}</span>
                   </div>
                   <p className="mt-2 text-sm font-semibold text-semear-green">{action.title}</p>
-                  <ActionMonthlyStatus
-                    action={action}
-                    closure={closures.find((item) => item.action_id === action.id) ?? null}
-                    debrief={debriefs.find((item) => item.action_id === action.id) ?? null}
-                    records={records.filter((record) => record.action_id === action.id)}
-                  />
+                  {reportMode === "internal" ? (
+                    <ActionMonthlyStatus
+                      action={action}
+                      closure={closures.find((item) => item.action_id === action.id) ?? null}
+                      debrief={debriefs.find((item) => item.action_id === action.id) ?? null}
+                      records={records.filter((record) => record.action_id === action.id)}
+                    />
+                  ) : null}
                 </Link>
               ))}
             </div>
           ) : <PedagogicEmpty text="Nenhuma ação foi cadastrada para o mês selecionado." />}
         </Panel>
 
+        {reportMode === "internal" ? (
         <Panel title="Pendências de revisão" icon={<Layers3 className="h-5 w-5" />}>
           {report.pendingReviews.length > 0 ? (
             <div className="space-y-3">
@@ -453,12 +387,13 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
                     <span>referência {record.respondent_neighborhoods?.name ?? "Não informado"}</span>
                     <span>{getReviewStatusLabel(record.review_status)}</span>
                   </div>
-                  <p className="mt-2 text-sm font-semibold text-semear-green">{record.free_speech_text}</p>
+                  <p className="mt-2 text-sm font-semibold text-semear-green">Revisar cadastro antes de publicação.</p>
                 </Link>
               ))}
             </div>
           ) : <PedagogicEmpty text="Nenhuma escuta em rascunho neste mês." />}
         </Panel>
+        ) : null}
       </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-2">
@@ -470,6 +405,7 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
           {report.respondentNeighborhoods.length > 0 ? <TagList items={report.respondentNeighborhoods} /> : <PedagogicEmpty text="Nenhum território de referência informado no mês." />}
         </Panel>
 
+        {reportMode === "internal" ? (
         <Panel title="Escutas do mês para exportação" icon={<MessageSquareText className="h-5 w-5" />}>
           {report.records.length > 0 ? (
             <div className="space-y-3">
@@ -481,62 +417,114 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
                     <span>referência {record.respondent_neighborhoods?.name ?? "Não informado"}</span>
                     <span>{getSourceTypeLabel(record.source_type)}</span>
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-semear-green">{record.team_summary ?? record.free_speech_text}</p>
+                  <p className="mt-2 text-sm leading-6 text-semear-green">{record.team_summary ?? "Registro sem síntese da equipe. Revisar antes de uso externo."}</p>
                 </div>
               ))}
             </div>
           ) : <PedagogicEmpty text="O CSV será habilitado quando houver escutas no mês selecionado." />}
         </Panel>
+        ) : null}
+      </div>
+
+      <div className="mt-5 grid gap-5 xl:grid-cols-3">
+        <Panel title="Temas mais citados" icon={<Tag className="h-5 w-5" />}>
+          <BarList items={report.topThemes} emptyText="Nenhum tema marcado nas escutas do mês." />
+        </Panel>
+        <Panel title="Prioridades por macroeixo" icon={<Route className="h-5 w-5" />}>
+          {report.priorityGroups.length > 0 ? (
+            <div className="space-y-3">
+              {report.priorityGroups.map((item) => (
+                <div className="rounded-2xl bg-semear-offwhite p-3" key={item.axis}>
+                  <BarRow item={{ name: item.axis, count: item.count }} max={Math.max(...report.priorityGroups.map((group) => group.count), 1)} suffix={item.count === 1 ? "citação" : "citações"} />
+                  {item.examples.length > 0 ? <p className="mt-2 text-xs leading-5 text-stone-600">Exemplos: {item.examples.join("; ")}</p> : null}
+                </div>
+              ))}
+            </div>
+          ) : <PedagogicEmpty text="Nenhuma prioridade aberta foi agrupada." />}
+        </Panel>
+        <Panel title="Qualidade territorial" icon={<ShieldCheck className="h-5 w-5" />}>
+          <BarList
+            items={[
+              { name: "Com território de referência", count: report.territorialQuality.recordsWithRespondentTerritory },
+              { name: "Sem território de referência", count: report.territorialQuality.recordsWithoutRespondentTerritory }
+            ]}
+            emptyText="Sem escutas no mês."
+          />
+        </Panel>
       </div>
     </section>
-    <MonthlyReportPrintSheet report={report} />
+    <MonthlyReportPrintSheet report={report} mode={reportMode} />
     </>
   );
 }
 
-function MonthlyReportPrintSheet({ report }: { report: MonthlyReportData }) {
+function MonthlyReportPrintSheet({ report, mode }: { report: MonthlyReportData; mode: MonthlyReportMode }) {
+  const isInternal = mode === "internal";
   return (
     <article className="print-only print-sheet">
-      <header className="mb-8 border-b border-semear-gray pb-5">
+      <header className="mb-8 rounded-2xl bg-semear-green p-7 text-white">
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">SEMEAR Territórios</p>
-        <h1 className="mt-2 text-3xl font-semibold text-semear-green">{report.title}</h1>
-        <p className="mt-3 text-sm leading-6 text-stone-700">
-          Relatório mensal gerado a partir de ações, escutas, temas e campos preenchidos pela equipe.
+        <h1 className="mt-2 text-4xl font-semibold">{report.title}</h1>
+        <p className="mt-3 text-sm leading-6 text-white/85">
+          Leitura institucional, pedagógica e operacional gerada sem IA, a partir dos registros do sistema. Versão {isInternal ? "interna" : "pública"}.
         </p>
       </header>
 
-      <section className="mb-6 grid grid-cols-2 gap-3">
+      <section className="mb-6 grid grid-cols-4 gap-3">
         <PrintMetric label="Mês de referência" value={formatMonthLabel(report.month)} />
         <PrintMetric label="Ações" value={report.totalActions} />
         <PrintMetric label="Escutas" value={report.totalRecords} />
         <PrintMetric label="Cobertura territorial" value={`${report.territorialQuality.coveragePercent}%`} />
       </section>
 
-      <PrintSection title="Síntese de busca ativa">
-        <p>{report.activeSearchSummary}</p>
+      <PrintSection title="Leitura executiva">
+        <p>{report.executiveSummary}</p>
       </PrintSection>
 
-      <PrintSection title="Síntese pedagógica">
+      <PrintSection title="O que escutamos">
         <p>{report.pedagogicalSummary}</p>
       </PrintSection>
 
-      <PrintSection title="Nota metodológica territorial">
-        <p><strong>Status:</strong> {report.territorialMethodologyNote.status}</p>
-        <p><strong>Escutas sem território de referência:</strong> {report.territorialQuality.recordsWithoutRespondentTerritory}</p>
-        <p>{report.territorialMethodologyNote.fullText}</p>
-        <p><strong>Recomendação operacional:</strong> {report.territorialMethodologyNote.operationalRecommendation}</p>
-      </PrintSection>
-
       <section className="mb-6 grid grid-cols-2 gap-5">
-        <PrintCountList title="Ações por território" items={report.actionTerritoryCounts} />
+        <PrintCountList title="Temas dominantes" items={report.topThemes} />
+        <PrintCountList title="Ações por território da ação" items={report.actionTerritoryCounts} />
         <PrintCountList title="Escutas por território de referência" items={report.respondentTerritoryCounts} />
-        <PrintCountList title="Tipos de ação" items={report.actionTypeCounts} />
-        <PrintCountList title="Temas mais recorrentes" items={report.topThemes} />
-        <PrintCountList title="Prioridades apontadas" items={report.priorities} />
-        <PrintCountList title="Temas inesperados" items={report.unexpectedTopics} />
+        <PrintCountList title="Qualidade territorial" items={[
+          { name: "Com território de referência", count: report.territorialQuality.recordsWithRespondentTerritory },
+          { name: "Sem território de referência", count: report.territorialQuality.recordsWithoutRespondentTerritory }
+        ]} />
       </section>
 
-      <PrintSection title="Lista de ações do mês">
+      <PrintSection title="Prioridades agrupadas">
+        <ul className="space-y-2">
+          {report.priorityGroups.length > 0 ? report.priorityGroups.map((item) => <li key={item.axis}>{item.axis}: {item.count} citações</li>) : <li>Nenhum agrupamento identificado.</li>}
+        </ul>
+      </PrintSection>
+
+      <PrintSection title="Sinais qualitativos relevantes">
+        <ul className="space-y-2">
+          {report.qualitativeSignals.length > 0 ? report.qualitativeSignals.map((item) => <li key={item.type}>{item.type}: {item.count} ocorrências</li>) : <li>Nenhum sinal registrado.</li>}
+        </ul>
+      </PrintSection>
+
+      <PrintSection title="Qualidade territorial e limites da leitura">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <p><strong>Status:</strong> {report.territorialMethodologyNote.status}</p>
+          <p><strong>Escutas sem território de referência:</strong> {report.territorialQuality.recordsWithoutRespondentTerritory}</p>
+          <p>{report.territorialMethodologyNote.fullText}</p>
+          <p><strong>Recomendação:</strong> {report.territorialMethodologyNote.operationalRecommendation}</p>
+        </div>
+      </PrintSection>
+
+      <PrintSection title="O que aprendemos neste mês">
+        <ul className="space-y-2">{filterModeItems(report.monthlyLearnings, mode).map((item) => <li key={item}>{item}</li>)}</ul>
+      </PrintSection>
+
+      <PrintSection title="Encaminhamentos recomendados">
+        <ul className="space-y-2">{filterModeItems(report.recommendedReferrals, mode).map((item) => <li key={item}>{item}</li>)}</ul>
+      </PrintSection>
+
+      <PrintSection title="Ações realizadas">
         {report.actions.length > 0 ? (
           <ul className="space-y-2">
             {report.actions.map((action) => (
@@ -550,12 +538,13 @@ function MonthlyReportPrintSheet({ report }: { report: MonthlyReportData }) {
         )}
       </PrintSection>
 
+      {isInternal ? (
       <PrintSection title="Pendências de revisão">
         {report.pendingReviews.length > 0 ? (
           <ul className="space-y-2">
             {report.pendingReviews.map((record) => (
               <li key={record.id}>
-                {formatDate(record.date)} | ação em {record.neighborhoods?.name ?? "Território da ação não informado"} | referência {record.respondent_neighborhoods?.name ?? "Não informado"} | {truncatePrint(record.free_speech_text, 120)}
+                {formatDate(record.date)} | ação em {record.neighborhoods?.name ?? "Território da ação não informado"} | referência {record.respondent_neighborhoods?.name ?? "Não informado"} | revisar cadastro antes de publicação.
               </li>
             ))}
           </ul>
@@ -563,6 +552,7 @@ function MonthlyReportPrintSheet({ report }: { report: MonthlyReportData }) {
           <p>Nenhuma pendência de revisão no mês.</p>
         )}
       </PrintSection>
+      ) : null}
 
       <footer className="mt-8 border-t border-semear-gray pt-4 text-xs text-stone-600">
         Exportado em {new Date().toLocaleDateString("pt-BR")} pelo sistema interno SEMEAR Territórios.
@@ -608,7 +598,7 @@ function truncatePrint(value: string, maxLength: number) {
   return value.length > maxLength ? `${value.slice(0, maxLength - 1)}...` : value;
 }
 
-function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
+function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; value: number | string }) {
   return (
     <article className="rounded-3xl border border-white/80 bg-white p-5 shadow-soft">
       <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl bg-semear-green text-white">{icon}</div>
@@ -616,6 +606,43 @@ function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; va
       <strong className="mt-2 block text-4xl font-semibold tracking-tight text-semear-green">{value}</strong>
     </article>
   );
+}
+
+function BarList({ items, emptyText }: { items: Array<{ name: string; count: number }>; emptyText: string }) {
+  const max = Math.max(...items.map((item) => item.count), 1);
+  return items.length > 0 ? (
+    <div className="space-y-3">
+      {items.map((item) => <BarRow item={item} max={max} key={item.name} />)}
+    </div>
+  ) : <PedagogicEmpty text={emptyText} />;
+}
+
+function BarRow({ item, max, suffix = "citações" }: { item: { name: string; count: number }; max: number; suffix?: string }) {
+  const width = max > 0 ? Math.max(8, Math.round((item.count / max) * 100)) : 0;
+  return (
+    <div className="rounded-xl bg-semear-offwhite px-3 py-2">
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <strong className="text-semear-green">{item.name}</strong>
+        <span className="shrink-0 text-xs font-semibold text-stone-600">{item.count} {suffix}</span>
+      </div>
+      <div className="mt-2 h-2 rounded-full bg-white">
+        <div className="h-2 rounded-full bg-semear-earth" style={{ width: `${width}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function SimpleList({ items }: { items: string[] }) {
+  return (
+    <ul className="space-y-2 text-sm leading-6 text-stone-700">
+      {items.map((item) => <li className="rounded-xl bg-semear-offwhite px-3 py-2" key={item}>{item}</li>)}
+    </ul>
+  );
+}
+
+function filterModeItems(items: string[], mode: MonthlyReportMode) {
+  if (mode === "internal") return items;
+  return items.filter((item) => !/(pend[eê]ncia|revis[aã]o antes de compartilhar|resolver pend)/i.test(item));
 }
 
 function Panel({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {

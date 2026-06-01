@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, MapPinned, MessageSquareText, Plus, Search, SlidersHorizontal } from "lucide-react";
+import { CalendarDays, MapPinned, MessageSquareText, Plus, Search, SlidersHorizontal, UserRound } from "lucide-react";
 import type { Action, ListeningRecord, Neighborhood, TeamMember, Theme } from "@/lib/database.types";
 import { getReviewStatusLabel, getRespondentTerritoryRelationLabel, getSourceTypeLabel, reviewStatusOptions } from "@/lib/listening-records";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -189,26 +189,30 @@ export function ListeningRecordsList() {
 
   return (
     <section className="pb-10">
-      <div className="flex flex-col gap-4 rounded-[2rem] border border-white/80 bg-white/72 p-5 shadow-soft sm:p-7 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4 rounded-2xl border border-white/80 bg-white/72 p-4 shadow-soft sm:rounded-[2rem] sm:p-7 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Escutas</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight text-semear-green">Fichas de escuta em papel</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">Digite a fala original e registre a codificação da equipe em campos separados.</p>
         </div>
-        <div className="flex gap-2">
-          <Link className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-semear-green/15 bg-white px-5 text-sm font-semibold text-semear-green hover:bg-semear-green/5" href="/escutas/nova">
+        <div className="grid gap-2 sm:flex sm:flex-wrap">
+          <Link className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-semear-green/15 bg-white px-5 text-sm font-semibold text-semear-green hover:bg-semear-green/5 sm:w-auto" href="/escutas/minhas">
+            <UserRound className="h-4 w-4" aria-hidden="true" />
+            Minhas escutas
+          </Link>
+          <Link className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-semear-green/15 bg-white px-5 text-sm font-semibold text-semear-green hover:bg-semear-green/5 sm:w-auto" href="/escutas/nova">
             <Plus className="h-4 w-4" aria-hidden="true" />
             Nova individual
           </Link>
-          <Link className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-semear-green px-5 text-sm font-semibold text-white" href="/escutas/lote">
+          <Link className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-semear-green px-5 text-sm font-semibold text-white sm:w-auto" href="/escutas/lote">
             <Plus className="h-4 w-4" aria-hidden="true" />
             Modo Lote (Banca)
           </Link>
-          <Link className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-semear-green/15 bg-white px-5 text-sm font-semibold text-semear-green hover:bg-semear-green/5" href="/escutas/revisao-territorial">
+          <Link className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-semear-green/15 bg-white px-5 text-sm font-semibold text-semear-green hover:bg-semear-green/5 sm:w-auto" href="/escutas/revisao-territorial">
             <MapPinned className="h-4 w-4" aria-hidden="true" />
             Revisão territorial
           </Link>
-          <Link className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-semear-green/15 bg-white px-5 text-sm font-semibold text-semear-green hover:bg-semear-green/5" href="/escutas/falas">
+          <Link className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-semear-green/15 bg-white px-5 text-sm font-semibold text-semear-green hover:bg-semear-green/5 sm:w-auto" href="/escutas/falas">
             <MessageSquareText className="h-4 w-4" aria-hidden="true" />
             Fila de falas
           </Link>

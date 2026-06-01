@@ -542,7 +542,7 @@ export function ActionDebriefPage({ actionId }: Props) {
           {error ? <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800 shadow-premium-sm">{error}</p> : null}
         </div>
 
-        <div className="sticky bottom-4 rounded-3xl border border-white/60 bg-white/90 p-5 shadow-premium-lg backdrop-blur-lg">
+        <div className="sticky bottom-[calc(env(safe-area-inset-bottom,0px)+5.85rem)] rounded-2xl border border-white/60 bg-white/90 p-4 shadow-premium-lg backdrop-blur-lg md:bottom-4 md:rounded-3xl md:p-5">
           <h3 className="font-bold text-semear-green">Exportação e fluxo</h3>
           <div className="mt-4 flex flex-wrap gap-2">
             <button className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/60 bg-white px-4 text-xs font-bold text-semear-green shadow-premium-sm transition hover:bg-stone-50 active:scale-[0.98] transition-all duration-200" onClick={() => void copyText(publicText, "Texto público")} type="button">

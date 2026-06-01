@@ -245,7 +245,7 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
       review_status: values.review_status,
       created_by: user.id,
       respondent_city: values.respondent_city.trim() || null,
-      respondent_neighborhood_id: (values.respondent_city.trim() === "Volta Redonda" && values.respondent_neighborhood_id) ? values.respondent_neighborhood_id : null,
+      respondent_neighborhood_id: (isVoltaRedondaCity(values.respondent_city) && values.respondent_neighborhood_id) ? values.respondent_neighborhood_id : null,
       respondent_territory_relation: (values.respondent_territory_relation as RespondentTerritoryRelation) || null,
       respondent_occupation: values.respondent_occupation.trim() || null
     };
@@ -309,7 +309,7 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">
             {mode === "create" ? "Nova escuta" : "Editar escuta"}
           </p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-semear-green">Ficha de escuta territorial</h2>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-semear-green">Ficha de Escuta Territorial - v4</h2>
           <div className="mt-4 flex gap-3 rounded-2xl border border-semear-yellow/40 bg-semear-yellow/20 p-4 text-sm leading-6 text-semear-green">
             <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
             Não registre CPF, endereço pessoal, telefone ou dados de saúde individual identificável.
@@ -319,13 +319,13 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
         {error ? <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div> : null}
 
         <div className="mt-8 grid gap-5 lg:grid-cols-2">
-          <Select label="Ação vinculada" value={values.action_id} onChange={(value) => updateField("action_id", value)}>
+          <Select label="1. Dados da ação - ação vinculada / nome da atividade" value={values.action_id} onChange={(value) => updateField("action_id", value)}>
             <option value="">Selecione uma ação...</option>
             {actions.map((action) => (
               <option key={action.id} value={action.id}>{action.title}</option>
             ))}
           </Select>
-          <Select label="Bairro/Território" value={values.neighborhood_id} onChange={(value) => updateField("neighborhood_id", value)}>
+          <Select label="Território da ação / bairro onde aconteceu" value={values.neighborhood_id} onChange={(value) => updateField("neighborhood_id", value)}>
             <option value="">Selecione um bairro...</option>
             {neighborhoods.map((neighborhood) => (
               <option key={neighborhood.id} value={neighborhood.id}>{formatNeighborhoodOption(neighborhood)}</option>
@@ -335,36 +335,37 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
             São exibidos apenas bairros oficiais validados. Territórios provisórios ficam disponíveis apenas na área administrativa.
           </p>
           <Input label="Data" type="date" value={values.date} onChange={(value) => updateField("date", value)} required />
-          <Select label="Tipo de origem" value={values.source_type} onChange={(value) => updateField("source_type", value as SourceType)}>
+          <Select label="Local da ação" value={values.source_type} onChange={(value) => updateField("source_type", value as SourceType)}>
             {sourceTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </Select>
-          <Select label="Entrevistador (cadastro da equipe)" value={values.interviewer_team_member_id} onChange={updateInterviewer}>
+          <Select label="2. Entrevistadora - cadastro da equipe" value={values.interviewer_team_member_id} onChange={updateInterviewer}>
             <option value="">Selecione...</option>
             {interviewers.map((member) => (
               <option key={member.id} value={member.id}>{member.display_name}</option>
             ))}
           </Select>
-          <Input label="Entrevistador" value={values.interviewer_name} onChange={(value) => updateField("interviewer_name", value)} required />
-          <Input label="Faixa etária aproximada opcional" value={values.approximate_age_range} onChange={(value) => updateField("approximate_age_range", value)} placeholder="Ex.: 30-39, pessoa idosa, jovem" />
+          <Input label="Nome da entrevistadora" value={values.interviewer_name} onChange={(value) => updateField("interviewer_name", value)} required />
+          <Input label="Faixa etária aprox. (opcional)" value={values.approximate_age_range} onChange={(value) => updateField("approximate_age_range", value)} placeholder="Ex.: 30-39, pessoa idosa, jovem" />
 
           <label className="lg:col-span-2 rounded-[1.5rem] border-2 border-semear-green/35 bg-semear-green-soft/70 p-4">
-            <span className="text-sm font-bold text-semear-green">Fala original / síntese livre</span>
+            <span className="text-sm font-bold text-semear-green">4. Resumo fiel da fala</span>
             <textarea className="mt-3 min-h-64 w-full rounded-2xl border border-semear-green/20 bg-white px-4 py-3 text-base leading-7 outline-none focus:border-semear-green" required value={values.free_speech_text} onChange={(event) => updateField("free_speech_text", event.target.value)} />
+            <p className="mt-2 text-xs leading-5 text-stone-600">Escreva com fidelidade o sentido da fala da pessoa. Não transforme em opinião da equipe. Não registre identificação pessoal.</p>
           </label>
 
           <Textarea label="Resumo da equipe" value={values.team_summary} onChange={(value) => updateField("team_summary", value)} />
           <Textarea label="Palavras usadas pela pessoa" value={values.words_used} onChange={(value) => updateField("words_used", value)} />
-          <Textarea label="Lugares citados" value={values.places_mentioned_text} onChange={(value) => updateField("places_mentioned_text", value)} />
-          <Textarea label="Prioridade apontada" value={values.priority_mentioned} onChange={(value) => updateField("priority_mentioned", value)} />
-          <Textarea label="Observações inesperadas" value={values.unexpected_notes} onChange={(value) => updateField("unexpected_notes", value)} />
+          <Textarea label="6. Lugares citados" value={values.places_mentioned_text} onChange={(value) => updateField("places_mentioned_text", value)} />
+          <Textarea label="7. Prioridade apontada pela pessoa" value={values.priority_mentioned} onChange={(value) => updateField("priority_mentioned", value)} />
+          <Textarea label="8. Observações inesperadas / algo que a equipe não imaginava" value={values.unexpected_notes} onChange={(value) => updateField("unexpected_notes", value)} />
           <Select label="Status" value={values.review_status} onChange={(value) => updateField("review_status", value as ReviewStatus)}>
             {reviewStatusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </Select>
         </div>
 
         <div className="mt-8 rounded-[1.5rem] border border-semear-green/20 bg-semear-green-soft/40 p-5">
-          <h3 className="font-semibold text-semear-green">Território de referência do entrevistado</h3>
-          <p className="mt-1 text-xs leading-5 text-stone-600">Registre apenas o território agregado de referência da pessoa. Não registre rua, número ou endereço.</p>
+          <h3 className="font-semibold text-semear-green">3. Pessoa escutada - dados gerais e opcionais</h3>
+          <p className="mt-1 text-xs leading-5 text-stone-600">Não identifique a pessoa. O objetivo é entender o território de referência da fala, não registrar endereço.</p>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <label>
               <span className="text-sm font-semibold text-semear-green">Município de referência</span>
@@ -375,9 +376,9 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
                 onChange={(e) => updateField("respondent_city", e.target.value)}
               />
             </label>
-            {values.respondent_city === "Volta Redonda" && (
+            {isVoltaRedondaCity(values.respondent_city) && (
               <label>
-                <span className="text-sm font-semibold text-semear-green">Bairro de referência</span>
+                <span className="text-sm font-semibold text-semear-green">Bairro / território de referência</span>
                 <select
                   className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
                   value={values.respondent_neighborhood_id}
@@ -412,7 +413,7 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
               value={values.respondent_occupation}
               onChange={(e) => updateField("respondent_occupation", e.target.value)}
             />
-            <p className="mt-2 text-xs leading-5 text-stone-600">Campo opcional. Não registre nome da empresa, escola, setor específico ou local de trabalho.</p>
+            <p className="mt-2 text-xs leading-5 text-stone-600">Sem nome de empresa, escola, setor específico ou local de trabalho.</p>
           </label>
           {hasPossibleSensitiveOccupation(values.respondent_occupation) ? (
             <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
@@ -422,8 +423,8 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
         </div>
 
         <div className="mt-8 rounded-[1.5rem] border border-dashed border-semear-green/25 bg-semear-offwhite p-5">
-          <h3 className="font-semibold text-semear-green">Temas marcados pela equipe</h3>
-          <p className="mt-1 text-sm text-stone-600">Essas tags são interpretação/codificação da equipe, separadas da fala original.</p>
+          <h3 className="font-semibold text-semear-green">5. Temas percebidos na fala</h3>
+          <p className="mt-1 text-sm text-stone-600">Essas tags são codificação da equipe, separadas do resumo fiel da fala.</p>
           <div className="mt-4 flex flex-wrap gap-2">
             {themes.map((theme) => (
               <button
@@ -460,4 +461,12 @@ function Select({ label, value, onChange, children }: { label: string; value: st
 
 function Textarea({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return <label><span className="text-sm font-semibold text-semear-green">{label}</span><textarea className="mt-2 min-h-32 w-full rounded-2xl border border-semear-gray bg-white px-4 py-3 text-sm leading-6 outline-none focus:border-semear-green" onChange={(event) => onChange(event.target.value)} value={value} /></label>;
+}
+
+function isVoltaRedondaCity(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase() === "volta redonda";
 }

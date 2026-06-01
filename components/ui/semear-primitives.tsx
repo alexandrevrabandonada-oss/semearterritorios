@@ -19,7 +19,7 @@ export function SemearPageHeader({
   filters?: ReactNode;
 }) {
   return (
-    <header className="mb-6 rounded-3xl border border-white/60 bg-white/80 p-6 shadow-premium-md backdrop-blur-md sm:p-8">
+    <header className="mb-5 rounded-2xl border border-white/60 bg-white/80 p-4 shadow-premium-md backdrop-blur-md sm:mb-6 sm:rounded-3xl sm:p-8">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           {eyebrow ? (
@@ -27,7 +27,7 @@ export function SemearPageHeader({
               {eyebrow}
             </p>
           ) : null}
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-semear-green sm:text-4xl">
+          <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-semear-green sm:text-4xl">
             {title}
           </h1>
           {description ? (
@@ -61,7 +61,7 @@ export function SemearCard({
 }) {
   return (
     <Component
-      className={`rounded-3xl border border-white/60 bg-white/80 p-5 shadow-premium-md backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-premium-lg ${className}`}
+      className={`rounded-2xl border border-white/60 bg-white/80 p-4 shadow-premium-md backdrop-blur-md transition-all duration-300 hover:shadow-premium-lg sm:rounded-3xl sm:p-5 sm:hover:-translate-y-0.5 ${className}`}
     >
       {children}
     </Component>

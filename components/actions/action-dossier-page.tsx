@@ -645,7 +645,7 @@ ${publicQuotes.length > 0 ? publicQuotes.map((quote) => `- [${quote.status}] ${(
         </SemearCard>
       </article>
 
-      <div className="no-print sticky bottom-4 z-20 mt-5 rounded-3xl border border-white/60 bg-white/90 p-5 shadow-premium-lg backdrop-blur-lg">
+      <div className="no-print sticky bottom-[calc(env(safe-area-inset-bottom,0px)+5.85rem)] z-20 mt-5 rounded-2xl border border-white/60 bg-white/90 p-4 shadow-premium-lg backdrop-blur-lg md:bottom-4 md:rounded-3xl md:p-5">
         <div className="flex flex-wrap gap-3">
           <button className="inline-flex min-h-12 items-center gap-2 rounded-full bg-semear-green px-5 text-sm font-bold text-white shadow-premium-sm hover:bg-semear-green/92 active:scale-[0.98] transition-all duration-200 disabled:opacity-60" disabled={saving} onClick={() => void save()} type="button">
             <Save className="h-4 w-4" aria-hidden="true" />

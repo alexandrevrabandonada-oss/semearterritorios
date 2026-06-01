@@ -14,7 +14,7 @@ const bottomItems = [
 
 export function MobileBottomNav({ activeHref }: MobileBottomNavProps) {
   return (
-    <nav className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-white/60 bg-white/85 px-2 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] pt-2 shadow-premium-lg backdrop-blur-md md:hidden" aria-label="Atalhos principais">
+    <nav className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-white/60 bg-white/90 px-2 pb-[calc(env(safe-area-inset-bottom,0px)+0.45rem)] pt-1.5 shadow-premium-lg backdrop-blur-md md:hidden" aria-label="Atalhos principais">
       <div className="grid grid-cols-4 gap-1.5">
         {bottomItems.map((item) => {
           const Icon = item.icon;
@@ -22,7 +22,7 @@ export function MobileBottomNav({ activeHref }: MobileBottomNavProps) {
 
           return (
             <Link
-              className={`flex min-h-[4.25rem] flex-col items-center justify-center rounded-2xl px-2 py-2 text-center text-[0.7rem] font-bold leading-tight transition-all duration-200 active:scale-95 ${
+              className={`flex min-h-[3.85rem] flex-col items-center justify-center rounded-xl px-2 py-1.5 text-center text-[0.68rem] font-bold leading-tight transition-all duration-200 active:scale-95 ${
                 item.highlight
                   ? active
                     ? "bg-semear-yellow text-semear-green shadow-premium-sm"
@@ -34,7 +34,7 @@ export function MobileBottomNav({ activeHref }: MobileBottomNavProps) {
               href={item.href}
               key={item.href}
             >
-              <Icon className="mb-1 h-[1.15rem] w-[1.15rem]" aria-hidden="true" />
+              <Icon className="mb-1 h-5 w-5" aria-hidden="true" />
               {item.label}
             </Link>
           );

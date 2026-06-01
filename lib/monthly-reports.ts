@@ -23,6 +23,7 @@ type RecordWithRelations = ListeningRecord & {
 export type MonthlyReportData = {
   month: string;
   title: string;
+  executiveSummary: string;
   totalActions: number;
   totalRecords: number;
   operationNeighborhoods: string[];
@@ -37,13 +38,38 @@ export type MonthlyReportData = {
   sourceTypeCounts: Array<{ name: string; count: number }>;
   occupationCounts: Array<{ name: string; count: number }>;
   priorities: Array<{ name: string; count: number }>;
+  priorityGroups: Array<{ axis: PriorityMacroAxis; count: number; examples: string[] }>;
   unexpectedTopics: Array<{ name: string; count: number }>;
+  qualitativeSignals: Array<{ type: QualitativeSignalType; count: number; examples: string[] }>;
+  monthlyLearnings: string[];
+  recommendedReferrals: string[];
   activeSearchSummary: string;
   pedagogicalSummary: string;
   actions: ActionWithNeighborhood[];
   records: RecordWithRelations[];
   pendingReviews: RecordWithRelations[];
 };
+
+export type MonthlyReportMode = "internal" | "public";
+
+type PriorityMacroAxis =
+  | "Fiscalização e poder público"
+  | "Limpeza urbana e coleta"
+  | "Ar, poluição e pó"
+  | "Arborização e sombra"
+  | "Saúde e qualidade de vida"
+  | "Educação ambiental"
+  | "Água e rio"
+  | "Empresas e CSN"
+  | "Outros";
+
+type QualitativeSignalType =
+  | "Saúde e desconforto"
+  | "Rio e escória"
+  | "Fiscalização"
+  | "Percepção sobre poluição"
+  | "Infraestrutura urbana"
+  | "Cuidado coletivo";
 
 export function getMonthValue(date: string) {
   return date.slice(0, 7);
@@ -86,13 +112,20 @@ export function buildMonthlyReportData(month: string, actions: ActionWithNeighbo
   const sourceTypeCounts = countBy(records, (item) => getSourceTypeLabel(item.source_type));
   const occupationSummary = summarizeOccupations(records);
   const occupationCounts = occupationSummary.groups.map((item) => ({ name: item.label, count: item.count }));
-  const priorities = countTextValues(records, (item) => item.priority_mentioned).slice(0, 8);
+  const allPriorities = countTextValues(records, (item) => item.priority_mentioned);
+  const priorities = allPriorities.slice(0, 8);
   const unexpectedTopics = countTextValues(records, (item) => item.unexpected_notes).slice(0, 8);
+  const priorityGroups = groupPrioritiesByMacroAxis(allPriorities);
+  const qualitativeSignals = groupQualitativeSignals(unexpectedTopics);
   const pendingReviews = records.filter((item) => item.review_status === "draft");
+  const executiveSummary = buildExecutiveSummary(actions.length, records.length, topThemes, territorialMethodologyNote, priorityGroups);
+  const monthlyLearnings = buildMonthlyLearnings(actions, records, topThemes, priorityGroups, qualitativeSignals, pendingReviews, territorialQuality);
+  const recommendedReferrals = buildRecommendedReferrals(topThemes, priorityGroups, pendingReviews, territorialQuality, actions);
 
   return {
     month,
-    title: `Relatório mensal - ${formatMonthLabel(month)}`,
+    title: `Relatório mensal interpretativo - ${formatMonthLabel(month)}`,
+    executiveSummary,
     totalActions: actions.length,
     totalRecords: records.length,
     operationNeighborhoods,
@@ -107,7 +140,11 @@ export function buildMonthlyReportData(month: string, actions: ActionWithNeighbo
     sourceTypeCounts,
     occupationCounts,
     priorities,
+    priorityGroups,
     unexpectedTopics,
+    qualitativeSignals,
+    monthlyLearnings,
+    recommendedReferrals,
     activeSearchSummary: buildActiveSearchSummary(month, actions, records, operationNeighborhoods, respondentNeighborhoods, respondentWithoutNeighborhood, sourceTypeCounts),
     pedagogicalSummary: buildPedagogicalSummary(month, records, topThemes, priorities, unexpectedTopics),
     actions,
@@ -116,105 +153,141 @@ export function buildMonthlyReportData(month: string, actions: ActionWithNeighbo
   };
 }
 
-export function buildMonthlyReportPlainText(report: MonthlyReportData) {
+export function buildMonthlyReportPlainText(report: MonthlyReportData, mode: MonthlyReportMode = "internal") {
+  const visibleLearnings = filterModeItems(report.monthlyLearnings, mode);
+  const visibleReferrals = filterModeItems(report.recommendedReferrals, mode);
   return [
     report.title,
     "",
-    `Mes de referencia: ${formatMonthLabel(report.month)}`,
-    `Total de acoes: ${report.totalActions}`,
+    `Mês de referência: ${formatMonthLabel(report.month)}`,
+    `Versão: ${mode === "internal" ? "interna" : "pública"}`,
+    `Total de ações: ${report.totalActions}`,
     `Total de escutas: ${report.totalRecords}`,
-    `Bairros onde houve ação: ${report.operationNeighborhoods.join(", ") || "Nenhum território da ação informado"}`,
-    `Bairros de referência dos entrevistados: ${report.respondentNeighborhoods.join(", ") || "Nenhum território de referência informado"}`,
-    `Escutas sem território de referência: ${report.respondentWithoutNeighborhood}`,
-    `Cobertura territorial (%): ${report.territorialQuality.coveragePercent}`,
-    `Status de qualidade territorial: ${report.territorialQuality.qualityStatus}`,
+    `Cobertura territorial: ${report.territorialQuality.coveragePercent}% (${report.territorialQuality.qualityStatus})`,
+    "",
+    "Leitura executiva",
+    report.executiveSummary,
+    "",
+    "O que escutamos",
+    report.pedagogicalSummary,
+    "",
+    "Temas dominantes",
+    formatCountList(report.topThemes),
+    "",
+    "Prioridades agrupadas",
+    formatPriorityGroups(report.priorityGroups),
+    "",
+    "Sinais qualitativos relevantes",
+    formatQualitativeSignals(report.qualitativeSignals),
+    "",
+    "Territórios da ação x territórios de referência",
     `Ações por território da ação: ${formatCountList(report.actionTerritoryCounts)}`,
     `Escutas por território de referência: ${formatCountList(report.respondentTerritoryCounts)}`,
-    `Tipos de acao: ${formatCountList(report.actionTypeCounts)}`,
-    `Temas mais recorrentes: ${formatCountList(report.topThemes)}`,
-    `Ocupações informadas (agregado seguro): ${formatCountList(report.occupationCounts)}`,
-    `Sintese de busca ativa: ${report.activeSearchSummary}`,
-    `Sintese pedagogica: ${report.pedagogicalSummary}`,
-    `Temas inesperados: ${formatCountList(report.unexpectedTopics)}`,
-    `Prioridades apontadas: ${formatCountList(report.priorities)}`,
+    report.territorialQuality.qualityStatus === "crítica" ? "Alerta: a cobertura territorial é crítica; evitar conclusões fortes por bairro." : "",
     "",
-    "Nota metodológica sobre território de referência:",
-    report.territorialMethodologyNote.fullText,
-    `Recomendação operacional: ${report.territorialMethodologyNote.operationalRecommendation}`,
-    `Recomendação para publicação pública: ${report.territorialMethodologyNote.publicRecommendation}`,
+    "Qualidade territorial e limites da leitura",
+    buildMethodologyCardText(report),
     "",
-    "Lista de acoes do mes:",
+    "O que aprendemos neste mês",
+    formatSentenceList(visibleLearnings),
+    "",
+    "Encaminhamentos recomendados",
+    formatSentenceList(visibleReferrals),
+    "",
+    "Ações realizadas:",
     ...report.actions.map((action) => `- ${formatDate(action.action_date)} | ${action.title} | ${getActionTypeLabel(action.action_type)} | ${action.neighborhoods?.name ?? "Território da ação não informado"}`),
+    ...(mode === "internal" ? [
     "",
-    "Pendencias de revisao:",
+    "Pendências e próximos passos:",
     ...(report.pendingReviews.length > 0
-      ? report.pendingReviews.map((record) => `- ${formatDate(record.date)} | ação em ${record.neighborhoods?.name ?? "Território da ação não informado"} | referência ${record.respondent_neighborhoods?.name ?? "Não informado"} | ${truncate(record.free_speech_text, 110)}`)
-      : ["- Nenhuma pendencia de revisao no mes."])
+      ? report.pendingReviews.map((record) => `- ${formatDate(record.date)} | ação em ${record.neighborhoods?.name ?? "Território da ação não informado"} | referência ${record.respondent_neighborhoods?.name ?? "Não informado"} | revisar cadastro antes de publicar.`)
+      : ["- Nenhuma pendência de revisão no mês."])
+    ] : [])
   ].join("\n");
 }
 
-export function buildMonthlyReportMarkdown(report: MonthlyReportData) {
+export function buildMonthlyReportMarkdown(report: MonthlyReportData, mode: MonthlyReportMode = "internal") {
+  const includeInternal = mode === "internal";
+  const visibleLearnings = filterModeItems(report.monthlyLearnings, mode);
+  const visibleReferrals = filterModeItems(report.recommendedReferrals, mode);
   return [
     `# ${report.title}`,
     "",
-    `Mes de referencia: ${formatMonthLabel(report.month)}  `,
-    `Total de acoes: ${report.totalActions}  `,
+    `**Mês de referência:** ${formatMonthLabel(report.month)}  `,
+    `**Versão:** ${includeInternal ? "interna" : "pública"}  `,
+    `**Total de ações:** ${report.totalActions}  `,
     `Total de escutas: ${report.totalRecords}  `,
-    `Bairros onde houve ação: ${report.operationNeighborhoods.join(", ") || "Nenhum território da ação informado"}  `,
-    `Bairros de referência dos entrevistados: ${report.respondentNeighborhoods.join(", ") || "Nenhum território de referência informado"}  `,
-    `Escutas sem território de referência: ${report.respondentWithoutNeighborhood}`,
-    `Cobertura territorial: ${report.territorialQuality.coveragePercent}% (${report.territorialQuality.qualityStatus})`,
+    `**Cobertura territorial:** ${report.territorialQuality.coveragePercent}% (${report.territorialQuality.qualityStatus})`,
     "",
-    "## Operação territorial",
-    `- Territórios da ação: ${report.operationNeighborhoods.length}`,
-    `- Ações por território da ação: ${formatCountList(report.actionTerritoryCounts)}`,
+    "## 1. Capa / resumo do mês",
+    `Este relatório consolida, de forma interpretativa, as ações e escutas registradas em ${formatMonthLabel(report.month)}. A leitura é agregada, sem transcrição individual nem dado pessoal.`,
     "",
-    "## Escuta territorial",
-    `- Territórios de referência dos entrevistados: ${report.respondentNeighborhoods.length}`,
-    `- Escutas por território de referência: ${formatCountList(report.respondentTerritoryCounts)}`,
+    "## 2. Indicadores principais",
+    `- Ações realizadas: ${report.totalActions}`,
+    `- Escutas registradas: ${report.totalRecords}`,
+    `- Territórios onde houve ação: ${report.operationNeighborhoods.length}`,
+    `- Territórios de referência informados: ${report.respondentNeighborhoods.length}`,
     `- Escutas sem território de referência: ${report.respondentWithoutNeighborhood}`,
     "",
-    "## Nota metodológica sobre território de referência",
+    "## 3. Leitura executiva",
+    report.executiveSummary,
+    "",
+    "## 4. O que escutamos",
+    report.pedagogicalSummary,
+    "",
+    "## 5. Temas dominantes",
+    formatBulletList(report.topThemes),
+    "",
+    "## 6. Prioridades agrupadas",
+    formatPriorityGroups(report.priorityGroups),
+    "",
+    "## 7. Sinais qualitativos relevantes",
+    formatQualitativeSignals(report.qualitativeSignals),
+    "",
+    "## 8. Territórios da ação x territórios de referência",
+    `- Ações por território da ação: ${formatCountList(report.actionTerritoryCounts)}`,
+    `- Escutas por território de referência: ${formatCountList(report.respondentTerritoryCounts)}`,
+    report.territorialQuality.qualityStatus === "crítica" ? "- Alerta: cobertura territorial crítica. O relatório não deve produzir conclusão forte por bairro." : "",
+    "",
+    "## 9. Qualidade territorial e limites da leitura",
     `- Status: ${report.territorialMethodologyNote.status}`,
     `- Cobertura: ${report.territorialQuality.coveragePercent}% (${report.territorialQuality.recordsWithRespondentTerritory}/${report.territorialQuality.totalRecords})`,
     `- Escutas sem território de referência: ${report.territorialQuality.recordsWithoutRespondentTerritory}`,
-    report.territorialMethodologyNote.fullText,
-    `- Recomendação operacional: ${report.territorialMethodologyNote.operationalRecommendation}`,
-    `- Recomendação para publicação pública: ${report.territorialMethodologyNote.publicRecommendation}`,
+    `- O que pode ser lido: ${buildWhatCanBeRead(report)}`,
+    `- O que exige cautela: ${buildWhatRequiresCaution(report)}`,
+    `- Recomendação: ${includeInternal ? report.territorialMethodologyNote.operationalRecommendation : report.territorialMethodologyNote.publicRecommendation}`,
     "",
-    "## Tipos de acao",
-    formatBulletList(report.actionTypeCounts),
+    "## 10. O que aprendemos neste mês",
+    formatSentenceList(visibleLearnings),
     "",
-    "## Temas mais recorrentes",
-    formatBulletList(report.topThemes),
+    "## 11. Encaminhamentos recomendados",
+    formatSentenceList(visibleReferrals),
     "",
-    "## Ocupação / atividade principal (agregado)",
-    formatBulletList(report.occupationCounts),
-    "",
-    "## Sintese de busca ativa",
-    report.activeSearchSummary,
-    "",
-    "## Sintese pedagogica",
-    report.pedagogicalSummary,
-    "",
-    "## Temas inesperados",
-    formatBulletList(report.unexpectedTopics),
-    "",
-    "## Prioridades apontadas",
-    formatBulletList(report.priorities),
-    "",
-    "## Lista de acoes do mes",
+    "## 12. Ações realizadas",
     report.actions.length > 0
       ? report.actions.map((action) => `- ${formatDate(action.action_date)} | ${action.title} | ${getActionTypeLabel(action.action_type)} | ${action.neighborhoods?.name ?? "Território da ação não informado"}`).join("\n")
-      : "- Nenhuma acao cadastrada no mes.",
+      : "- Nenhuma ação cadastrada no mês.",
+    ...(includeInternal ? [
     "",
-    "## Pendencias de revisao",
+    "## 13. Pendências e próximos passos",
     report.pendingReviews.length > 0
-      ? report.pendingReviews.map((record) => `- ${formatDate(record.date)} | ação em ${record.neighborhoods?.name ?? "Território da ação não informado"} | referência ${record.respondent_neighborhoods?.name ?? "Não informado"} | ${truncate(record.free_speech_text, 110)}`).join("\n")
-      : "- Nenhuma pendencia de revisao no mes.",
+      ? report.pendingReviews.map((record) => `- ${formatDate(record.date)} | ação em ${record.neighborhoods?.name ?? "Território da ação não informado"} | referência ${record.respondent_neighborhoods?.name ?? "Não informado"} | revisar cadastro antes de publicação.`).join("\n")
+      : "- Nenhuma pendência de revisão no mês.",
+    ] : []),
     "",
-    "## Territorio de referencia do entrevistado",
-    buildRespondentTerritoryMarkdown(report.records)
+    "## 14. Anexo técnico",
+    includeInternal
+      ? [
+          "### Tipos de ação",
+          formatBulletList(report.actionTypeCounts),
+          "",
+          "### Ocupação / atividade principal (agregado seguro)",
+          formatBulletList(report.occupationCounts),
+          "",
+          "### Território de referência do entrevistado",
+          buildRespondentTerritoryMarkdown(report.records)
+        ].join("\n")
+      : "Versão pública sem lista individualizada, dado pessoal ou campo técnico interno."
   ].join("\n");
 }
 
@@ -230,7 +303,7 @@ export function buildMonthlyReportCsv(report: MonthlyReportData) {
     "temas",
     "prioridade",
     "inesperado",
-    "fala_original",
+    "registro_sanitizado",
     "resumo_equipe",
     "municipio_referencia_entrevistado",
     "bairro_referencia_entrevistado",
@@ -252,7 +325,7 @@ export function buildMonthlyReportCsv(report: MonthlyReportData) {
     record.listening_record_themes.map((item) => item.themes?.name).filter(Boolean).join(" | "),
     record.priority_mentioned ?? "",
     record.unexpected_notes ?? "",
-    sanitizeCsv(record.free_speech_text),
+    sanitizeCsv(record.team_summary ?? "Registro sem síntese da equipe"),
     sanitizeCsv(record.team_summary ?? ""),
     record.respondent_city ?? "",
     (record as RecordWithRelations).respondent_neighborhoods?.name ?? "",
@@ -276,8 +349,8 @@ function buildActiveSearchSummary(
   sourceTypeCounts: Array<{ name: string; count: number }>
 ) {
   const sourceText = sourceTypeCounts.length > 0 ? formatCountList(sourceTypeCounts.slice(0, 3)) : "sem origem de escuta recorrente identificada";
-  const actionText = actions.length > 0 ? formatCountList(countBy(actions, (item) => getActionTypeLabel(item.action_type)).slice(0, 3)) : "sem acoes registradas";
-  return `Em ${formatMonthLabel(month)}, a busca ativa registrada pelo sistema reuniu ${actions.length} acao(oes) e ${records.length} escuta(s). Na operação territorial, houve ação em ${operationNeighborhoods.length} território(s): ${operationNeighborhoods.join(", ") || "nenhum território da ação informado"}. Na escuta territorial, apareceram ${respondentNeighborhoods.length} território(s) de referência: ${respondentNeighborhoods.join(", ") || "nenhum território de referência informado"}. Escutas sem território de referência: ${respondentWithoutNeighborhood}. Os tipos de ação mais presentes foram ${actionText}, enquanto as origens de escuta mais frequentes foram ${sourceText}.`;
+  const actionText = actions.length > 0 ? formatCountList(countBy(actions, (item) => getActionTypeLabel(item.action_type)).slice(0, 3)) : "sem ações registradas";
+  return `Em ${formatMonthLabel(month)}, a busca ativa registrada reuniu ${formatPlural(actions.length, "ação", "ações")} e ${formatPlural(records.length, "escuta", "escutas")}. Na operação territorial, houve ação em ${formatPlural(operationNeighborhoods.length, "território", "territórios")}: ${operationNeighborhoods.join(", ") || "nenhum território da ação informado"}. Na escuta territorial, apareceram ${formatPlural(respondentNeighborhoods.length, "território de referência", "territórios de referência")}: ${respondentNeighborhoods.join(", ") || "nenhum território de referência informado"}. Escutas sem território de referência: ${respondentWithoutNeighborhood}. Os tipos de ação mais presentes foram ${actionText}, enquanto as origens de escuta mais frequentes foram ${sourceText}.`;
 }
 
 function buildPedagogicalSummary(
@@ -292,7 +365,155 @@ function buildPedagogicalSummary(
   const topThemeText = topThemes.length > 0 ? formatCountList(topThemes.slice(0, 3)) : "sem temas recorrentes marcados";
   const priorityText = priorities.length > 0 ? formatCountList(priorities.slice(0, 3)) : "sem prioridade recorrente preenchida";
   const unexpectedText = unexpectedTopics.length > 0 ? formatCountList(unexpectedTopics.slice(0, 3)) : "sem temas inesperados registrados";
-  return `Na leitura pedagogica de ${formatMonthLabel(month)}, o sistema identificou ${reviewedCount} escuta(s) revisada(s) e ${recordsWithTeamSummary} registro(s) com sintese da equipe preenchida. Os temas mais recorrentes foram ${topThemeText}. Entre as prioridades apontadas, destacam-se ${priorityText}. No campo de observacoes inesperadas, apareceram ${unexpectedText}.`;
+  return `Na leitura pedagógica de ${formatMonthLabel(month)}, foram identificadas ${formatPlural(reviewedCount, "escuta revisada", "escutas revisadas")} e ${formatPlural(recordsWithTeamSummary, "registro com síntese da equipe", "registros com síntese da equipe")} preenchida. Os temas mais recorrentes foram ${topThemeText}. Entre as prioridades apontadas, destacam-se ${priorityText}. Nos sinais qualitativos relevantes, apareceram ${unexpectedText}.`;
+}
+
+function buildExecutiveSummary(
+  totalActions: number,
+  totalRecords: number,
+  topThemes: Array<{ name: string; count: number }>,
+  note: TerritorialQualityMethodologyNote,
+  priorityGroups: Array<{ axis: PriorityMacroAxis; count: number; examples: string[] }>
+) {
+  const themeText = topThemes.length > 0 ? topThemes.slice(0, 5).map((item) => item.name).join(", ") : "sem temas dominantes marcados";
+  const mainPriority = priorityGroups[0]?.axis ?? "revisão dos registros e planejamento de nova escuta";
+  return `O mês reuniu ${formatPlural(totalActions, "ação", "ações")} e ${formatPlural(totalRecords, "escuta", "escutas")}. Os temas dominantes foram ${themeText}. O principal alerta metodológico é: ${note.shortText} A principal recomendação operacional é priorizar ${mainPriority.toString().toLowerCase()} sem produzir conclusão territorial forte quando a cobertura estiver baixa.`;
+}
+
+function buildMonthlyLearnings(
+  actions: ActionWithNeighborhood[],
+  records: RecordWithRelations[],
+  topThemes: Array<{ name: string; count: number }>,
+  priorityGroups: Array<{ axis: PriorityMacroAxis; count: number; examples: string[] }>,
+  qualitativeSignals: Array<{ type: QualitativeSignalType; count: number; examples: string[] }>,
+  pendingReviews: RecordWithRelations[],
+  quality: RespondentTerritoryQualityMetrics
+) {
+  const learnings = [
+    topThemes.length > 0
+      ? `Os temas dominantes do mês foram ${topThemes.slice(0, 5).map((item) => item.name).join(", ")}.`
+      : "Ainda não há temas dominantes marcados para este mês.",
+    actions.length > 0
+      ? `O formato de ação mais presente foi ${countBy(actions, (item) => getActionTypeLabel(item.action_type))[0]?.name ?? "não identificado"}.`
+      : "Não houve ação cadastrada para leitura de formato.",
+    quality.qualityStatus === "crítica"
+      ? "A qualidade territorial exige cautela: a cobertura está crítica e não sustenta conclusão forte por bairro."
+      : `A qualidade territorial está em status ${quality.qualityStatus}, com ${quality.coveragePercent}% de cobertura.`,
+    qualitativeSignals.length > 0
+      ? `Os sinais qualitativos mais visíveis apareceram em ${qualitativeSignals.slice(0, 3).map((item) => item.type.toLowerCase()).join(", ")}.`
+      : "Não houve sinais qualitativos relevantes registrados nos campos abertos.",
+    priorityGroups.length > 0
+      ? `As prioridades abertas se concentraram em ${priorityGroups.slice(0, 3).map((item) => item.axis.toLowerCase()).join(", ")}.`
+      : "As prioridades abertas ainda são insuficientes para agrupamento analítico.",
+    pendingReviews.length > 0
+      ? `Há ${formatPlural(pendingReviews.length, "pendência de revisão", "pendências de revisão")} antes de uma publicação mais segura.`
+      : "Não há pendência de revisão registrada no mês."
+  ];
+
+  return learnings;
+}
+
+function buildRecommendedReferrals(
+  topThemes: Array<{ name: string; count: number }>,
+  priorityGroups: Array<{ axis: PriorityMacroAxis; count: number; examples: string[] }>,
+  pendingReviews: RecordWithRelations[],
+  quality: RespondentTerritoryQualityMetrics,
+  actions: ActionWithNeighborhood[]
+) {
+  const referrals = [
+    quality.qualityStatus === "boa"
+      ? "Manter a rotina de preenchimento do território de referência nas próximas ações."
+      : "Revisar as escutas sem território de referência e orientar a equipe antes da próxima ação.",
+    topThemes.length > 0
+      ? `Preparar devolutiva sobre ${topThemes[0].name.toLowerCase()}, mantendo linguagem agregada e sem transcrição individual.`
+      : "Aguardar novo volume de registros antes de preparar devolutiva temática.",
+    priorityGroups.length > 0
+      ? `Aprofundar o macroeixo ${priorityGroups[0].axis.toLowerCase()} no planejamento operacional.`
+      : "Melhorar o preenchimento das prioridades abertas para permitir leitura por macroeixo.",
+    actions.length > 0
+      ? "Planejar nova ação considerando o território da ação e a qualidade do território de referência separadamente."
+      : "Cadastrar ações do período antes de consolidar nova leitura mensal.",
+    pendingReviews.length > 0
+      ? "Resolver pendências de revisão antes de compartilhar versão pública."
+      : "Registrar decisão de publicação ou arquivamento da versão pública."
+  ];
+
+  return referrals;
+}
+
+function groupPrioritiesByMacroAxis(items: Array<{ name: string; count: number }>) {
+  const groups = new Map<PriorityMacroAxis, { axis: PriorityMacroAxis; count: number; examples: string[] }>();
+  for (const item of items) {
+    const axis = classifyPriorityAxis(item.name);
+    const current = groups.get(axis) ?? { axis, count: 0, examples: [] };
+    current.count += item.count;
+    if (current.examples.length < 3) current.examples.push(sanitizeOpenTextExample(item.name));
+    groups.set(axis, current);
+  }
+  return Array.from(groups.values()).sort((a, b) => b.count - a.count || a.axis.localeCompare(b.axis, "pt-BR"));
+}
+
+function groupQualitativeSignals(items: Array<{ name: string; count: number }>) {
+  const groups = new Map<QualitativeSignalType, { type: QualitativeSignalType; count: number; examples: string[] }>();
+  for (const item of items) {
+    const type = classifyQualitativeSignal(item.name);
+    const current = groups.get(type) ?? { type, count: 0, examples: [] };
+    current.count += item.count;
+    if (current.examples.length < 3) current.examples.push(sanitizeOpenTextExample(item.name));
+    groups.set(type, current);
+  }
+  return Array.from(groups.values()).sort((a, b) => b.count - a.count || a.type.localeCompare(b.type, "pt-BR"));
+}
+
+function classifyPriorityAxis(value: string): PriorityMacroAxis {
+  const text = normalizeForClassification(value);
+  if (/(fiscal|prefeitura|governo|publico|poder|cobranca|multa|orgao)/.test(text)) return "Fiscalização e poder público";
+  if (/(lixo|residuo|coleta|limpeza|varricao|entulho|sujeira)/.test(text)) return "Limpeza urbana e coleta";
+  if (/(arvore|arborizacao|sombra|calor|verde)/.test(text)) return "Arborização e sombra";
+  if (/(saude|respir|doenca|qualidade de vida|mal estar|desconforto)/.test(text)) return "Saúde e qualidade de vida";
+  if (/(educacao|conscientizacao|ambiental|campanha|orientacao)/.test(text)) return "Educação ambiental";
+  if (/(\bagua\b|\brio\b|corrego|enchente|esgoto|escoria)/.test(text)) return "Água e rio";
+  if (/(empresa|csn|industria|siderurg)/.test(text)) return "Empresas e CSN";
+  if (/(\bar\b|poluicao|poeira|\bpo\b|fumaca|fuligem|odor)/.test(text)) return "Ar, poluição e pó";
+  return "Outros";
+}
+
+function classifyQualitativeSignal(value: string): QualitativeSignalType {
+  const text = normalizeForClassification(value);
+  if (/(saude|respir|tosse|alerg|mal estar|desconforto|ardencia)/.test(text)) return "Saúde e desconforto";
+  if (/(\brio\b|escoria|\bagua\b|corrego|enchente|esgoto)/.test(text)) return "Rio e escória";
+  if (/(fiscal|prefeitura|governo|publico|cobranca|multa)/.test(text)) return "Fiscalização";
+  if (/(poluicao|poeira|\bpo\b|fumaca|fuligem|\bar\b|odor)/.test(text)) return "Percepção sobre poluição";
+  if (/(rua|calcada|buraco|iluminacao|infraestrutura|bueiro|transporte)/.test(text)) return "Infraestrutura urbana";
+  return "Cuidado coletivo";
+}
+
+function filterModeItems(items: string[], mode: MonthlyReportMode) {
+  if (mode === "internal") return items;
+  return items.filter((item) => !/(pend[eê]ncia|revis[aã]o antes de compartilhar|resolver pend)/i.test(item));
+}
+
+function buildMethodologyCardText(report: MonthlyReportData) {
+  return [
+    `Status: ${report.territorialMethodologyNote.status}.`,
+    `Cobertura: ${report.territorialQuality.coveragePercent}%.`,
+    `Escutas sem território: ${report.territorialQuality.recordsWithoutRespondentTerritory}.`,
+    `O que pode ser lido: ${buildWhatCanBeRead(report)}.`,
+    `O que exige cautela: ${buildWhatRequiresCaution(report)}.`,
+    `Recomendação: ${report.territorialMethodologyNote.operationalRecommendation}`
+  ].join(" ");
+}
+
+function buildWhatCanBeRead(report: MonthlyReportData) {
+  return report.topThemes.length > 0
+    ? "volumes gerais, temas dominantes e padrões agregados do mês"
+    : "volumes gerais e situação operacional do mês";
+}
+
+function buildWhatRequiresCaution(report: MonthlyReportData) {
+  if (report.territorialQuality.qualityStatus === "crítica") return "comparações por bairro e qualquer conclusão territorial forte";
+  if (report.territorialQuality.qualityStatus === "atenção") return "rankings por território e generalizações para bairros com poucos registros";
+  return "interpretações que confundam território da ação com território de referência";
 }
 
 function countThemes(records: RecordWithRelations[]) {
@@ -340,6 +561,38 @@ function formatCountList(items: Array<{ name: string; count: number }>) {
 
 function formatBulletList(items: Array<{ name: string; count: number }>) {
   return items.length > 0 ? items.map((item) => `- ${item.name} (${item.count})`).join("\n") : "- Nenhum registro";
+}
+
+function formatPriorityGroups(items: Array<{ axis: PriorityMacroAxis; count: number; examples: string[] }>) {
+  return items.length > 0
+    ? items.map((item) => `- ${item.axis}: ${formatPlural(item.count, "citação", "citações")}${item.examples.length > 0 ? `; exemplos sanitizados: ${item.examples.join("; ")}` : ""}`).join("\n")
+    : "- Nenhum agrupamento de prioridade identificado.";
+}
+
+function formatQualitativeSignals(items: Array<{ type: QualitativeSignalType; count: number; examples: string[] }>) {
+  return items.length > 0
+    ? items.map((item) => `- ${item.type}: ${formatPlural(item.count, "ocorrência", "ocorrências")}${item.examples.length > 0 ? `; exemplos sanitizados: ${item.examples.join("; ")}` : ""}`).join("\n")
+    : "- Nenhum sinal qualitativo relevante registrado.";
+}
+
+function formatSentenceList(items: string[]) {
+  return items.length > 0 ? items.map((item) => `- ${item}`).join("\n") : "- Nenhum item registrado.";
+}
+
+function formatPlural(count: number, singular: string, plural: string) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function normalizeForClassification(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+function sanitizeOpenTextExample(value: string) {
+  return normalizeTextToken(value)
+    .replace(/\b\d{2,}\b/g, "[número removido]")
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[e-mail removido]")
+    .replace(/\b(?:\+?55\s?)?(?:\(?\d{2}\)?\s?)?\d{4,5}[-\s]?\d{4}\b/g, "[telefone removido]")
+    .slice(0, 90);
 }
 
 function sanitizeCsv(value: string) {

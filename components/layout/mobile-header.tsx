@@ -29,12 +29,12 @@ export function MobileHeader({ activeHref, items, primaryAction }: MobileHeaderP
 
   return (
     <>
-      <header className="no-print sticky top-0 z-40 border-b border-white/60 bg-white/80 px-4 py-3 backdrop-blur-md shadow-premium-md lg:hidden">
-        <div className="flex items-center gap-3">
+      <header className="no-print sticky top-0 z-40 border-b border-white/60 bg-white/88 px-3 py-2.5 backdrop-blur-md shadow-premium-md lg:hidden">
+        <div className="flex items-center gap-2.5">
           <button
             aria-controls="semear-mobile-drawer"
             aria-expanded={menuOpen}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/60 bg-white/80 text-semear-green shadow-premium-sm transition-all duration-200 hover:shadow-premium-md hover:bg-white active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-semear-green"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/60 bg-white/80 text-semear-green shadow-premium-sm transition-all duration-200 hover:shadow-premium-md hover:bg-white active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-semear-green"
             onClick={() => setMenuOpen(true)}
             type="button"
           >
@@ -44,7 +44,7 @@ export function MobileHeader({ activeHref, items, primaryAction }: MobileHeaderP
 
           <Link className="min-w-0 flex-1 animate-fade-in" href="/">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-semear-yellow text-semear-green shadow-premium-sm transition-all duration-200 hover:scale-[1.03] active:scale-[0.97]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-semear-yellow text-semear-green shadow-premium-sm transition-all duration-200 hover:scale-[1.03] active:scale-[0.97]">
                 <Sprout className="h-5 w-5" aria-hidden="true" />
               </div>
               <div className="min-w-0">
@@ -58,7 +58,7 @@ export function MobileHeader({ activeHref, items, primaryAction }: MobileHeaderP
 
           {primaryAction ? (
             <Link
-              className="inline-flex min-h-11 items-center justify-center rounded-full bg-semear-green px-4 text-xs font-bold text-white shadow-premium-sm transition-all duration-200 hover:bg-semear-green/92 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-semear-green"
+              className="inline-flex min-h-10 max-w-[5.9rem] shrink-0 items-center justify-center truncate rounded-full bg-semear-green px-3 text-xs font-bold text-white shadow-premium-sm transition-all duration-200 hover:bg-semear-green/92 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-semear-green"
               href={primaryAction.href}
             >
               {primaryAction.shortLabel ?? primaryAction.label}

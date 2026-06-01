@@ -632,7 +632,7 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
           </fieldset>
         </div>
 
-        <div className="sticky bottom-20 z-20 mt-8 flex flex-wrap gap-3 rounded-2xl border border-white/60 bg-white/90 p-4 shadow-premium-md backdrop-blur-sm md:bottom-4">
+        <div className="sticky bottom-[calc(env(safe-area-inset-bottom,0px)+5.85rem)] z-20 mt-8 flex flex-wrap gap-3 rounded-2xl border border-white/60 bg-white/90 p-4 shadow-premium-md backdrop-blur-sm md:bottom-4">
           <button className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full bg-semear-green px-5 text-sm font-bold text-white shadow-premium-sm transition hover:bg-semear-green/90 active:scale-[0.98] duration-200 disabled:cursor-not-allowed disabled:opacity-60" disabled={saving} type="submit">
             <Save className="h-4 w-4" aria-hidden="true" />
             {saving ? "Salvando..." : "Salvar ação"}

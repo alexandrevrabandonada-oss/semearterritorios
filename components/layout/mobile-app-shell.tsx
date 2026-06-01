@@ -20,7 +20,7 @@ export function MobileAppShell({ activeHref, items, primaryAction, children }: M
   return (
     <>
       <MobileHeader activeHref={activeHref} items={items} primaryAction={primaryAction} />
-      <div className="pb-24 md:pb-8 lg:pb-0">{children}</div>
+      <div className="pb-[calc(env(safe-area-inset-bottom,0px)+7.5rem)] md:pb-8 lg:pb-0">{children}</div>
       <MobileBottomNav activeHref={activeHref} />
     </>
   );

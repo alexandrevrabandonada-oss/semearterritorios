@@ -10,9 +10,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test:reports": "vitest run tests/monthly-reports.test.ts",
     "test:transparencia": "vitest run tests/transparencia",
     "smoke:transparencia": "node scripts/test_transparencia_remote_048.mjs",
-    "verify": "npm run lint && npm run build && npm run test:transparencia"
+    "verify": "npm run lint && npm run build && npm run test:reports && npm run test:transparencia"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.53",
