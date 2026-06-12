@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ArrowLeft, CalendarDays, ClipboardList, Edit3, FileText, FlaskConical, FolderCheck, MapPin, UsersRound } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CalendarDays, ClipboardList, Edit3, FileText, FlaskConical, FolderCheck, MapPin, Trash2, UsersRound } from "lucide-react";
 import { ActionForm } from "@/components/actions/action-form";
 import { ActionOperationChecklist } from "@/components/actions/action-operation-checklist";
 import { ActionReadinessPanel } from "@/components/actions/action-readiness-panel";
@@ -61,6 +61,7 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
   const [calendarEvents, setCalendarEvents] = useState<TeamCalendarEvent[]>([]);
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -191,6 +192,30 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
   const suggestedEventEnd = getSuggestedActionEventEnd(action);
   const primaryCalendarEvent = calendarEvents[0] ?? null;
 
+  async function deleteAction() {
+    if (!supabase || !action) return;
+    setError(null);
+
+    if (records.length > 0) {
+      setError("Não é possível excluir ação com escutas vinculadas. Revise/remova as escutas antes de excluir a ação.");
+      return;
+    }
+
+    const confirmed = window.confirm(`Excluir a ação "${action.title}"? Esta operação também remove vínculos operacionais, devolutiva e dossiê da ação.`);
+    if (!confirmed) return;
+
+    setDeleting(true);
+    const result = await supabase.from("actions").delete().eq("id", action.id);
+    setDeleting(false);
+
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
+
+    window.location.assign("/acoes");
+  }
+
   return (
     <section className="pb-10">
       <div className="mb-5 flex flex-wrap gap-3">
@@ -208,6 +233,15 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
         >
           <Edit3 className="h-4 w-4" aria-hidden="true" />
           Editar ação
+        </button>
+        <button
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-red-200 bg-red-50 px-5 text-sm font-bold text-red-800 shadow-premium-sm transition hover:bg-red-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 duration-200"
+          disabled={deleting}
+          onClick={() => void deleteAction()}
+          type="button"
+        >
+          <Trash2 className="h-4 w-4" aria-hidden="true" />
+          {deleting ? "Excluindo..." : "Excluir ação"}
         </button>
         <Link
           className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/60 bg-white/80 px-4 text-sm font-bold text-semear-green shadow-premium-sm transition hover:bg-white active:scale-[0.98] duration-200"

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, FileText, FolderCheck, Keyboard, MapPin, MessageSquareText, Plus, Search, SlidersHorizontal } from "lucide-react";
+import { CalendarDays, FileText, FolderCheck, Keyboard, MapPin, MessageSquareText, Plus, Search, SlidersHorizontal, Trash2 } from "lucide-react";
 import type { Action, ActionClosure, ActionDebrief, ActionStatus, ActionType, ListeningRecord, Neighborhood } from "@/lib/database.types";
 import {
   actionStatusOptions,
@@ -41,7 +41,9 @@ export function ActionsList() {
   const [closures, setClosures] = useState<ActionClosure[]>([]);
   const [filters, setFilters] = useState<ActionFilters>(initialFilters);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -218,6 +220,35 @@ export function ActionsList() {
     setFilters((current) => ({ ...current, [filter]: value }));
   }
 
+  async function deleteAction(action: ActionWithNeighborhood) {
+    if (!supabase) return;
+    const meta = actionMeta.get(action.id);
+    const totalRecords = meta?.totalRecords ?? 0;
+
+    setError(null);
+    setFeedback(null);
+
+    if (totalRecords > 0) {
+      setError("Não é possível excluir ação com escutas vinculadas. Revise/remova as escutas antes de excluir a ação.");
+      return;
+    }
+
+    const confirmed = window.confirm(`Excluir a ação "${action.title}"? Esta operação também remove vínculos operacionais, devolutiva e dossiê da ação.`);
+    if (!confirmed) return;
+
+    setDeletingId(action.id);
+    const result = await supabase.from("actions").delete().eq("id", action.id);
+    setDeletingId(null);
+
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
+
+    setActions((current) => current.filter((item) => item.id !== action.id));
+    setFeedback("Ação excluída.");
+  }
+
   return (
     <section className="pb-10">
       <div className="flex flex-col gap-4 rounded-3xl border border-white/60 bg-white/80 p-6 shadow-premium-sm backdrop-blur-sm sm:p-8 lg:flex-row lg:items-center lg:justify-between">
@@ -267,6 +298,12 @@ export function ActionsList() {
       {error ? (
         <div className="mt-5 rounded-3xl border border-red-200 bg-red-50 p-6 text-sm font-bold text-red-800">
           {error}
+        </div>
+      ) : null}
+
+      {feedback ? (
+        <div className="mt-5 rounded-3xl border border-green-200 bg-green-50 p-6 text-sm font-bold text-green-800">
+          {feedback}
         </div>
       ) : null}
 
@@ -323,7 +360,7 @@ export function ActionsList() {
               ) : (
                 <p className="mt-4 text-sm leading-relaxed text-stone-400 font-medium">Sem resumo cadastrado.</p>
               )}
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="mt-4 grid gap-3 sm:grid-cols-4">
                 <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/60 bg-white px-4 text-sm font-bold text-semear-green shadow-premium-sm transition hover:bg-stone-50 active:scale-[0.98] duration-200" href={`/acoes/${action.id}`}>
                   Abrir
                 </Link>
@@ -333,6 +370,15 @@ export function ActionsList() {
                 <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/60 bg-white px-4 text-sm font-bold text-semear-green shadow-premium-sm transition hover:bg-stone-50 active:scale-[0.98] duration-200" href={`/escutas?actionId=${action.id}`}>
                   Revisar
                 </Link>
+                <button
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-red-200 bg-red-50 px-4 text-sm font-bold text-red-800 shadow-premium-sm transition hover:bg-red-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 duration-200"
+                  disabled={deletingId === action.id}
+                  onClick={() => void deleteAction(action)}
+                  type="button"
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  {deletingId === action.id ? "Excluindo..." : "Excluir"}
+                </button>
               </div>
             </article>
           ))}
