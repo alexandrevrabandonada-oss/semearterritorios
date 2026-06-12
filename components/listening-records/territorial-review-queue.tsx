@@ -18,9 +18,10 @@ import { getRespondentTerritoryRelationLabel } from "@/lib/listening-records";
 import { calculateRespondentTerritoryQuality } from "@/lib/territorial-quality";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { formatNeighborhoodOption, getOfficialNeighborhoodsForSelect } from "@/lib/neighborhoods";
+import { getIndividualListeningRecords, isConversationCircleRecord } from "@/lib/listening-record-methodology";
 
 type RecordWithRelations = TerritorialReviewRecord & {
-  actions: Pick<Action, "id" | "title"> | null;
+  actions: Pick<Action, "id" | "title" | "action_type"> | null;
   neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
   respondent_neighborhoods?: Pick<Neighborhood, "id" | "name"> | null;
 };
@@ -63,7 +64,7 @@ export function TerritorialReviewQueue() {
     const [recordsResult, actionsResult, neighborhoodsResult] = await Promise.all([
       supabase
         .from("listening_records")
-        .select("*, actions:action_id(id, title), neighborhoods:neighborhood_id(id, name), respondent_neighborhoods:respondent_neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name)), places_mentioned(id, place_name, place_type, notes, neighborhood_id, normalized_place_id, normalized_places:normalized_place_id(id, normalized_name, visibility, place_type))")
+        .select("*, actions:action_id(id, title, action_type), neighborhoods:neighborhood_id(id, name), respondent_neighborhoods:respondent_neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name)), places_mentioned(id, place_name, place_type, notes, neighborhood_id, normalized_place_id, normalized_places:normalized_place_id(id, normalized_name, visibility, place_type))")
         .order("date", { ascending: false }),
       supabase.from("actions").select("*").order("action_date", { ascending: false }),
       supabase.from("neighborhoods").select("*").eq("status", "oficial").order("sector", { ascending: true }).order("name", { ascending: true })
@@ -110,10 +111,10 @@ export function TerritorialReviewQueue() {
     if (filters.quality === "free_text_places" && !record.places_mentioned_text?.trim()) return false;
     if (filters.quality === "unstructured_places" && !hasUnstructuredPlaces(record)) return false;
     if (filters.quality === "possible_sensitive" && !hasPossibleSensitiveData(record)) return false;
-    if (filters.quality === "without_respondent_territory" && record.respondent_neighborhood_id) return false;
+    if (filters.quality === "without_respondent_territory" && (isConversationCircleRecord(record) || record.respondent_neighborhood_id)) return false;
     return true;
   });
-  const qualityRecords = filters.actionId ? records.filter((record) => record.action_id === filters.actionId) : records;
+  const qualityRecords = getIndividualListeningRecords(filters.actionId ? records.filter((record) => record.action_id === filters.actionId) : records);
 
   function updateFilter<TField extends keyof Filters>(field: TField, value: Filters[TField]) {
     setFilters((current) => ({ ...current, [field]: value }));

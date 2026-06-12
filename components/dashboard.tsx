@@ -34,6 +34,7 @@ import { SemearButton, SemearCard, SemearMetricCard, SemearPageHeader, SemearSta
 import { getStartOfWeekIso } from "@/lib/project-memory";
 import { TerritorialQualityByAction, type TerritorialQualityByActionItem } from "@/components/dashboard/territorial-quality-by-action";
 import { calculateRespondentTerritoryQuality, getRespondentQualityStatusLabel } from "@/lib/territorial-quality";
+import { calculateIndividualRespondentTerritoryQuality, getIndividualListeningRecords } from "@/lib/listening-record-methodology";
 
 type RecordWithRelations = ListeningRecord & {
   actions: Pick<Action, "id" | "title" | "action_type"> | null;
@@ -239,10 +240,7 @@ export function Dashboard() {
       .map((record) => record.respondent_neighborhood_id)
       .filter(Boolean)
   ).size;
-  const respondentQualityMetrics = calculateRespondentTerritoryQuality(
-    filteredRecords.length,
-    filteredRecords.filter((record) => Boolean(record.respondent_neighborhood_id)).length
-  );
+  const respondentQualityMetrics = calculateIndividualRespondentTerritoryQuality(filteredRecords);
   const respondentQualityLabel = getRespondentQualityStatusLabel(respondentQualityMetrics.qualityStatus);
   const actionQualityByAction = buildActionQualityByAction(filteredActions, filteredRecords);
   const actionsWithLowTerritorialCoverage = actionQualityByAction.filter((item) => item.totalRecords > 0 && item.coveragePercent < 80);
@@ -946,8 +944,9 @@ function buildActionQualityByAction(actions: ActionWithNeighborhood[], records: 
   return actions
     .map((action) => {
       const actionRecords = records.filter((record) => record.action_id === action.id);
-      const totalRecords = actionRecords.length;
-      const withTerritory = actionRecords.filter((record) => Boolean(record.respondent_neighborhood_id)).length;
+      const individualRecords = getIndividualListeningRecords(actionRecords);
+      const totalRecords = individualRecords.length;
+      const withTerritory = individualRecords.filter((record) => Boolean(record.respondent_neighborhood_id)).length;
       const metrics = calculateRespondentTerritoryQuality(totalRecords, withTerritory);
       return {
         actionId: action.id,
@@ -965,7 +964,7 @@ function buildActionQualityByAction(actions: ActionWithNeighborhood[], records: 
 
 function buildInterviewerGuidance(records: RecordWithRelations[], teamMembers: TeamMember[]) {
   const byInterviewer = new Map<string, { total: number; withoutTerritory: number }>();
-  records.forEach((record) => {
+  getIndividualListeningRecords(records).forEach((record) => {
     const interviewerId = record.interviewer_team_member_id;
     if (!interviewerId) return;
     const current = byInterviewer.get(interviewerId) ?? { total: 0, withoutTerritory: 0 };

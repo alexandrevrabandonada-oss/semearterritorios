@@ -42,6 +42,7 @@ type FormValues = {
   respondent_neighborhood_id: string;
   respondent_territory_relation: string;
   respondent_occupation: string;
+  mentioned_neighborhood_ids: string[];
 };
 
 const defaultValues: FormValues = {
@@ -63,7 +64,8 @@ const defaultValues: FormValues = {
   respondent_city: "Volta Redonda",
   respondent_neighborhood_id: "",
   respondent_territory_relation: "",
-  respondent_occupation: ""
+  respondent_occupation: "",
+  mentioned_neighborhood_ids: []
 };
 
 type Props = {
@@ -120,15 +122,16 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
       setInterviewers((interviewersResult.data ?? []) as TeamMember[]);
 
       if (mode === "edit" && recordId) {
-        const [recordResult, themesLinkResult] = await Promise.all([
+        const [recordResult, themesLinkResult, mentionedNeighborhoodsResult] = await Promise.all([
           supabase.from("listening_records").select("*").eq("id", recordId).single(),
-          supabase.from("listening_record_themes").select("theme_id").eq("listening_record_id", recordId)
+          supabase.from("listening_record_themes").select("theme_id").eq("listening_record_id", recordId),
+          supabase.from("listening_record_mentioned_neighborhoods").select("neighborhood_id").eq("listening_record_id", recordId)
         ]);
 
         if (ignore) return;
 
-        if (recordResult.error || themesLinkResult.error) {
-          setError(recordResult.error?.message ?? themesLinkResult.error?.message ?? "Erro ao carregar escuta.");
+        if (recordResult.error || themesLinkResult.error || mentionedNeighborhoodsResult.error) {
+          setError(recordResult.error?.message ?? themesLinkResult.error?.message ?? mentionedNeighborhoodsResult.error?.message ?? "Erro ao carregar escuta.");
           setLoading(false);
           return;
         }
@@ -153,7 +156,8 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
           respondent_city: record.respondent_city ?? "Volta Redonda",
           respondent_neighborhood_id: record.respondent_neighborhood_id ?? "",
           respondent_territory_relation: record.respondent_territory_relation ?? "",
-          respondent_occupation: record.respondent_occupation ?? ""
+          respondent_occupation: record.respondent_occupation ?? "",
+          mentioned_neighborhood_ids: (mentionedNeighborhoodsResult.data ?? []).map((item) => item.neighborhood_id)
         });
       }
 
@@ -180,6 +184,15 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
     }));
   }
 
+  function toggleMentionedNeighborhood(neighborhoodId: string) {
+    setValues((current) => ({
+      ...current,
+      mentioned_neighborhood_ids: current.mentioned_neighborhood_ids.includes(neighborhoodId)
+        ? current.mentioned_neighborhood_ids.filter((id) => id !== neighborhoodId)
+        : [...current.mentioned_neighborhood_ids, neighborhoodId]
+    }));
+  }
+
   function updateInterviewer(teamMemberId: string) {
     const selected = interviewers.find((item) => item.id === teamMemberId);
     setValues((current) => ({
@@ -198,8 +211,11 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
       return;
     }
 
+    const selectedAction = actions.find((action) => action.id === values.action_id);
+    const isConversationCircle = selectedAction?.action_type === "roda" || values.source_type === "roda";
+
     if (!values.date || !values.action_id || !values.neighborhood_id || !values.interviewer_name.trim() || !values.free_speech_text.trim()) {
-      setError("Data, ação, bairro, entrevistador e fala original são campos obrigatórios.");
+      setError(isConversationCircle ? "Data, ação, bairro, entrevistador e relato da roda são campos obrigatórios." : "Data, ação, bairro, entrevistador e fala original são campos obrigatórios.");
       return;
     }
 
@@ -244,10 +260,10 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
       unexpected_notes: values.unexpected_notes.trim() || null,
       review_status: values.review_status,
       created_by: user.id,
-      respondent_city: values.respondent_city.trim() || null,
-      respondent_neighborhood_id: (isVoltaRedondaCity(values.respondent_city) && values.respondent_neighborhood_id) ? values.respondent_neighborhood_id : null,
-      respondent_territory_relation: (values.respondent_territory_relation as RespondentTerritoryRelation) || null,
-      respondent_occupation: values.respondent_occupation.trim() || null
+      respondent_city: isConversationCircle ? null : values.respondent_city.trim() || null,
+      respondent_neighborhood_id: (!isConversationCircle && isVoltaRedondaCity(values.respondent_city) && values.respondent_neighborhood_id) ? values.respondent_neighborhood_id : null,
+      respondent_territory_relation: isConversationCircle ? null : (values.respondent_territory_relation as RespondentTerritoryRelation) || null,
+      respondent_occupation: isConversationCircle ? null : values.respondent_occupation.trim() || null
     };
 
     const recordResult =
@@ -271,6 +287,15 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
       }
     }
 
+    if (mode === "edit") {
+      const deleteMentionedResult = await supabase.from("listening_record_mentioned_neighborhoods").delete().eq("listening_record_id", savedId);
+      if (deleteMentionedResult.error) {
+        setSaving(false);
+        setError(deleteMentionedResult.error.message);
+        return;
+      }
+    }
+
     if (values.theme_ids.length > 0) {
       const insertResult = await supabase.from("listening_record_themes").insert(
         values.theme_ids.map((themeId) => ({
@@ -288,6 +313,22 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
       }
     }
 
+    if (isConversationCircle && values.mentioned_neighborhood_ids.length > 0) {
+      const insertMentionedResult = await supabase.from("listening_record_mentioned_neighborhoods").insert(
+        values.mentioned_neighborhood_ids.map((neighborhoodId) => ({
+          listening_record_id: savedId,
+          neighborhood_id: neighborhoodId,
+          created_by: user.id
+        }))
+      );
+
+      if (insertMentionedResult.error) {
+        setSaving(false);
+        setError(insertMentionedResult.error.message);
+        return;
+      }
+    }
+
     setSaving(false);
     router.push(`/escutas/${savedId}`);
     router.refresh();
@@ -296,6 +337,9 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
   if (loading) {
     return <section className="rounded-[2rem] bg-white/72 p-8 shadow-soft">Carregando formulário...</section>;
   }
+
+  const selectedAction = actions.find((action) => action.id === values.action_id);
+  const isConversationCircle = selectedAction?.action_type === "roda" || values.source_type === "roda";
 
   return (
     <section className="pb-10">
@@ -312,7 +356,7 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
           <h2 className="mt-3 text-3xl font-semibold tracking-tight text-semear-green">Ficha de Escuta Territorial - v4</h2>
           <div className="mt-4 flex gap-3 rounded-2xl border border-semear-yellow/40 bg-semear-yellow/20 p-4 text-sm leading-6 text-semear-green">
             <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-            Não registre CPF, endereço pessoal, telefone ou dados de saúde individual identificável.
+            {isConversationCircle ? "Relato de roda deve consolidar a conversa sem identificar participantes, telefones, endereços ou dados de saúde individuais." : "Não registre CPF, endereço pessoal, telefone ou dados de saúde individual identificável."}
           </div>
         </div>
 
@@ -345,24 +389,42 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
             ))}
           </Select>
           <Input label="Nome da entrevistadora" value={values.interviewer_name} onChange={(value) => updateField("interviewer_name", value)} required />
-          <Input label="Faixa etária aprox. (opcional)" value={values.approximate_age_range} onChange={(value) => updateField("approximate_age_range", value)} placeholder="Ex.: 30-39, pessoa idosa, jovem" />
+          {!isConversationCircle ? <Input label="Faixa etária aprox. (opcional)" value={values.approximate_age_range} onChange={(value) => updateField("approximate_age_range", value)} placeholder="Ex.: 30-39, pessoa idosa, jovem" /> : null}
 
           <label className="lg:col-span-2 rounded-[1.5rem] border-2 border-semear-green/35 bg-semear-green-soft/70 p-4">
-            <span className="text-sm font-bold text-semear-green">4. Resumo fiel da fala</span>
+            <span className="text-sm font-bold text-semear-green">{isConversationCircle ? "4. Relato unificado da roda" : "4. Resumo fiel da fala"}</span>
             <textarea className="mt-3 min-h-64 w-full rounded-2xl border border-semear-green/20 bg-white px-4 py-3 text-base leading-7 outline-none focus:border-semear-green" required value={values.free_speech_text} onChange={(event) => updateField("free_speech_text", event.target.value)} />
-            <p className="mt-2 text-xs leading-5 text-stone-600">Escreva com fidelidade o sentido da fala da pessoa. Não transforme em opinião da equipe. Não registre identificação pessoal.</p>
+            <p className="mt-2 text-xs leading-5 text-stone-600">{isConversationCircle ? "Inclua falas anotadas, convergências, divergências, palavras fortes e o que chamou atenção, sem identificar participantes." : "Escreva com fidelidade o sentido da fala da pessoa. Não transforme em opinião da equipe. Não registre identificação pessoal."}</p>
           </label>
 
           <Textarea label="Resumo da equipe" value={values.team_summary} onChange={(value) => updateField("team_summary", value)} />
-          <Textarea label="Palavras usadas pela pessoa" value={values.words_used} onChange={(value) => updateField("words_used", value)} />
-          <Textarea label="6. Lugares citados" value={values.places_mentioned_text} onChange={(value) => updateField("places_mentioned_text", value)} />
-          <Textarea label="7. Prioridade apontada pela pessoa" value={values.priority_mentioned} onChange={(value) => updateField("priority_mentioned", value)} />
-          <Textarea label="8. Observações inesperadas / algo que a equipe não imaginava" value={values.unexpected_notes} onChange={(value) => updateField("unexpected_notes", value)} />
+          <Textarea label={isConversationCircle ? "Palavras que mais chamaram atenção" : "Palavras usadas pela pessoa"} value={values.words_used} onChange={(value) => updateField("words_used", value)} />
+          <Textarea label={isConversationCircle ? "6. Outros lugares citados" : "6. Lugares citados"} value={values.places_mentioned_text} onChange={(value) => updateField("places_mentioned_text", value)} />
+          <Textarea label={isConversationCircle ? "7. Prioridades percebidas na roda" : "7. Prioridade apontada pela pessoa"} value={values.priority_mentioned} onChange={(value) => updateField("priority_mentioned", value)} />
+          <Textarea label={isConversationCircle ? "8. O que mais chamou atenção do entrevistador" : "8. Observações inesperadas / algo que a equipe não imaginava"} value={values.unexpected_notes} onChange={(value) => updateField("unexpected_notes", value)} />
           <Select label="Status" value={values.review_status} onChange={(value) => updateField("review_status", value as ReviewStatus)}>
             {reviewStatusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </Select>
         </div>
 
+        {isConversationCircle ? (
+          <div className="mt-8 rounded-[1.5rem] border border-semear-green/20 bg-semear-green-soft/40 p-5">
+            <h3 className="font-semibold text-semear-green">3. Roda de conversa - bairros citados</h3>
+            <p className="mt-1 text-xs leading-5 text-stone-600">Marque os bairros mencionados pelo grupo. Não registre rua, número, ponto sensível ou endereço de participante.</p>
+            <div className="mt-4 flex max-h-72 flex-wrap gap-2 overflow-auto rounded-2xl border border-semear-green/10 bg-white/60 p-3">
+              {neighborhoods.map((neighborhood) => (
+                <button
+                  className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${values.mentioned_neighborhood_ids.includes(neighborhood.id) ? "border-semear-green bg-semear-green text-white" : "border-semear-green/20 bg-white text-semear-green"}`}
+                  key={neighborhood.id}
+                  onClick={() => toggleMentionedNeighborhood(neighborhood.id)}
+                  type="button"
+                >
+                  {formatNeighborhoodOption(neighborhood)}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
         <div className="mt-8 rounded-[1.5rem] border border-semear-green/20 bg-semear-green-soft/40 p-5">
           <h3 className="font-semibold text-semear-green">3. Pessoa escutada - dados gerais e opcionais</h3>
           <p className="mt-1 text-xs leading-5 text-stone-600">Não identifique a pessoa. O objetivo é entender o território de referência da fala, não registrar endereço.</p>
@@ -421,10 +483,11 @@ export function ListeningRecordForm({ mode, recordId }: Props) {
             </p>
           ) : null}
         </div>
+        )}
 
         <div className="mt-8 rounded-[1.5rem] border border-dashed border-semear-green/25 bg-semear-offwhite p-5">
-          <h3 className="font-semibold text-semear-green">5. Temas percebidos na fala</h3>
-          <p className="mt-1 text-sm text-stone-600">Essas tags são codificação da equipe, separadas do resumo fiel da fala.</p>
+          <h3 className="font-semibold text-semear-green">{isConversationCircle ? "5. Temas percebidos na roda" : "5. Temas percebidos na fala"}</h3>
+          <p className="mt-1 text-sm text-stone-600">{isConversationCircle ? "Essas tags são codificação da equipe, separadas do relato unificado." : "Essas tags são codificação da equipe, separadas do resumo fiel da fala."}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             {themes.map((theme) => (
               <button

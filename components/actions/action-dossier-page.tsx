@@ -14,7 +14,8 @@ import {
 } from "@/lib/action-closures";
 import { getActionPilotMetrics, getActionReadiness, summarizeOccupations, type ActionForPilot, type ListeningRecordForPilot } from "@/lib/action-pilot";
 import { getActionStatusLabel, getActionTypeLabel } from "@/lib/actions";
-import { buildTerritorialQualityMethodologyNote, calculateRespondentTerritoryQuality } from "@/lib/territorial-quality";
+import { buildTerritorialQualityMethodologyNote } from "@/lib/territorial-quality";
+import { calculateIndividualRespondentTerritoryQuality, getIndividualListeningRecords } from "@/lib/listening-record-methodology";
 import { buildActionAnalytics, type ActionAnalytics } from "@/lib/action-analytics";
 import {
   AnalyticalSignalsPanel,
@@ -203,10 +204,9 @@ export function ActionDossierPage({ actionId }: Props) {
   const metrics = getActionPilotMetrics(records);
   const reviewedPercent = metrics.total > 0 ? Math.round((metrics.reviewed / metrics.total) * 100) : 0;
   const occupationSummary = summarizeOccupations(records);
-  const respondentTerritoryMetrics = calculateRespondentTerritoryQuality(
-    records.length,
-    records.filter((record) => Boolean(record.respondent_neighborhood_id)).length
-  );
+  const individualRecords = getIndividualListeningRecords(records);
+  const conversationCircleReports = records.length - individualRecords.length;
+  const respondentTerritoryMetrics = calculateIndividualRespondentTerritoryQuality(records);
   const respondentTerritoryNote = buildTerritorialQualityMethodologyNote(respondentTerritoryMetrics);
   const canCoordinate = profile?.role === "admin" || profile?.role === "coordenacao";
   const virtualClosure = closure ? { ...closure, ...form, documentation_checklist: form.documentation_checklist as unknown as Json } : null;
@@ -243,9 +243,11 @@ export function ActionDossierPage({ actionId }: Props) {
 
 ## Resumo executivo
 
-- Escutas: ${analytics.totalRecords}
+- Registros: ${analytics.totalRecords}
+- Escutas individuais: ${individualRecords.length}
+- Relatos de roda: ${conversationCircleReports}
 - Revisadas: ${analytics.reviewedCount}
-- Cobertura territorial: ${analytics.territorialQuality.coveragePercent}% (${analytics.territorialQuality.recordsWithTerritory}/${analytics.territorialQuality.totalRecords})
+- Cobertura territorial das escutas individuais: ${analytics.territorialQuality.coveragePercent}% (${analytics.territorialQuality.recordsWithTerritory}/${analytics.territorialQuality.totalRecords})
 - Status territorial: ${analytics.territorialQuality.status}
 - Status da devolutiva: ${debrief?.status ?? "não criada"}
 

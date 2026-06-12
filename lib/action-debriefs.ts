@@ -10,8 +10,8 @@ import {
 import { getRespondentTerritoryRelationLabel } from "@/lib/listening-records";
 import {
   buildTerritorialQualityMethodologyNote,
-  calculateRespondentTerritoryQuality
 } from "@/lib/territorial-quality";
+import { calculateIndividualRespondentTerritoryQuality, getIndividualListeningRecords } from "@/lib/listening-record-methodology";
 
 export const defaultMethodologyNote =
   "Esta devolutiva reúne percepções registradas durante a ação. Ela não substitui pesquisa estatística nem representa a totalidade da população. Seu objetivo é devolver ao território uma síntese inicial da escuta realizada.";
@@ -90,10 +90,9 @@ export function buildActionDebrief(action: ActionForPilot, records: ListeningRec
     : records.filter((record) => !hasPossibleSensitiveData(record));
   const metrics = getActionPilotMetrics(sourceRecords);
   const occupationSummary = summarizeOccupations(sourceRecords);
-  const territorialMetrics = calculateRespondentTerritoryQuality(
-    records.length,
-    records.filter((record) => Boolean(record.respondent_neighborhood_id)).length
-  );
+  const individualRecords = getIndividualListeningRecords(records);
+  const conversationCircleReports = records.length - individualRecords.length;
+  const territorialMetrics = calculateIndividualRespondentTerritoryQuality(records);
   const territorialMethodology = buildTerritorialQualityMethodologyNote(territorialMetrics);
   const bairro = action.neighborhoods?.name ?? "território informado";
   const isFair = action.action_type === "banca_escuta" || action.title.toLowerCase().includes("feira");
@@ -123,9 +122,9 @@ export function buildActionDebrief(action: ActionForPilot, records: ListeningRec
 
   const publicSummary = [
     territorialMethodology.status === "boa"
-      ? `Na ação realizada em ${bairro}, foram registradas ${fullMetrics.total} escutas.`
-      : `Na ação realizada em ${bairro}, foram registradas ${fullMetrics.total} escutas. Entre as escutas com território de referência preenchido, observam-se os padrões territoriais descritos abaixo.`,
-    "As pessoas escutadas podem se referir a diferentes territórios de referência, que não necessariamente coincidem com o território da ação.",
+      ? `Na ação realizada em ${bairro}, foram registrados ${fullMetrics.total} registro(s): ${individualRecords.length} escuta(s) individual(is) e ${conversationCircleReports} relato(s) de roda.`
+      : `Na ação realizada em ${bairro}, foram registrados ${fullMetrics.total} registro(s): ${individualRecords.length} escuta(s) individual(is) e ${conversationCircleReports} relato(s) de roda. Entre as escutas individuais com território de referência preenchido, observam-se os padrões territoriais descritos abaixo.`,
+    "As pessoas escutadas podem se referir a diferentes territórios de referência; relatos de roda são consolidações por entrevistador e não entram como pessoa individual na cobertura territorial.",
     `Para esta devolutiva, a síntese considera preferencialmente registros revisados e sem alerta de dado sensível. Até o momento, ${fullMetrics.reviewed} escuta(s) estão revisada(s) e ${fullMetrics.draft} permanecem em rascunho.`,
     `Os temas mais recorrentes foram: ${formatInline(metrics.topThemes.slice(0, 5))}. As palavras que mais apareceram foram: ${formatInline(metrics.topWords.slice(0, 8))}.`,
     occupationSummary.groups.length > 0
@@ -197,7 +196,7 @@ ${defaultMethodologyNote}
 
 ${territorialMethodology.fullText}
 
-Cobertura de território de referência do entrevistado nesta ação: ${territorialMetrics.coveragePercent}% (${territorialMetrics.recordsWithRespondentTerritory}/${territorialMetrics.totalRecords}).
+Cobertura de território de referência nas escutas individuais desta ação: ${territorialMetrics.coveragePercent}% (${territorialMetrics.recordsWithRespondentTerritory}/${territorialMetrics.totalRecords}).
 
 Recomendação operacional: ${territorialMethodology.operationalRecommendation}
 
@@ -209,13 +208,15 @@ ${defaultPrivacyNote}
   return {
     title,
     publicSummary,
-    methodologyNote: `${defaultMethodologyNote}\n\n${territorialMethodology.fullText}\n\nCobertura de território de referência do entrevistado: ${territorialMetrics.coveragePercent}% (${territorialMetrics.recordsWithRespondentTerritory}/${territorialMetrics.totalRecords}).`,
+    methodologyNote: `${defaultMethodologyNote}\n\n${territorialMethodology.fullText}\n\nCobertura de território de referência nas escutas individuais: ${territorialMetrics.coveragePercent}% (${territorialMetrics.recordsWithRespondentTerritory}/${territorialMetrics.totalRecords}). Relatos de roda são consolidados por entrevistador e analisados separadamente.`,
     keyFindings,
     nextSteps,
     generatedMarkdown,
     teamReviewText: warnings.length > 0 ? warnings.join("\n") : "Sem alertas críticos automáticos. Revisão humana ainda é obrigatória.",
     totalsSnapshot: {
       ...fullMetrics,
+      individual_listening_records: individualRecords.length,
+      conversation_circle_reports: conversationCircleReports,
       readiness: getActionReadiness(records),
       source_records_for_public_text: sourceRecords.length,
       territorial_quality_status: territorialMetrics.qualityStatus,

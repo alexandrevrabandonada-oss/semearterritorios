@@ -24,6 +24,7 @@ type BatchFormValues = {
   respondent_neighborhood_id: string;
   respondent_territory_relation: string;
   respondent_occupation: string;
+  mentioned_neighborhood_ids: string[];
 };
 
 type SubmitMode = "next" | "draft";
@@ -42,6 +43,7 @@ const initialFormValues: BatchFormValues = {
   respondent_neighborhood_id: "",
   respondent_territory_relation: "",
   respondent_occupation: "",
+  mentioned_neighborhood_ids: [],
 };
 
 type ActionWithRelations = Action & {
@@ -67,7 +69,9 @@ export function ListeningRecordBatchForm() {
   function handleSelectAction(actionId: string) {
     setLockedActionId(actionId);
     const action = actions.find((a) => a.id === actionId);
-    if (action?.action_type === "banca_escuta") {
+    if (action?.action_type === "roda") {
+      setLockedSourceType("roda");
+    } else if (action?.action_type === "banca_escuta") {
       setLockedSourceType("feira");
     }
   }
@@ -146,6 +150,15 @@ export function ListeningRecordBatchForm() {
     }));
   }
 
+  function toggleMentionedNeighborhood(neighborhoodId: string) {
+    setValues((current) => ({
+      ...current,
+      mentioned_neighborhood_ids: current.mentioned_neighborhood_ids.includes(neighborhoodId)
+        ? current.mentioned_neighborhood_ids.filter((id) => id !== neighborhoodId)
+        : [...current.mentioned_neighborhood_ids, neighborhoodId]
+    }));
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!supabase) return;
@@ -156,9 +169,10 @@ export function ListeningRecordBatchForm() {
     
     const action = actions.find(a => a.id === lockedActionId);
     if (!action) return;
+    const isConversationCircle = action.action_type === "roda";
 
     if (!values.interviewer_name.trim() || !values.free_speech_text.trim()) {
-      showError("Entrevistador e fala original são obrigatórios.");
+      showError(isConversationCircle ? "Entrevistador e relato da roda são obrigatórios." : "Entrevistador e fala original são obrigatórios.");
       return;
     }
 
@@ -173,6 +187,13 @@ export function ListeningRecordBatchForm() {
     }
 
     const respondentCityIsVoltaRedonda = isVoltaRedondaCity(values.respondent_city);
+    const mentionedNeighborhoodNames = values.mentioned_neighborhood_ids
+      .map((id) => neighborhoods.find((neighborhood) => neighborhood.id === id)?.name)
+      .filter(Boolean) as string[];
+    const placesMentionedText = [
+      mentionedNeighborhoodNames.length > 0 ? `Bairros citados na roda: ${mentionedNeighborhoodNames.join(", ")}` : "",
+      values.places_mentioned_text.trim()
+    ].filter(Boolean).join("\n");
 
     const payload = {
       action_id: action.id,
@@ -185,15 +206,15 @@ export function ListeningRecordBatchForm() {
       free_speech_text: values.free_speech_text.trim(),
       team_summary: null,
       words_used: values.words_used.trim() || null,
-      places_mentioned_text: values.places_mentioned_text.trim() || null,
+      places_mentioned_text: placesMentionedText || null,
       priority_mentioned: values.priority_mentioned.trim() || null,
       unexpected_notes: values.unexpected_notes.trim() || null,
       review_status: "draft" as const,
       created_by: user.id,
-      respondent_city: values.respondent_city.trim() || null,
-      respondent_neighborhood_id: (respondentCityIsVoltaRedonda && values.respondent_neighborhood_id) ? values.respondent_neighborhood_id : null,
-      respondent_territory_relation: (values.respondent_territory_relation as RespondentTerritoryRelation) || null,
-      respondent_occupation: values.respondent_occupation.trim() || null
+      respondent_city: isConversationCircle ? null : values.respondent_city.trim() || null,
+      respondent_neighborhood_id: (!isConversationCircle && respondentCityIsVoltaRedonda && values.respondent_neighborhood_id) ? values.respondent_neighborhood_id : null,
+      respondent_territory_relation: isConversationCircle ? null : (values.respondent_territory_relation as RespondentTerritoryRelation) || null,
+      respondent_occupation: isConversationCircle ? null : values.respondent_occupation.trim() || null
     };
 
     const res = await supabase.from("listening_records").insert(payload).select("id").single();
@@ -211,6 +232,16 @@ export function ListeningRecordBatchForm() {
           theme_id: id,
           created_by: user.id,
           notes: null
+        }))
+      );
+    }
+
+    if (isConversationCircle && values.mentioned_neighborhood_ids.length > 0) {
+      await supabase.from("listening_record_mentioned_neighborhoods").insert(
+        values.mentioned_neighborhood_ids.map((neighborhoodId) => ({
+          listening_record_id: res.data.id,
+          neighborhood_id: neighborhoodId,
+          created_by: user.id
         }))
       );
     }
@@ -234,6 +265,7 @@ export function ListeningRecordBatchForm() {
       respondent_neighborhood_id: values.respondent_neighborhood_id,
       respondent_territory_relation: values.respondent_territory_relation,
       respondent_occupation: values.respondent_occupation,
+      mentioned_neighborhood_ids: [],
     });
     setSensitiveAlert(null);
     setSaving(false);
@@ -243,6 +275,7 @@ export function ListeningRecordBatchForm() {
 
   const selectedAction = actions.find(a => a.id === lockedActionId);
   const respondentCityIsVoltaRedonda = isVoltaRedondaCity(values.respondent_city);
+  const isConversationCircle = selectedAction?.action_type === "roda";
 
   return (
     <section className="mx-auto max-w-6xl pb-6">
@@ -253,8 +286,8 @@ export function ListeningRecordBatchForm() {
 
       <SemearPageHeader
         eyebrow="Ficha de Escuta Territorial - v4"
-        title="Digitalização da ficha de campo"
-        description="Digite a ficha seguindo a ordem usada em campo, preservando a metodologia e os campos estruturados do sistema."
+        title={isConversationCircle ? "Relato da roda de conversa" : "Digitalização da ficha de campo"}
+        description={isConversationCircle ? "Para roda de conversa, cada entrevistador registra um relato unificado da roda inteira: falas anotadas, palavras fortes, bairros citados, prioridades e impressões relevantes." : "Digite a ficha seguindo a ordem usada em campo, preservando a metodologia e os campos estruturados do sistema."}
         meta={<SemearStatusBadge tone="yellow">Privacidade: sem CPF, telefone ou endereço</SemearStatusBadge>}
       />
 
@@ -277,7 +310,7 @@ export function ListeningRecordBatchForm() {
             <strong className="text-semear-green">Entrevistador:</strong> {values.interviewer_name || "Selecione acima"}
           </div>
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-950">
-            Não registre CPF, telefone ou endereço. Salve como rascunho e revise depois.
+                {isConversationCircle ? "Registre a roda como relato do entrevistador, sem identificar participantes." : "Não registre CPF, telefone ou endereço. Salve como rascunho e revise depois."}
           </div>
         </div>
       </div>
@@ -334,7 +367,7 @@ export function ListeningRecordBatchForm() {
               <SemearAlert tone="yellow">
                 <div className="flex gap-3">
                 <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-                Não registre CPF, telefone, endereço pessoal ou relato médico individual. Preserve a fala da pessoa, mas remova identificadores.
+                {isConversationCircle ? "Não registre nomes, CPF, telefone, endereço pessoal ou relato médico individual. Consolide a roda como um relato único do entrevistador." : "Não registre CPF, telefone, endereço pessoal ou relato médico individual. Preserve a fala da pessoa, mas remova identificadores."}
                 </div>
               </SemearAlert>
 
@@ -342,6 +375,7 @@ export function ListeningRecordBatchForm() {
               {sensitiveAlert && <div className="mb-6 rounded-2xl border border-orange-300 bg-orange-50 p-4 text-sm text-orange-800 font-medium">{sensitiveAlert}</div>}
 
               <div className="space-y-8">
+                {!isConversationCircle && (
                 <section className="rounded-2xl border border-semear-green/15 bg-white p-5 shadow-[0_10px_24px_rgba(23,74,55,0.04)]">
                   <div className="mb-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">3. Pessoa escutada - dados gerais e opcionais</p>
@@ -407,13 +441,36 @@ export function ListeningRecordBatchForm() {
                     </p>
                   ) : null}
                 </section>
+                )}
+
+                {isConversationCircle && (
+                  <section className="rounded-2xl border border-semear-green/15 bg-white p-5 shadow-[0_10px_24px_rgba(23,74,55,0.04)]">
+                    <div className="mb-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">3. Roda de conversa - leitura territorial</p>
+                      <h3 className="mt-1 text-lg font-semibold text-semear-green">Bairros citados nas falas</h3>
+                      <p className="mt-1 text-xs leading-5 text-stone-600">Marque os bairros mencionados pelo grupo. Não registre rua, número, ponto sensível ou endereço de participante.</p>
+                    </div>
+                    <div className="flex max-h-72 flex-wrap gap-2 overflow-auto rounded-2xl border border-semear-green/10 bg-semear-green-soft/40 p-3">
+                      {neighborhoods.map((neighborhood) => (
+                        <button
+                          className={`rounded-full border px-4 py-3 text-sm font-semibold transition ${values.mentioned_neighborhood_ids.includes(neighborhood.id) ? "border-semear-green bg-semear-green text-white" : "border-semear-green/20 bg-white text-semear-green"}`}
+                          key={neighborhood.id}
+                          onClick={() => toggleMentionedNeighborhood(neighborhood.id)}
+                          type="button"
+                        >
+                          {formatNeighborhoodOption(neighborhood)}
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                )}
 
                 <section>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">4. Resumo fiel da fala</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-semear-earth">{isConversationCircle ? "4. Relato unificado da roda" : "4. Resumo fiel da fala"}</p>
                   <label className="mt-4 block rounded-2xl border border-semear-green/20 bg-white p-4 shadow-[0_10px_24px_rgba(23,74,55,0.04)]">
-                    <span className="text-sm font-bold text-semear-green">Escreva com fidelidade o sentido da fala da pessoa</span>
+                    <span className="text-sm font-bold text-semear-green">{isConversationCircle ? "Escreva o relato da roda inteira a partir das suas anotações" : "Escreva com fidelidade o sentido da fala da pessoa"}</span>
                     <textarea className="mt-3 min-h-48 w-full rounded-2xl border border-semear-green/20 bg-white px-4 py-3 text-base leading-7 outline-none focus:border-semear-green" required value={values.free_speech_text} onChange={e => updateField("free_speech_text", e.target.value)} />
-                    <p className="mt-2 text-xs leading-5 text-stone-600">Não transforme em opinião da equipe. Não registre identificação pessoal.</p>
+                    <p className="mt-2 text-xs leading-5 text-stone-600">{isConversationCircle ? "Inclua falas anotadas, convergências, divergências e o que mais chamou atenção, sem identificar participantes." : "Não transforme em opinião da equipe. Não registre identificação pessoal."}</p>
                   </label>
                   <label className="mt-4 block">
                     <span className="text-sm font-semibold text-semear-green">Nome da entrevistadora</span>
@@ -441,20 +498,20 @@ export function ListeningRecordBatchForm() {
                 <section>
                   <div className="mt-4 grid gap-4 md:grid-cols-2">
                     <label>
-                      <span className="text-sm font-semibold text-semear-green">6. Lugares citados</span>
+                      <span className="text-sm font-semibold text-semear-green">{isConversationCircle ? "6. Outros lugares citados" : "6. Lugares citados"}</span>
                       <input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" value={values.places_mentioned_text} onChange={e => updateField("places_mentioned_text", e.target.value)} />
-                      <p className="mt-2 text-xs leading-5 text-stone-600">Anote lugares coletivos citados na fala. Não registre endereço pessoal.</p>
+                      <p className="mt-2 text-xs leading-5 text-stone-600">Anote lugares coletivos citados. Não registre endereço pessoal.</p>
                     </label>
                     <label>
-                      <span className="text-sm font-semibold text-semear-green">Palavras citadas</span>
+                      <span className="text-sm font-semibold text-semear-green">{isConversationCircle ? "Palavras que mais chamaram atenção" : "Palavras citadas"}</span>
                       <input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" value={values.words_used} onChange={e => updateField("words_used", e.target.value)} />
                     </label>
                     <label className="md:col-span-2">
-                      <span className="text-sm font-semibold text-semear-green">7. Prioridade apontada pela pessoa</span>
+                      <span className="text-sm font-semibold text-semear-green">{isConversationCircle ? "7. Prioridades percebidas na roda" : "7. Prioridade apontada pela pessoa"}</span>
                       <input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" value={values.priority_mentioned} onChange={e => updateField("priority_mentioned", e.target.value)} />
                     </label>
                     <label className="md:col-span-2">
-                      <span className="text-sm font-semibold text-semear-green">8. Observações inesperadas / algo que a equipe não imaginava</span>
+                      <span className="text-sm font-semibold text-semear-green">{isConversationCircle ? "8. O que mais chamou atenção do entrevistador" : "8. Observações inesperadas / algo que a equipe não imaginava"}</span>
                       <input className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green" value={values.unexpected_notes} onChange={e => updateField("unexpected_notes", e.target.value)} />
                     </label>
                   </div>
@@ -464,13 +521,13 @@ export function ListeningRecordBatchForm() {
                   <div className="grid gap-3 sm:grid-cols-2">
                     <button className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-semear-green px-5 text-base font-semibold text-white disabled:opacity-60" disabled={saving || !lockedActionId} onClick={() => setSubmitMode("next")} type="submit">
                       <PlayCircle className="h-5 w-5" aria-hidden="true" />
-                      {saving && submitMode === "next" ? "Salvando..." : "Salvar e digitar próxima"}
+                      {saving && submitMode === "next" ? "Salvando..." : isConversationCircle ? "Salvar relato e digitar próximo" : "Salvar e digitar próxima"}
                     </button>
                     <button className="inline-flex min-h-14 w-full items-center justify-center rounded-xl border border-semear-green/20 bg-white px-5 text-base font-semibold text-semear-green disabled:opacity-60" disabled={saving || !lockedActionId} onClick={() => setSubmitMode("draft")} type="submit">
                       {saving && submitMode === "draft" ? "Salvando..." : "Salvar rascunho"}
                     </button>
                   </div>
-                  <p className="mt-3 text-center text-xs text-stone-500 uppercase tracking-widest font-semibold">No celular, digite agora e revise depois com calma.</p>
+                  <p className="mt-3 text-center text-xs text-stone-500 uppercase tracking-widest font-semibold">{isConversationCircle ? "Cada entrevistador envia um relato da roda; a ação consolida todos depois." : "No celular, digite agora e revise depois com calma."}</p>
                 </div>
               </div>
             </SemearCard>
@@ -482,7 +539,7 @@ export function ListeningRecordBatchForm() {
           <div className="rounded-2xl border border-semear-green/15 bg-white p-6 shadow-[0_14px_34px_rgba(23,74,55,0.06)]">
             <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth mb-2">Sessão Atual</h3>
             <p className="text-4xl font-semibold text-semear-green">{sessionCount}</p>
-            <p className="text-sm text-stone-600">fichas digitadas por você agora.</p>
+            <p className="text-sm text-stone-600">{isConversationCircle ? "relatos da roda digitados por você agora." : "fichas digitadas por você agora."}</p>
             {lastSavedId && (
               <Link className="mt-4 block text-sm font-semibold text-semear-green hover:underline" href={`/escutas/${lastSavedId}`} target="_blank">
                 Ver última salva

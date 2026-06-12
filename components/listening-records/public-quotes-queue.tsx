@@ -15,10 +15,11 @@ import type {
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { assessPublicQuotePrivacy } from "@/lib/public-quote-privacy";
 import { getPublicQuoteAuditEventLabel, getPublicQuoteStatusLabel, publicQuoteStatusOptions } from "@/lib/public-quotes";
+import { isConversationCircleRecord } from "@/lib/listening-record-methodology";
 
 type QuoteWithRelations = ListeningRecordPublicQuote & {
-  actions: Pick<Action, "id" | "title"> | null;
-  listening_records: Pick<ListeningRecord, "id" | "date" | "review_status"> | null;
+  actions: Pick<Action, "id" | "title" | "action_type"> | null;
+  listening_records: Pick<ListeningRecord, "id" | "date" | "review_status" | "source_type"> | null;
 };
 
 type Filters = {
@@ -68,7 +69,7 @@ export function PublicQuotesQueue() {
       const [quotesResult, actionsResult, auditsResult, peopleResult, profileResult] = await Promise.all([
         supabase
           .from("listening_record_public_quotes")
-          .select("*, actions:action_id(id, title), listening_records:listening_record_id(id, date, review_status)")
+          .select("*, actions:action_id(id, title, action_type), listening_records:listening_record_id(id, date, review_status, source_type)")
           .order("updated_at", { ascending: false }),
         supabase.from("actions").select("*").order("action_date", { ascending: false }),
         supabase
@@ -162,8 +163,17 @@ export function PublicQuotesQueue() {
 
     const baseText = (quote.sanitized_text?.trim() || quote.quote_text).trim();
     const privacy = assessPublicQuotePrivacy(baseText);
+    const isConversationCircle = isConversationCircleRecord({
+      source_type: quote.listening_records?.source_type,
+      actions: quote.actions
+    });
 
     const reason = (reasonByQuote[quote.id] ?? "").trim();
+
+    if ((nextStatus === "approved_internal" || nextStatus === "approved_public") && isConversationCircle) {
+      setError("Relato de roda não pode ser aprovado como fala pública individual. Extraia e sanitize manualmente um trecho representativo fora do relato bruto.");
+      return;
+    }
 
     if (nextStatus === "approved_public") {
       if (!quote.sanitized_text?.trim()) {

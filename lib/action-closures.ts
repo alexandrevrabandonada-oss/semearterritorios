@@ -1,7 +1,8 @@
 import { getActionPilotMetrics, getActionReadiness, type ActionForPilot, type ListeningRecordForPilot } from "@/lib/action-pilot";
 import { getActionTypeLabel } from "@/lib/actions";
 import type { ActionClosure, ActionDebrief, ClosureStatus } from "@/lib/database.types";
-import { buildTerritorialQualityMethodologyNote, calculateRespondentTerritoryQuality } from "@/lib/territorial-quality";
+import { buildTerritorialQualityMethodologyNote } from "@/lib/territorial-quality";
+import { calculateIndividualRespondentTerritoryQuality, getIndividualListeningRecords } from "@/lib/listening-record-methodology";
 
 export const closureStatusLabels: Record<ClosureStatus, string> = {
   open: "Aberto",
@@ -66,10 +67,9 @@ export function buildClosureMarkdown(input: {
   const metrics = getActionPilotMetrics(input.records);
   const checklist = parseClosureChecklist(input.closure?.documentation_checklist);
   const reviewedPercent = metrics.total > 0 ? Math.round((metrics.reviewed / metrics.total) * 100) : 0;
-  const territorialMetrics = calculateRespondentTerritoryQuality(
-    input.records.length,
-    input.records.filter((record) => Boolean(record.respondent_neighborhood_id)).length
-  );
+  const individualRecords = getIndividualListeningRecords(input.records);
+  const conversationCircleReports = input.records.length - individualRecords.length;
+  const territorialMetrics = calculateIndividualRespondentTerritoryQuality(input.records);
   const territorialMethodology = buildTerritorialQualityMethodologyNote(territorialMetrics);
 
   return `# Dossiê da ação
@@ -84,14 +84,16 @@ export function buildClosureMarkdown(input: {
 
 ## Resumo operacional
 
-- Escutas digitadas: ${metrics.total}
+- Registros digitados: ${metrics.total}
+- Escutas individuais: ${individualRecords.length}
+- Relatos de roda: ${conversationCircleReports}
 - Escutas revisadas: ${metrics.reviewed}
 - Escutas em rascunho: ${metrics.draft}
 - Percentual revisado: ${reviewedPercent}%
 - Possíveis dados sensíveis: ${metrics.possibleSensitive}
 - Pendências de qualidade: ${metrics.pending}
-- Cobertura de território de referência do entrevistado: ${territorialMetrics.coveragePercent}% (${territorialMetrics.recordsWithRespondentTerritory}/${territorialMetrics.totalRecords})
-- Escutas sem território de referência do entrevistado: ${territorialMetrics.recordsWithoutRespondentTerritory}
+- Cobertura de território de referência nas escutas individuais: ${territorialMetrics.coveragePercent}% (${territorialMetrics.recordsWithRespondentTerritory}/${territorialMetrics.totalRecords})
+- Escutas individuais sem território de referência: ${territorialMetrics.recordsWithoutRespondentTerritory}
 - Status metodológico territorial: ${territorialMethodology.status}
 - Prontidão: ${getActionReadiness(input.records, Boolean(input.closure?.coordination_sufficiency))}
 

@@ -205,6 +205,13 @@ export type ListeningRecordTheme = TimestampedRow &
     notes: string | null;
   };
 
+export type ListeningRecordMentionedNeighborhood = TimestampedRow &
+  CreatedByRow & {
+    id: string;
+    listening_record_id: string;
+    neighborhood_id: string;
+  };
+
 export type ListeningRecordPublicQuote = TimestampedRow &
   CreatedByRow & {
     id: string;
@@ -1058,6 +1065,25 @@ export type Database = {
             foreignKeyName: "listening_record_themes_theme_id_fkey";
             columns: ["theme_id"];
             referencedRelation: "themes";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      listening_record_mentioned_neighborhoods: {
+        Row: ListeningRecordMentionedNeighborhood;
+        Insert: Omit<ListeningRecordMentionedNeighborhood, "id" | "created_at" | "updated_at"> & { id?: string };
+        Update: Partial<Omit<ListeningRecordMentionedNeighborhood, "id" | "created_at" | "updated_at">>;
+        Relationships: [
+          {
+            foreignKeyName: "listening_record_mentioned_neighborhoods_listening_record_id_fkey";
+            columns: ["listening_record_id"];
+            referencedRelation: "listening_records";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "listening_record_mentioned_neighborhoods_neighborhood_id_fkey";
+            columns: ["neighborhood_id"];
+            referencedRelation: "neighborhoods";
             referencedColumns: ["id"];
           }
         ];

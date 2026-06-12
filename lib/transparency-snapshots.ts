@@ -1,7 +1,8 @@
 import type { Action, ActionClosure, ActionDebrief, ListeningRecord, Neighborhood, PublicTransparencySnapshot, Theme } from "@/lib/database.types";
 import { getActionStatusLabel, getActionTypeLabel } from "@/lib/actions";
 import { createEmptyTransparencyChecklist, normalizeTransparencyChecklist } from "@/lib/transparency-privacy";
-import { buildTerritorialQualityMethodologyNote, calculateRespondentTerritoryQuality } from "@/lib/territorial-quality";
+import { buildTerritorialQualityMethodologyNote } from "@/lib/territorial-quality";
+import { calculateIndividualRespondentTerritoryQuality, getIndividualListeningRecords } from "@/lib/listening-record-methodology";
 
 export const MIN_PUBLIC_TERRITORY_SAMPLE = 5;
 export const MIN_PUBLIC_OCCUPATION_SAMPLE = 3;
@@ -37,6 +38,7 @@ export type TransparencyDraftInput = {
 
 export function buildTransparencySnapshotDraft(input: TransparencyDraftInput) {
   const reviewedRecords = input.records.filter((record) => record.review_status === "reviewed");
+  const reviewedIndividualRecords = getIndividualListeningRecords(reviewedRecords);
   const periodDates = [
     ...input.actions.map((action) => action.action_date),
     ...input.records.map((record) => record.date)
@@ -44,12 +46,9 @@ export function buildTransparencySnapshotDraft(input: TransparencyDraftInput) {
   const periodStart = periodDates[0] ?? null;
   const periodEnd = periodDates[periodDates.length - 1] ?? null;
   const actionTerritories = new Set(input.actions.map((action) => action.neighborhood_id).filter(Boolean));
-  const respondentTerritories = new Set(reviewedRecords.map((record) => record.respondent_neighborhood_id).filter(Boolean));
-  const respondentWithoutTerritory = reviewedRecords.filter((record) => !record.respondent_neighborhood_id).length;
-  const territorialQuality = calculateRespondentTerritoryQuality(
-    reviewedRecords.length,
-    reviewedRecords.filter((record) => Boolean(record.respondent_neighborhood_id)).length
-  );
+  const respondentTerritories = new Set(reviewedIndividualRecords.map((record) => record.respondent_neighborhood_id).filter(Boolean));
+  const respondentWithoutTerritory = reviewedIndividualRecords.filter((record) => !record.respondent_neighborhood_id).length;
+  const territorialQuality = calculateIndividualRespondentTerritoryQuality(reviewedRecords);
   const territorialMethodology = buildTerritorialQualityMethodologyNote(territorialQuality);
   const approvedDebriefs = input.debriefs.filter((debrief) => debrief.status === "approved");
   const closedDossiers = input.closures.filter((closure) => closure.status === "closed");

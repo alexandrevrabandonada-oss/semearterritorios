@@ -8,13 +8,15 @@ import { getReviewStatusLabel, getRespondentTerritoryRelationLabel, getSourceTyp
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { hasNoWordsUsed, hasPossibleSensitiveData, isVeryShortSpeech } from "@/lib/action-pilot";
 import { formatNeighborhoodOption, getOfficialNeighborhoodsForSelect } from "@/lib/neighborhoods";
+import { isConversationCircleRecord } from "@/lib/listening-record-methodology";
 
 type RecordWithRelations = ListeningRecord & {
-  actions: Pick<Action, "id" | "title"> | null;
+  actions: Pick<Action, "id" | "title" | "action_type"> | null;
   neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
   respondent_neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
   interviewer_team_member: Pick<TeamMember, "id" | "display_name"> | null;
   listening_record_themes: Array<{ themes: Pick<Theme, "id" | "name"> | null }>;
+  listening_record_mentioned_neighborhoods: Array<{ neighborhoods: Pick<Neighborhood, "id" | "name"> | null }>;
 };
 
 type Filters = {
@@ -71,7 +73,7 @@ export function ListeningRecordsList() {
       const [recordsResult, actionsResult, neighborhoodsResult, themesResult, interviewersResult] = await Promise.all([
         supabase
           .from("listening_records")
-          .select("*, actions:action_id(id, title), neighborhoods:neighborhood_id(id, name), respondent_neighborhoods:respondent_neighborhood_id(id, name), interviewer_team_member:interviewer_team_member_id(id, display_name), listening_record_themes(themes:theme_id(id, name))")
+          .select("*, actions:action_id(id, title, action_type), neighborhoods:neighborhood_id(id, name), respondent_neighborhoods:respondent_neighborhood_id(id, name), interviewer_team_member:interviewer_team_member_id(id, display_name), listening_record_themes(themes:theme_id(id, name)), listening_record_mentioned_neighborhoods(neighborhoods:neighborhood_id(id, name))")
           .order("date", { ascending: false }),
         supabase.from("actions").select("*").order("action_date", { ascending: false }),
         supabase.from("neighborhoods").select("*").eq("status", "oficial").order("sector", { ascending: true }).order("name", { ascending: true }),
@@ -132,7 +134,7 @@ export function ListeningRecordsList() {
     if (filters.quality === "very_short" && !isVeryShortSpeech(record)) return false;
     if (filters.quality === "possible_sensitive" && !hasPossibleSensitiveData(record)) return false;
     if (filters.quality === "no_words_used" && !hasNoWordsUsed(record)) return false;
-    if (filters.quality === "no_respondent_territory" && record.respondent_neighborhood_id) return false;
+    if (filters.quality === "no_respondent_territory" && (isConversationCircleRecord(record) || record.respondent_neighborhood_id)) return false;
     
     return true;
   });
@@ -193,7 +195,7 @@ export function ListeningRecordsList() {
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-semear-earth">Escutas</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight text-semear-green">Fichas de escuta em papel</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">Digite a fala original e registre a codificação da equipe em campos separados.</p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">Digite falas individuais ou relatos de roda e registre a codificação da equipe em campos separados.</p>
         </div>
         <div className="grid gap-2 sm:flex sm:flex-wrap">
           <Link className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-semear-green/15 bg-white px-5 text-sm font-semibold text-semear-green hover:bg-semear-green/5 sm:w-auto" href="/escutas/minhas">
@@ -206,7 +208,7 @@ export function ListeningRecordsList() {
           </Link>
           <Link className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-semear-green px-5 text-sm font-semibold text-white sm:w-auto" href="/escutas/lote">
             <Plus className="h-4 w-4" aria-hidden="true" />
-            Modo Lote (Banca)
+            Modo Lote
           </Link>
           <Link className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-semear-green/15 bg-white px-5 text-sm font-semibold text-semear-green hover:bg-semear-green/5 sm:w-auto" href="/escutas/revisao-territorial">
             <MapPinned className="h-4 w-4" aria-hidden="true" />
@@ -259,10 +261,17 @@ export function ListeningRecordsList() {
       ) : null}
 
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
-        {filteredRecords.map((record) => (
+        {filteredRecords.map((record) => {
+          const isConversationCircle = isConversationCircleRecord(record);
+          const mentionedNeighborhoods = record.listening_record_mentioned_neighborhoods
+            .map((item) => item.neighborhoods?.name)
+            .filter(Boolean)
+            .join(", ");
+          return (
           <article className="rounded-3xl border border-white/80 bg-white p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-semear-green/25" key={record.id}>
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full bg-semear-green-soft px-3 py-1 text-xs font-semibold text-semear-green">{getSourceTypeLabel(record.source_type)}</span>
+              {isConversationCircle ? <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800">Relato de roda</span> : null}
               <span className="rounded-full bg-semear-yellow/35 px-3 py-1 text-xs font-semibold text-semear-green">{getReviewStatusLabel(record.review_status)}</span>
             </div>
             <p className="mt-4 line-clamp-3 text-base font-semibold leading-7 text-semear-green">{record.free_speech_text}</p>
@@ -270,12 +279,12 @@ export function ListeningRecordsList() {
               <span className="inline-flex items-center gap-2"><CalendarDays className="h-4 w-4" aria-hidden="true" />{new Date(`${record.date}T00:00:00`).toLocaleDateString("pt-BR")}</span>
               <span className="inline-flex items-center gap-2"><MessageSquareText className="h-4 w-4" aria-hidden="true" />{record.actions?.title ?? "Sem ação"}</span>
               <span className="inline-flex items-center gap-2">Bairro da ação: {record.neighborhoods?.name ?? "Sem bairro"}</span>
-              <span className="inline-flex items-center gap-2">Território de referência: {record.respondent_neighborhoods?.name ?? record.respondent_city ?? "Não informado"}</span>
+              <span className="inline-flex items-center gap-2">{isConversationCircle ? "Bairros citados" : "Território de referência"}: {isConversationCircle ? (mentionedNeighborhoods || "Não informado") : (record.respondent_neighborhoods?.name ?? record.respondent_city ?? "Não informado")}</span>
               <span className="inline-flex items-center gap-2">Entrevistador: {record.interviewer_team_member?.display_name ?? record.interviewer_name}</span>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">{record.listening_record_themes.slice(0, 4).map((item) => item.themes ? <span className="rounded-full bg-semear-offwhite px-3 py-1 text-xs font-semibold text-stone-600" key={item.themes.id}>{item.themes.name}</span> : null)}</div>
             <div className="mt-3 flex flex-wrap gap-2">
-              {isVeryShortSpeech(record) ? <QualityBadge label="Fala muito curta" /> : null}
+              {isVeryShortSpeech(record) ? <QualityBadge label={isConversationCircle ? "Relato muito curto" : "Fala muito curta"} /> : null}
               {hasNoWordsUsed(record) ? <QualityBadge label="Sem palavras usadas" /> : null}
               {hasPossibleSensitiveData(record) ? <QualityBadge label="Possível dado sensível" danger /> : null}
               {record.listening_record_themes.length === 0 ? <QualityBadge label="Sem tema" /> : null}
@@ -298,7 +307,8 @@ export function ListeningRecordsList() {
               </Link>
             </div>
           </article>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

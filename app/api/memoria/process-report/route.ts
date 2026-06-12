@@ -12,6 +12,9 @@ import { calculateExtractionQuality } from "@/lib/report-extraction-quality";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+const MAX_PROCESS_BYTES = 10 * 1024 * 1024;
+const ALLOWED_EXTENSIONS = new Set(["docx", "pdf", "txt", "md"]);
+
 export async function POST(req: NextRequest) {
   const authorization = req.headers.get("authorization");
   const bearerToken = authorization?.match(/^Bearer\s+(.+)$/i)?.[1] ?? null;
@@ -52,12 +55,45 @@ export async function POST(req: NextRequest) {
     // 1. Buscar metadados do anexo
     const { data: attachment, error: attachmentError } = await supabase
       .from("weekly_team_report_attachments")
-      .select("*")
+      .select("*, weekly_team_reports:report_id(id, profile_id, team_member_id, team_members:team_member_id(profile_id))")
       .eq("id", attachmentId)
       .single();
 
     if (attachmentError || !attachment) {
       return NextResponse.json({ error: "Anexo não encontrado." }, { status: 404 });
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, role")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError || !profile) {
+      return NextResponse.json({ error: "Perfil do usuário não encontrado." }, { status: 403 });
+    }
+
+    const report = Array.isArray((attachment as any).weekly_team_reports)
+      ? (attachment as any).weekly_team_reports[0]
+      : (attachment as any).weekly_team_reports;
+    const reportProfileId = report?.profile_id ?? report?.team_members?.profile_id ?? null;
+    const canProcess =
+      profile.role === "admin" ||
+      profile.role === "coordenacao" ||
+      attachment.uploaded_by === user.id ||
+      reportProfileId === user.id;
+
+    if (!canProcess) {
+      return NextResponse.json({ error: "Você não tem permissão para processar este anexo." }, { status: 403 });
+    }
+
+    if (attachment.file_size && attachment.file_size > MAX_PROCESS_BYTES) {
+      return NextResponse.json({ error: "Arquivo muito grande para processamento automático." }, { status: 413 });
+    }
+
+    const extension = attachment.file_name.split(".").pop()?.toLowerCase() ?? "";
+    if (!ALLOWED_EXTENSIONS.has(extension)) {
+      return NextResponse.json({ error: "Formato não suportado para processamento automático." }, { status: 400 });
     }
 
     // 2. Baixar o arquivo do Storage
@@ -75,8 +111,6 @@ export async function POST(req: NextRequest) {
     let errorMsg = null;
 
     // 3. Extrair texto baseado no tipo
-    const extension = attachment.file_name.split(".").pop()?.toLowerCase();
-
     try {
       if (extension === "docx") {
         extractedText = await extractTextFromDocx(buffer);

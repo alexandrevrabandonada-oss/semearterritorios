@@ -4,10 +4,10 @@ import { getRespondentTerritoryRelationLabel, getReviewStatusLabel, getSourceTyp
 import { summarizeOccupations } from "@/lib/action-pilot";
 import {
   buildTerritorialQualityMethodologyNote,
-  calculateRespondentTerritoryQuality,
   type RespondentTerritoryQualityMetrics,
   type TerritorialQualityMethodologyNote
 } from "@/lib/territorial-quality";
+import { calculateIndividualRespondentTerritoryQuality, getIndividualListeningRecords, isConversationCircleRecord } from "@/lib/listening-record-methodology";
 
 type ActionWithNeighborhood = Action & {
   neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
@@ -26,6 +26,8 @@ export type MonthlyReportData = {
   executiveSummary: string;
   totalActions: number;
   totalRecords: number;
+  conversationCircleReports: number;
+  individualListeningRecords: number;
   operationNeighborhoods: string[];
   respondentNeighborhoods: string[];
   respondentWithoutNeighborhood: number;
@@ -101,12 +103,14 @@ export function buildMonthlyReportData(month: string, actions: ActionWithNeighbo
   const respondentNeighborhoods = Array.from(new Set([
     ...records.map((item) => item.respondent_neighborhoods?.name).filter(Boolean)
   ] as string[])).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  const respondentWithoutNeighborhood = records.filter((item) => !item.respondent_neighborhood_id).length;
+  const individualRecords = getIndividualListeningRecords(records);
+  const conversationCircleReports = records.filter((item) => isConversationCircleRecord(item)).length;
+  const respondentWithoutNeighborhood = individualRecords.filter((item) => !item.respondent_neighborhood_id).length;
 
   const actionTypeCounts = countBy(actions, (item) => getActionTypeLabel(item.action_type));
   const actionTerritoryCounts = countBy(actions, (item) => item.neighborhoods?.name ?? "Território da ação não informado");
-  const respondentTerritoryCounts = countBy(records.filter((item) => Boolean(item.respondent_neighborhoods?.name)), (item) => item.respondent_neighborhoods?.name ?? "");
-  const territorialQuality = calculateRespondentTerritoryQuality(records.length, records.length - respondentWithoutNeighborhood);
+  const respondentTerritoryCounts = countBy(individualRecords.filter((item) => Boolean(item.respondent_neighborhoods?.name)), (item) => item.respondent_neighborhoods?.name ?? "");
+  const territorialQuality = calculateIndividualRespondentTerritoryQuality(records);
   const territorialMethodologyNote = buildTerritorialQualityMethodologyNote(territorialQuality);
   const topThemes = countThemes(records).slice(0, 8);
   const sourceTypeCounts = countBy(records, (item) => getSourceTypeLabel(item.source_type));
@@ -128,6 +132,8 @@ export function buildMonthlyReportData(month: string, actions: ActionWithNeighbo
     executiveSummary,
     totalActions: actions.length,
     totalRecords: records.length,
+    conversationCircleReports,
+    individualListeningRecords: individualRecords.length,
     operationNeighborhoods,
     respondentNeighborhoods,
     respondentWithoutNeighborhood,
@@ -162,7 +168,9 @@ export function buildMonthlyReportPlainText(report: MonthlyReportData, mode: Mon
     `Mês de referência: ${formatMonthLabel(report.month)}`,
     `Versão: ${mode === "internal" ? "interna" : "pública"}`,
     `Total de ações: ${report.totalActions}`,
-    `Total de escutas: ${report.totalRecords}`,
+    `Total de registros: ${report.totalRecords}`,
+    `Escutas individuais: ${report.individualListeningRecords}`,
+    `Relatos de roda: ${report.conversationCircleReports}`,
     `Cobertura territorial: ${report.territorialQuality.coveragePercent}% (${report.territorialQuality.qualityStatus})`,
     "",
     "Leitura executiva",
@@ -350,7 +358,7 @@ function buildActiveSearchSummary(
 ) {
   const sourceText = sourceTypeCounts.length > 0 ? formatCountList(sourceTypeCounts.slice(0, 3)) : "sem origem de escuta recorrente identificada";
   const actionText = actions.length > 0 ? formatCountList(countBy(actions, (item) => getActionTypeLabel(item.action_type)).slice(0, 3)) : "sem ações registradas";
-  return `Em ${formatMonthLabel(month)}, a busca ativa registrada reuniu ${formatPlural(actions.length, "ação", "ações")} e ${formatPlural(records.length, "escuta", "escutas")}. Na operação territorial, houve ação em ${formatPlural(operationNeighborhoods.length, "território", "territórios")}: ${operationNeighborhoods.join(", ") || "nenhum território da ação informado"}. Na escuta territorial, apareceram ${formatPlural(respondentNeighborhoods.length, "território de referência", "territórios de referência")}: ${respondentNeighborhoods.join(", ") || "nenhum território de referência informado"}. Escutas sem território de referência: ${respondentWithoutNeighborhood}. Os tipos de ação mais presentes foram ${actionText}, enquanto as origens de escuta mais frequentes foram ${sourceText}.`;
+  return `Em ${formatMonthLabel(month)}, a busca ativa registrada reuniu ${formatPlural(actions.length, "ação", "ações")} e ${formatPlural(records.length, "registro", "registros")} de escuta/roda. Na operação territorial, houve ação em ${formatPlural(operationNeighborhoods.length, "território", "territórios")}: ${operationNeighborhoods.join(", ") || "nenhum território da ação informado"}. Nas escutas individuais, apareceram ${formatPlural(respondentNeighborhoods.length, "território de referência", "territórios de referência")}: ${respondentNeighborhoods.join(", ") || "nenhum território de referência informado"}. Escutas individuais sem território de referência: ${respondentWithoutNeighborhood}. Os tipos de ação mais presentes foram ${actionText}, enquanto as origens de registro mais frequentes foram ${sourceText}.`;
 }
 
 function buildPedagogicalSummary(

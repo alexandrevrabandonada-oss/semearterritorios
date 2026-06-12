@@ -28,7 +28,8 @@ import {
   type ListeningRecordForPilot
 } from "@/lib/action-pilot";
 import { getActionTypeLabel } from "@/lib/actions";
-import { buildTerritorialQualityMethodologyNote, calculateRespondentTerritoryQuality } from "@/lib/territorial-quality";
+import { buildTerritorialQualityMethodologyNote } from "@/lib/territorial-quality";
+import { calculateIndividualRespondentTerritoryQuality } from "@/lib/listening-record-methodology";
 import type {
   ActionDebrief,
   DebriefStatus,
@@ -204,10 +205,7 @@ export function ActionDebriefPage({ actionId }: Props) {
   const generated = buildActionDebrief(loadedAction, records);
   const currentStatus = debrief?.status ?? "draft";
   const canApprove = profile?.role === "admin" || profile?.role === "coordenacao";
-  const respondentTerritoryMetrics = calculateRespondentTerritoryQuality(
-    records.length,
-    records.filter((record) => Boolean(record.respondent_neighborhood_id)).length
-  );
+  const respondentTerritoryMetrics = calculateIndividualRespondentTerritoryQuality(records);
   const respondentTerritoryNote = buildTerritorialQualityMethodologyNote(respondentTerritoryMetrics);
   const publicCautionText = respondentTerritoryMetrics.qualityStatus === "crítica"
     ? "Leitura territorial com cobertura critica. Esta devolutiva evita conclusoes fortes por bairro e prioriza analise agregada."
@@ -488,7 +486,7 @@ export function ActionDebriefPage({ actionId }: Props) {
           <aside className="space-y-5">
             <InfoPanel icon={<AlertTriangle className="h-5 w-5" />} title="Qualidade territorial da devolutiva">
               <div className={`rounded-xl border px-3 py-2.5 text-sm font-medium ${respondentTerritoryNote.status === "boa" ? "border-green-200 bg-green-50 text-green-900" : respondentTerritoryNote.status === "atenção" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-red-200 bg-red-50 text-red-900"}`}>
-                <p><strong>Cobertura territorial:</strong> {respondentTerritoryMetrics.coveragePercent}% ({respondentTerritoryMetrics.recordsWithRespondentTerritory}/{respondentTerritoryMetrics.totalRecords})</p>
+                <p><strong>Cobertura territorial das escutas individuais:</strong> {respondentTerritoryMetrics.coveragePercent}% ({respondentTerritoryMetrics.recordsWithRespondentTerritory}/{respondentTerritoryMetrics.totalRecords})</p>
                 <p className="mt-1">{respondentTerritoryNote.shortText}</p>
                 {respondentTerritoryNote.status !== "boa" ? (
                   <>

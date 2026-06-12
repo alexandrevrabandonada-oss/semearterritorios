@@ -10,9 +10,9 @@ import type {
   Neighborhood
 } from "@/lib/database.types";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { calculateRespondentTerritoryQuality, buildTerritorialQualityMethodologyNote } from "@/lib/territorial-quality";
 import { getActionPilotMetrics, summarizeOccupations, hasPossibleSensitiveData } from "@/lib/action-pilot";
 import { normalizePlaceKey } from "@/lib/normalized-places-quality";
+import { calculateIndividualRespondentTerritoryQuality, getIndividualListeningRecords } from "@/lib/listening-record-methodology";
 
 function isPlaceSensitive(place: string): boolean {
   const sensitivePatterns = [
@@ -222,6 +222,7 @@ export async function buildActionAnalytics(
 ): Promise<ActionAnalytics> {
   // 1. Basic counts
   const totalRecords = records.length;
+  const individualRecords = getIndividualListeningRecords(records);
   const reviewedCount = records.filter((r) => r.review_status === "reviewed").length;
   const draftCount = records.filter((r) => r.review_status === "draft").length;
   const sensitiveCount = records.filter((r) => hasPossibleSensitiveData(r)).length;
@@ -231,10 +232,7 @@ export async function buildActionAnalytics(
   const occupationSummaryRaw = summarizeOccupations(records);
 
   // 3. Territorial quality
-  const territorialQuality = calculateRespondentTerritoryQuality(
-    totalRecords,
-    records.filter((r) => Boolean(r.respondent_neighborhood_id)).length
-  );
+  const territorialQuality = calculateIndividualRespondentTerritoryQuality(records);
 
   // 4. Theme ranking
   const themeRanking: ThemeRanking[] = pilotMetrics.topThemes.map((item, idx) => ({
@@ -429,9 +427,9 @@ export async function buildActionAnalytics(
     },
 
     territorialQuality: {
-      totalRecords,
-      recordsWithTerritory: records.filter((r) => Boolean(r.respondent_neighborhood_id)).length,
-      recordsWithoutTerritory: records.filter((r) => !r.respondent_neighborhood_id).length,
+      totalRecords: individualRecords.length,
+      recordsWithTerritory: individualRecords.filter((r) => Boolean(r.respondent_neighborhood_id)).length,
+      recordsWithoutTerritory: individualRecords.filter((r) => !r.respondent_neighborhood_id).length,
       coveragePercent: territorialQuality.coveragePercent,
       status: territorialQuality.qualityStatus,
       recommendation: `Cobertura ${territorialQuality.qualityStatus}. ${

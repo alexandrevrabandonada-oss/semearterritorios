@@ -14,6 +14,9 @@ export const maxDuration = 60;
 
 type ExtractionStatus = "extracted" | "failed" | "unsupported" | "needs_manual_transcription";
 
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const ALLOWED_EXTENSIONS = new Set(["docx", "pdf", "txt", "md"]);
+
 function getRequiredString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value : "";
@@ -72,6 +75,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Arquivo não informado." }, { status: 400 });
     }
 
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return NextResponse.json({ error: "Arquivo muito grande. Envie arquivos de até 10 MB." }, { status: 413 });
+    }
+
     const weekStart = getRequiredString(formData, "week_start");
     const weekEnd = getRequiredString(formData, "week_end");
     const teamMemberId = getRequiredString(formData, "team_member_id");
@@ -97,8 +104,16 @@ export async function POST(req: NextRequest) {
     }
 
     const currentProfile = profileResult.data;
+    if (currentProfile.role === "equipe" && selectedMemberResult.data.profile_id !== user.id) {
+      return NextResponse.json({ error: "Usuário de equipe só pode importar relatório para o próprio membro vinculado." }, { status: 403 });
+    }
+
     const profileId = currentProfile.role === "equipe" ? user.id : selectedMemberResult.data.profile_id ?? null;
     const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+    if (!ALLOWED_EXTENSIONS.has(extension)) {
+      return NextResponse.json({ error: "Formato não suportado. Use DOCX, PDF, TXT ou MD." }, { status: 400 });
+    }
+
     const source: "uploaded_doc" | "uploaded_pdf" = extension === "pdf" ? "uploaded_pdf" : "uploaded_doc";
 
     const reportResult = await supabase

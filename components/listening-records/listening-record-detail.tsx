@@ -17,15 +17,17 @@ import type {
   Theme
 } from "@/lib/database.types";
 import { getReviewStatusLabel, getSourceTypeLabel } from "@/lib/listening-records";
+import { isConversationCircleRecord } from "@/lib/listening-record-methodology";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { getOfficialNeighborhoodsForSelect } from "@/lib/neighborhoods";
 import { hasPossibleSensitiveOccupation } from "@/lib/action-pilot";
 
 type RecordWithRelations = ListeningRecord & {
-  actions: Pick<Action, "id" | "title"> | null;
+  actions: Pick<Action, "id" | "title" | "action_type"> | null;
   neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
   interviewer_team_member: Pick<TeamMember, "id" | "display_name"> | null;
   listening_record_themes: Array<{ themes: Pick<Theme, "id" | "name"> | null }>;
+  listening_record_mentioned_neighborhoods: Array<{ neighborhoods: Pick<Neighborhood, "id" | "name"> | null }>;
   places_mentioned: Array<Pick<PlaceMentioned, "id" | "place_name" | "place_type" | "notes" | "neighborhood_id" | "normalized_place_id"> & {
     normalized_places?: Pick<NormalizedPlace, "id" | "normalized_name" | "visibility" | "place_type"> | null;
   }>;
@@ -50,7 +52,7 @@ export function ListeningRecordDetail({ recordId }: { recordId: string }) {
     const [result, neighborhoodsResult] = await Promise.all([
       supabase
         .from("listening_records")
-        .select("*, actions:action_id(id, title), neighborhoods:neighborhood_id(id, name), interviewer_team_member:interviewer_team_member_id(id, display_name), listening_record_themes(themes:theme_id(id, name)), places_mentioned(id, place_name, place_type, notes, neighborhood_id, normalized_place_id, normalized_places:normalized_place_id(id, normalized_name, visibility, place_type))")
+        .select("*, actions:action_id(id, title, action_type), neighborhoods:neighborhood_id(id, name), interviewer_team_member:interviewer_team_member_id(id, display_name), listening_record_themes(themes:theme_id(id, name)), listening_record_mentioned_neighborhoods(neighborhoods:neighborhood_id(id, name)), places_mentioned(id, place_name, place_type, notes, neighborhood_id, normalized_place_id, normalized_places:normalized_place_id(id, normalized_name, visibility, place_type))")
         .eq("id", recordId)
         .single(),
       supabase.from("neighborhoods").select("*").eq("status", "oficial").order("name", { ascending: true })
@@ -87,6 +89,11 @@ export function ListeningRecordDetail({ recordId }: { recordId: string }) {
   if (editing) return <ListeningRecordForm mode="edit" recordId={recordId} />;
   if (loading) return <section className="rounded-[2rem] bg-white/72 p-8 shadow-soft">Carregando escuta...</section>;
   if (error || !record) return <section className="rounded-[2rem] border border-red-200 bg-red-50 p-8 text-sm text-red-800">{error ?? "Escuta não encontrada."}</section>;
+  const isConversationCircle = isConversationCircleRecord(record);
+  const mentionedNeighborhoods = record.listening_record_mentioned_neighborhoods
+    .map((item) => item.neighborhoods?.name)
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <section className="pb-10">
@@ -104,7 +111,7 @@ export function ListeningRecordDetail({ recordId }: { recordId: string }) {
           <span className="rounded-full bg-semear-yellow/35 px-3 py-1 text-xs font-semibold text-semear-green">{getReviewStatusLabel(record.review_status)}</span>
           <span className="rounded-full bg-semear-offwhite px-3 py-1 text-xs font-semibold text-stone-600">{new Date(`${record.date}T00:00:00`).toLocaleDateString("pt-BR")}</span>
         </div>
-        <h2 className="mt-5 text-3xl font-semibold tracking-tight text-semear-green">Escuta registrada</h2>
+        <h2 className="mt-5 text-3xl font-semibold tracking-tight text-semear-green">{isConversationCircle ? "Relato de roda registrado" : "Escuta registrada"}</h2>
 
         {hasPossibleSensitiveOccupation(record.respondent_occupation) ? (
           <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
@@ -113,7 +120,7 @@ export function ListeningRecordDetail({ recordId }: { recordId: string }) {
         ) : null}
 
         <section className="mt-8 rounded-[1.5rem] border-2 border-semear-green/30 bg-semear-green-soft/70 p-5">
-          <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-semear-green">Fala original / síntese livre</h3>
+          <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-semear-green">{isConversationCircle ? "Relato unificado da roda" : "Fala original / síntese livre"}</h3>
           <p className="mt-4 whitespace-pre-wrap text-base leading-8 text-stone-800">{record.free_speech_text}</p>
         </section>
 
@@ -121,13 +128,14 @@ export function ListeningRecordDetail({ recordId }: { recordId: string }) {
           <Info title="Ação" value={record.actions?.title} />
           <Info title="Bairro/Território" value={record.neighborhoods?.name} />
           <Info title="Entrevistador" value={record.interviewer_team_member?.display_name ?? record.interviewer_name} />
-          <Info title="Faixa etária aproximada" value={record.approximate_age_range} />
-          <Info title="Palavras usadas" value={record.words_used} />
-          <Info title="Lugares citados" value={record.places_mentioned_text} />
-          <Info title="Ocupação / atividade principal (opcional)" value={record.respondent_occupation} />
-          <Info title="Prioridade apontada" value={record.priority_mentioned} />
+          {!isConversationCircle ? <Info title="Faixa etária aproximada" value={record.approximate_age_range} /> : null}
+          <Info title={isConversationCircle ? "Palavras que chamaram atenção" : "Palavras usadas"} value={record.words_used} />
+          {isConversationCircle ? <Info title="Bairros citados" value={mentionedNeighborhoods} /> : null}
+          <Info title={isConversationCircle ? "Outros lugares citados" : "Lugares citados"} value={record.places_mentioned_text} />
+          {!isConversationCircle ? <Info title="Ocupação / atividade principal (opcional)" value={record.respondent_occupation} /> : null}
+          <Info title={isConversationCircle ? "Prioridades percebidas na roda" : "Prioridade apontada"} value={record.priority_mentioned} />
           <Info title="Resumo da equipe" value={record.team_summary} />
-          <Info title="Observações inesperadas" value={record.unexpected_notes} />
+          <Info title={isConversationCircle ? "O que chamou atenção do entrevistador" : "Observações inesperadas"} value={record.unexpected_notes} />
         </div>
 
         <section className="mt-6 rounded-[1.5rem] border border-dashed border-semear-green/25 bg-semear-offwhite p-5">
@@ -150,7 +158,7 @@ export function ListeningRecordDetail({ recordId }: { recordId: string }) {
           <TerritorialReviewPanel record={record} neighborhoods={neighborhoods} onSaved={() => void load()} />
         </div>
 
-        <div className="mt-6">
+        {!isConversationCircle ? <div className="mt-6">
           <PublicQuoteCandidatePanel
             record={{
               id: record.id,
@@ -159,7 +167,11 @@ export function ListeningRecordDetail({ recordId }: { recordId: string }) {
               team_summary: record.team_summary
             }}
           />
-        </div>
+        </div> : (
+          <div className="mt-6 rounded-[1.5rem] border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">
+            Relato de roda não entra automaticamente como fala pública individual. Se houver trecho representativo, extraia e sanitize manualmente no fluxo editorial.
+          </div>
+        )}
       </article>
     </section>
   );

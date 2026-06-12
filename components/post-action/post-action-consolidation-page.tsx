@@ -15,11 +15,11 @@ import type { ActionClosure, ActionDebrief, Neighborhood, TeamMember } from "@/l
 import {
   buildTerritorialQualityByNeighborhood,
   buildTerritorialQualityMethodologyNote,
-  buildTerritorialQualityReport,
-  calculateRespondentTerritoryQuality
+  buildTerritorialQualityReport
 } from "@/lib/territorial-quality";
 import { getTerritorialQualityMetrics, getTerritorialQualityRecommendation, type TerritorialReviewRecord } from "@/lib/territorial-review";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { calculateIndividualRespondentTerritoryQuality } from "@/lib/listening-record-methodology";
 
 export function PostActionConsolidationPage() {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
@@ -86,10 +86,7 @@ export function PostActionConsolidationPage() {
   const territorialMetrics = getTerritorialQualityMetrics(actionRecords);
   const territorialRecommendation = getTerritorialQualityRecommendation(actionRecords);
   const territoryQuality = buildTerritorialQualityByNeighborhood(neighborhoods, actionRecords).filter((item) => item.totalRecords > 0);
-  const respondentCoverageMetrics = calculateRespondentTerritoryQuality(
-    actionRecords.length,
-    actionRecords.filter((record) => Boolean(record.respondent_neighborhood_id)).length
-  );
+  const respondentCoverageMetrics = calculateIndividualRespondentTerritoryQuality(actionRecords);
   const respondentCoverageNote = buildTerritorialQualityMethodologyNote(respondentCoverageMetrics);
   const readyTerritories = territoryQuality.filter((item) => item.recommendation === "bom para mapa interno").length;
   const blockedTerritories = territoryQuality.filter((item) => item.recommendation === "bloqueado por sensível").length;

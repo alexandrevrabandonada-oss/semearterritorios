@@ -238,7 +238,9 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard icon={<ClipboardList className="h-5 w-5" />} label="Ações" value={report.totalActions} />
-        <MetricCard icon={<MessageSquareText className="h-5 w-5" />} label="Escutas" value={report.totalRecords} />
+        <MetricCard icon={<MessageSquareText className="h-5 w-5" />} label="Registros" value={report.totalRecords} />
+        <MetricCard icon={<MessageSquareText className="h-5 w-5" />} label="Escutas individuais" value={report.individualListeningRecords} />
+        <MetricCard icon={<MessageSquareText className="h-5 w-5" />} label="Relatos de roda" value={report.conversationCircleReports} />
         <MetricCard icon={<MapPinned className="h-5 w-5" />} label="Bairros onde houve ação" value={report.operationNeighborhoods.length} />
         <MetricCard icon={<ShieldCheck className="h-5 w-5" />} label="Cobertura territorial" value={`${report.territorialQuality.coveragePercent}%`} />
         {reportMode === "internal" ? (
@@ -268,13 +270,13 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
         </Panel>
 
         <Panel title="Escuta territorial" icon={<MessageSquareText className="h-5 w-5" />}>
-          <p className="text-sm leading-6 text-stone-700">De onde vêm/as quais territórios se referem os entrevistados.</p>
+          <p className="text-sm leading-6 text-stone-700">De onde vêm/as quais territórios se referem os entrevistados nas escutas individuais. Relatos de roda não entram como pessoa individual.</p>
           <div className="mt-3 space-y-2">
             {report.respondentTerritoryCounts.length > 0 ? report.respondentTerritoryCounts.map((item) => (
               <BarRow item={item} max={Math.max(...report.respondentTerritoryCounts.map((count) => count.count), 1)} key={item.name} suffix={item.count === 1 ? "escuta" : "escutas"} />
             )) : <PedagogicEmpty text="Nenhum território de referência informado no mês." />}
             <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              Escutas sem território de referência: {report.respondentWithoutNeighborhood}
+              Escutas individuais sem território de referência: {report.respondentWithoutNeighborhood}
             </p>
           </div>
         </Panel>
@@ -284,10 +286,10 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
       <Panel title="Nota metodológica territorial" icon={<AlertCircle className="h-5 w-5" />}>
         <div className={`rounded-2xl border p-4 text-sm leading-6 ${report.territorialMethodologyNote.status === "boa" ? "border-green-200 bg-green-50 text-green-900" : report.territorialMethodologyNote.status === "atenção" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-red-200 bg-red-50 text-red-900"}`}>
           <p><strong>Status:</strong> {report.territorialMethodologyNote.status}</p>
-          <p><strong>Cobertura territorial:</strong> {report.territorialQuality.coveragePercent}%</p>
-          <p><strong>Total de escutas no período:</strong> {report.territorialQuality.totalRecords}</p>
-          <p><strong>Escutas com território de referência:</strong> {report.territorialQuality.recordsWithRespondentTerritory}</p>
-          <p><strong>Escutas sem território de referência:</strong> {report.territorialQuality.recordsWithoutRespondentTerritory}</p>
+          <p><strong>Cobertura territorial das escutas individuais:</strong> {report.territorialQuality.coveragePercent}%</p>
+          <p><strong>Total de escutas individuais no período:</strong> {report.territorialQuality.totalRecords}</p>
+          <p><strong>Escutas individuais com território de referência:</strong> {report.territorialQuality.recordsWithRespondentTerritory}</p>
+          <p><strong>Escutas individuais sem território de referência:</strong> {report.territorialQuality.recordsWithoutRespondentTerritory}</p>
           <p className="mt-2">{report.territorialMethodologyNote.fullText}</p>
           <p className="mt-2"><strong>Recomendação operacional:</strong> {report.territorialMethodologyNote.operationalRecommendation}</p>
           {(report.territorialMethodologyNote.status === "atenção" || report.territorialMethodologyNote.status === "crítica") ? (
