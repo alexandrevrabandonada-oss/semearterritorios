@@ -280,9 +280,17 @@ export function TeamMembersPage() {
               <span className="text-sm font-bold text-semear-green">Vincular profile (opcional)</span>
               <select className="mt-2 min-h-11 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 text-sm font-bold text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green" value={formValues.profile_id} onChange={(e) => updateField("profile_id", e.target.value)}>
                 <option value="">Sem vínculo</option>
-                {profiles.map((profile) => (
-                  <option key={profile.id} value={profile.id}>{profile.full_name ?? profile.id} {profile.role ? `(${profile.role})` : ""}</option>
-                ))}
+                {profiles
+                  .filter((profile) => {
+                    const isLinkedToAnother = members.some(
+                      (member) => member.profile_id === profile.id && member.id !== editingId
+                    );
+                    return !isLinkedToAnother;
+                  })
+                  .map((profile) => (
+                    <option key={profile.id} value={profile.id}>{profile.full_name ?? profile.id} {profile.role ? `(${profile.role})` : ""}</option>
+                  ))
+                }
               </select>
             </label>
 
