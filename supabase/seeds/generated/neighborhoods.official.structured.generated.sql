@@ -2,7 +2,6 @@
 -- Fonte: PDFs oficiais conferidos em reports/neighborhoods-official-final-conference-report.md.
 -- Nao apaga bairros existentes, nao remove vinculos e nao geocodifica.
 -- Exige a migration de metadados oficiais em public.neighborhoods.
--- Usa on conflict (name), que é a constraint única real do schema atual.
 
 with official(name, city, region, sector, official_code, aliases, notes, status) as (
   values
@@ -57,17 +56,44 @@ with official(name, city, region, sector, official_code, aliases, notes, status)
   ('Rústico', 'Volta Redonda', 'Setor Sudoeste', 'SSO', 25, null, 'Extraído de mapa_bairros_setores.pdf e mapa_tabela_bairros_setores.pdf; conferir visualmente antes de aplicar no banco.', 'oficial'),
   ('Santa Inez', 'Volta Redonda', 'Setor Sudoeste', 'SSO', 32, null, 'Grafia lida no PDF como Santa Inez; conferir se a grafia oficial atual mantém z ou usa s.', 'oficial'),
   ('São Cristóvão', 'Volta Redonda', 'Setor Sudoeste', 'SSO', 27, null, 'Extraído de mapa_bairros_setores.pdf e mapa_tabela_bairros_setores.pdf; conferir visualmente antes de aplicar no banco.', 'oficial'),
-  ('São Lucas', 'Volta Redonda', 'Setor Sudoeste', 'SSO', 30, null, 'Extraído de mapa_bairros_setores.pdf e mapa_tabela_bairros_setores.pdf; conferir visualmente antes de aplicar no banco.', 'oficial')
+  ('São Lucas', 'Volta Redonda', 'Setor Sudoeste', 'SSO', 30, null, 'Extraído de mapa_bairros_setores.pdf e mapa_tabela_bairros_setores.pdf; conferir visualmente antes de aplicar no banco.', 'oficial'),
+  ('Fazendinha', 'Volta Redonda', 'Setor Centro Norte', 'SCN', 53, null, 'Extraído de solicitação do usuário.', 'oficial'),
+  ('Nova Esperança', 'Volta Redonda', 'Setor Centro Norte', 'SCN', 54, null, 'Extraído de solicitação do usuário.', 'oficial')
+),
+updated_by_code as (
+  update public.neighborhoods n
+  set name = o.name,
+      city = o.city,
+      region = o.region,
+      sector = o.sector,
+      official_code = o.official_code,
+      aliases = o.aliases,
+      notes = o.notes,
+      status = o.status,
+      updated_at = now()
+  from official o
+  where n.official_code = o.official_code
+  returning o.official_code
+),
+updated_by_name as (
+  update public.neighborhoods n
+  set city = o.city,
+      region = o.region,
+      sector = o.sector,
+      official_code = o.official_code,
+      aliases = o.aliases,
+      notes = o.notes,
+      status = o.status,
+      updated_at = now()
+  from official o
+  where lower(n.name) = lower(o.name)
+    and coalesce(n.city, o.city) = o.city
+    and not exists (select 1 from updated_by_code c where c.official_code = o.official_code)
+  returning o.official_code
 )
 insert into public.neighborhoods (name, city, region, sector, official_code, aliases, notes, status)
-select name, city, region, sector, official_code, aliases, notes, status
-from official
-on conflict (name) do update
-set city = excluded.city,
-    region = excluded.region,
-    sector = excluded.sector,
-    official_code = excluded.official_code,
-    aliases = excluded.aliases,
-    notes = excluded.notes,
-    status = excluded.status,
-    updated_at = now();
+select o.name, o.city, o.region, o.sector, o.official_code, o.aliases, o.notes, o.status
+from official o
+where not exists (select 1 from updated_by_code c where c.official_code = o.official_code)
+  and not exists (select 1 from updated_by_name n where n.official_code = o.official_code)
+  and not exists (select 1 from public.neighborhoods existing where lower(existing.name) = lower(o.name) and coalesce(existing.city, o.city) = o.city);

@@ -272,11 +272,13 @@ function normalizeKey(value: string) {
 
 function looksLikePersonalAddress(value: string) {
   const key = normalizeKey(value);
+  if (key === "casa de pedra") return false;
   return /\b(rua|avenida|av|travessa|alameda|estrada|rodovia|casa|lote|quadra)\b/.test(key) || /\b\d{1,5}\b/.test(key);
 }
 
 function looksSensitiveTerritory(value: string) {
   const key = normalizeKey(value);
+  if (key === "casa de pedra") return false;
   return /\b(casa de|familia|paciente|pessoa|morador|residencia|abrigo sigiloso)\b/.test(key);
 }
 
