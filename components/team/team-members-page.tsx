@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { Profile, TeamMember } from "@/lib/database.types";
-import { CheckCircle2, Pencil, Plus, UsersRound } from "lucide-react";
+import { CheckCircle2, Pencil, Plus, Search, UsersRound } from "lucide-react";
 
 type TeamMemberFormValues = {
   display_name: string;
@@ -33,6 +33,7 @@ export function TeamMembersPage() {
   const [profiles, setProfiles] = useState<Pick<Profile, "id" | "full_name" | "role">[]>([]);
   const [currentProfile, setCurrentProfile] = useState<Pick<Profile, "id" | "role"> | null>(null);
   const [filter, setFilter] = useState<"ativos" | "inativos" | "todos">("ativos");
+  const [searchTerm, setSearchTerm] = useState("");
   const [formValues, setFormValues] = useState<TeamMemberFormValues>(defaultFormValues);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -83,9 +84,13 @@ export function TeamMembersPage() {
   }, [supabase]);
 
   const filteredMembers = members.filter((member) => {
-    if (filter === "ativos") return member.active;
-    if (filter === "inativos") return !member.active;
-    return true;
+    const matchesSearch =
+      member.display_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (member.email ?? "").toLowerCase().includes(searchTerm.toLowerCase());
+
+    if (filter === "ativos") return member.active && matchesSearch;
+    if (filter === "inativos") return !member.active && matchesSearch;
+    return matchesSearch;
   });
 
   function resetForm() {
@@ -114,6 +119,26 @@ export function TeamMembersPage() {
     setFormValues((current) => ({ ...current, [field]: value }));
   }
 
+  function handleProfileChange(profileId: string) {
+    updateField("profile_id", profileId);
+    if (profileId) {
+      const selectedProfile = profiles.find((p) => p.id === profileId);
+      if (selectedProfile) {
+        if (!formValues.display_name.trim()) {
+          updateField("display_name", selectedProfile.full_name ?? "");
+        }
+        if (!formValues.role_label.trim() && selectedProfile.role) {
+          const roleLabels: Record<string, string> = {
+            admin: "Administrador",
+            coordenacao: "Coordenação",
+            equipe: "Equipe"
+          };
+          updateField("role_label", roleLabels[selectedProfile.role] ?? "");
+        }
+      }
+    }
+  }
+
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -126,6 +151,14 @@ export function TeamMembersPage() {
 
     if (!formValues.display_name.trim()) {
       setError("Informe o nome exibido.");
+      return;
+    }
+
+    const emailConflict = members.find(
+      (m) => formValues.email.trim() && m.email?.toLowerCase() === formValues.email.trim().toLowerCase() && m.id !== editingId
+    );
+    if (emailConflict) {
+      setError(`O e-mail "${formValues.email}" já está em uso pelo membro "${emailConflict.display_name}".`);
       return;
     }
 
@@ -208,6 +241,17 @@ export function TeamMembersPage() {
             </div>
           </div>
 
+          <div className="mb-4 relative">
+            <input
+              type="text"
+              placeholder="Buscar por nome ou e-mail..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="min-h-11 w-full rounded-2xl border border-stone-200 bg-white/95 pl-10 pr-4 text-sm font-semibold text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green"
+            />
+            <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-stone-400" />
+          </div>
+
           <div className="space-y-3">
             {filteredMembers.map((member) => {
               const isEditing = editingId === member.id;
@@ -278,7 +322,7 @@ export function TeamMembersPage() {
 
             <label className="mt-3 block">
               <span className="text-sm font-bold text-semear-green">Vincular profile (opcional)</span>
-              <select className="mt-2 min-h-11 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 text-sm font-bold text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green" value={formValues.profile_id} onChange={(e) => updateField("profile_id", e.target.value)}>
+              <select className="mt-2 min-h-11 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 text-sm font-bold text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green" value={formValues.profile_id} onChange={(e) => handleProfileChange(e.target.value)}>
                 <option value="">Sem vínculo</option>
                 {profiles
                   .filter((profile) => {
