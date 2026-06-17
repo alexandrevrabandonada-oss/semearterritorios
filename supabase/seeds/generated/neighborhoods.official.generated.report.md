@@ -1,7 +1,7 @@
 # Relatorio de validacao da lista oficial
 
 - Resultado: ok
-- Linhas lidas: 54
+- Linhas lidas: 55
 - Linhas com erro: 0
 
 ## Erros
@@ -64,3 +64,4 @@
 - São Lucas | Volta Redonda | oficial
 - Fazendinha | Volta Redonda | oficial
 - Nova Esperança | Volta Redonda | oficial
+- São Carlos | Volta Redonda | oficial

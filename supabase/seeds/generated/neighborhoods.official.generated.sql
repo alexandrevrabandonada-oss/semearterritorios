@@ -55,7 +55,8 @@ values
   ('São Cristóvão', 'Volta Redonda', 'Regiao: Setor Sudoeste | Setor: SSO | Codigo oficial: 27 | Notas: Extraído de mapa_bairros_setores.pdf e mapa_tabela_bairros_setores.pdf; conferir visualmente antes de aplicar no banco. | Status: oficial'),
   ('São Lucas', 'Volta Redonda', 'Regiao: Setor Sudoeste | Setor: SSO | Codigo oficial: 30 | Notas: Extraído de mapa_bairros_setores.pdf e mapa_tabela_bairros_setores.pdf; conferir visualmente antes de aplicar no banco. | Status: oficial'),
   ('Fazendinha', 'Volta Redonda', 'Regiao: Setor Centro Norte | Setor: SCN | Codigo oficial: 53 | Notas: Extraído de solicitação do usuário. | Status: oficial'),
-  ('Nova Esperança', 'Volta Redonda', 'Regiao: Setor Centro Norte | Setor: SCN | Codigo oficial: 54 | Notas: Extraído de solicitação do usuário. | Status: oficial')
+  ('Nova Esperança', 'Volta Redonda', 'Regiao: Setor Centro Norte | Setor: SCN | Codigo oficial: 54 | Notas: Extraído de solicitação do usuário. | Status: oficial'),
+  ('São Carlos', 'Volta Redonda', 'Regiao: Setor Sudoeste | Setor: SSO | Codigo oficial: 55 | Notas: Extraído de solicitação do usuário. | Status: oficial')
 on conflict (name) do update
 set
   city = excluded.city,

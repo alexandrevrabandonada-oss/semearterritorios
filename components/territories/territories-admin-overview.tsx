@@ -143,7 +143,7 @@ export function TerritoriesAdminOverview() {
             Valide a lista oficial antes de ampliar o uso. Territórios servem para agregação territorial, não para localizar pessoas, casas ou pontos individuais.
           </p>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">
-            A lista oficial tem 54 bairros no CSV conferido. Após aplicar as migrations, setor, região e código oficial ficam em campos estruturados para relatórios e futuro mapa interno.
+            A lista oficial tem 55 bairros no CSV conferido. Após aplicar as migrations, setor, região e código oficial ficam em campos estruturados para relatórios e futuro mapa interno.
           </p>
         </div>
       </div>

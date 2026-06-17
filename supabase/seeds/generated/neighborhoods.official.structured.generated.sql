@@ -58,7 +58,8 @@ with official(name, city, region, sector, official_code, aliases, notes, status)
   ('São Cristóvão', 'Volta Redonda', 'Setor Sudoeste', 'SSO', 27, null, 'Extraído de mapa_bairros_setores.pdf e mapa_tabela_bairros_setores.pdf; conferir visualmente antes de aplicar no banco.', 'oficial'),
   ('São Lucas', 'Volta Redonda', 'Setor Sudoeste', 'SSO', 30, null, 'Extraído de mapa_bairros_setores.pdf e mapa_tabela_bairros_setores.pdf; conferir visualmente antes de aplicar no banco.', 'oficial'),
   ('Fazendinha', 'Volta Redonda', 'Setor Centro Norte', 'SCN', 53, null, 'Extraído de solicitação do usuário.', 'oficial'),
-  ('Nova Esperança', 'Volta Redonda', 'Setor Centro Norte', 'SCN', 54, null, 'Extraído de solicitação do usuário.', 'oficial')
+  ('Nova Esperança', 'Volta Redonda', 'Setor Centro Norte', 'SCN', 54, null, 'Extraído de solicitação do usuário.', 'oficial'),
+  ('São Carlos', 'Volta Redonda', 'Setor Sudoeste', 'SSO', 55, null, 'Extraído de solicitação do usuário.', 'oficial')
 ),
 updated_by_code as (
   update public.neighborhoods n

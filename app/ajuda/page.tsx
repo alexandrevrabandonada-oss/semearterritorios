@@ -103,9 +103,9 @@ const firstRealActionReady = [
 
 const officialNeighborhoodChecklist = [
   "lista oficial aplicada no banco remoto/homologação",
-  "54 bairros oficiais validados",
+  "55 bairros oficiais validados",
   "setores preservados em campo próprio",
-  "códigos oficiais de 1 a 54 preservados",
+  "códigos oficiais de 1 a 55 preservados",
   "bairros usados como agregação territorial",
   "sem endereço pessoal",
   "Jardim Suiça e Santa Inez seguem com grafia pendente registrada"
@@ -652,9 +652,9 @@ export default function AjudaPage() {
         <Panel className="mt-6" icon={<ShieldCheck className="h-5 w-5" />} title="Territórios oficiais e provisórios">
           <div className="grid gap-3 md:grid-cols-2">
             <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4">
-              <p className="font-semibold text-semear-green">54 bairros oficiais</p>
+              <p className="font-semibold text-semear-green">55 bairros oficiais</p>
               <p className="mt-2 text-sm leading-6 text-stone-600">
-                O sistema possui 54 bairros oficiais aplicados, extraídos da lista oficial do município de Volta Redonda. Apenas esses bairros aparecem nos formulários operacionais de ações e escutas.
+                O sistema possui 55 bairros oficiais aplicados, extraídos da lista oficial do município de Volta Redonda. Apenas esses bairros aparecem nos formulários operacionais de ações e escutas.
               </p>
             </div>
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
