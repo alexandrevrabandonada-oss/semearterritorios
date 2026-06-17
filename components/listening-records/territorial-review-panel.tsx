@@ -14,6 +14,7 @@ import {
 import { hasPossibleSensitiveData } from "@/lib/action-pilot";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { formatNeighborhoodOption } from "@/lib/neighborhoods";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 type Props = {
   record: TerritorialReviewRecord;
@@ -243,10 +244,21 @@ export function TerritorialReviewPanel({ record, neighborhoods, onSaved }: Props
           <Select label="Tipo" value={placeType} onChange={setPlaceType}>
             {placeTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </Select>
-          <Select label="Bairro relacionado" value={placeNeighborhoodId} onChange={setPlaceNeighborhoodId}>
-            <option value="">Usar bairro da escuta</option>
-            {neighborhoods.map((neighborhood) => <option key={neighborhood.id} value={neighborhood.id}>{formatNeighborhoodOption(neighborhood)}</option>)}
-          </Select>
+          <label className="block">
+            <span className="text-sm font-semibold text-semear-green">Bairro relacionado</span>
+            <div className="mt-2">
+              <SearchableSelect
+                options={[
+                  { value: "", label: "Usar bairro da escuta" },
+                  ...neighborhoods.map((n) => ({ value: n.id, label: formatNeighborhoodOption(n) }))
+                ]}
+                value={placeNeighborhoodId}
+                onChange={setPlaceNeighborhoodId}
+                placeholder="Usar bairro da escuta"
+                searchPlaceholder="Buscar bairro..."
+              />
+            </div>
+          </label>
           <Input label="Nota do lugar" value={placeNotes} onChange={setPlaceNotes} />
         </div>
         <p className="mt-3 text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">

@@ -17,6 +17,7 @@ import type {
 import { actionStatusOptions, actionTypeOptions } from "@/lib/actions";
 import { formatNeighborhoodOption, getOfficialNeighborhoodsForSelect } from "@/lib/neighborhoods";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { formatDateTimeLocalInput, getActionScheduleLabel, getEventAutoType, getSuggestedActionEventEnd, getSuggestedActionEventStart } from "@/lib/team-calendar";
 
 type ActionFormMode = "create" | "edit";
@@ -474,16 +475,18 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
 
           <label className="block">
             <span className="text-xs font-bold uppercase tracking-[0.15em] text-stone-500">Bairro/Território</span>
-            <select
-              className="mt-2 min-h-12 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 text-sm font-bold text-stone-750 outline-none shadow-premium-sm transition-all duration-200 focus:border-semear-green focus:ring-1 focus:ring-semear-green"
-              onChange={(event) => updateField("neighborhood_id", event.target.value)}
-              value={values.neighborhood_id}
-            >
-              <option value="">Sem bairro definido</option>
-              {neighborhoods.map((neighborhood) => (
-                <option key={neighborhood.id} value={neighborhood.id}>{formatNeighborhoodOption(neighborhood)}</option>
-              ))}
-            </select>
+            <div className="mt-2">
+              <SearchableSelect
+                options={[
+                  { value: "", label: "Sem bairro definido" },
+                  ...neighborhoods.map((n) => ({ value: n.id, label: formatNeighborhoodOption(n) }))
+                ]}
+                value={values.neighborhood_id}
+                onChange={(val) => updateField("neighborhood_id", val)}
+                placeholder="Sem bairro definido"
+                searchPlaceholder="Buscar bairro..."
+              />
+            </div>
             <p className="mt-1.5 text-[10px] font-semibold text-stone-400">São exibidos apenas bairros oficiais validados. Territórios provisórios ficam disponíveis apenas na área administrativa.</p>
           </label>
 

@@ -9,6 +9,7 @@ import { hasPossibleSensitiveData } from "@/lib/action-pilot";
 import { isSensitivePlace, placeTypeOptions } from "@/lib/territorial-review";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { formatNeighborhoodOption, sortNeighborhoodsBySectorAndName } from "@/lib/neighborhoods";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 type RecordLite = Pick<ListeningRecord, "id" | "action_id" | "neighborhood_id" | "free_speech_text" | "team_summary" | "places_mentioned_text" | "territorial_review_status">;
 
@@ -214,10 +215,21 @@ export function PlacesNormalizationPage() {
             <option value="unnormalized">Não normalizados</option>
             <option value="sensitive">Sensíveis</option>
           </Select>
-          <Select label="Bairro" value={filters.neighborhoodId} onChange={(value) => updateFilter("neighborhoodId", value)}>
-            <option value="">Todos</option>
-            {neighborhoods.map((neighborhood) => <option key={neighborhood.id} value={neighborhood.id}>{formatNeighborhoodOption(neighborhood)}</option>)}
-          </Select>
+          <label className="block">
+            <span className="text-sm font-semibold text-semear-green">Bairro</span>
+            <div className="mt-2">
+              <SearchableSelect
+                options={[
+                  { value: "", label: "Todos" },
+                  ...neighborhoods.map((n) => ({ value: n.id, label: formatNeighborhoodOption(n) }))
+                ]}
+                value={filters.neighborhoodId}
+                onChange={(val) => updateFilter("neighborhoodId", val)}
+                placeholder="Todos"
+                searchPlaceholder="Buscar bairro..."
+              />
+            </div>
+          </label>
           <Select label="Tipo" value={filters.placeType} onChange={(value) => updateFilter("placeType", value)}>
             <option value="">Todos</option>
             {placeTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}

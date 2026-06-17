@@ -17,6 +17,7 @@ import { buildTerritorialQualityByNeighborhood } from "@/lib/territorial-quality
 import type { TerritorialReviewRecord } from "@/lib/territorial-review";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { formatNeighborhoodOption, sortNeighborhoodsBySectorAndName } from "@/lib/neighborhoods";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 type PlaceMentionForQuality = Pick<PlaceMentioned, "id" | "normalized_place_id" | "place_type">;
 
@@ -150,10 +151,21 @@ export function NormalizationQualityPage() {
           Filtros
         </div>
         <div className="grid gap-3 md:grid-cols-4">
-          <Select label="Bairro" value={filters.neighborhoodId} onChange={(value) => updateFilter("neighborhoodId", value)}>
-            <option value="">Todos</option>
-            {neighborhoods.map((neighborhood) => <option key={neighborhood.id} value={neighborhood.id}>{formatNeighborhoodOption(neighborhood)}</option>)}
-          </Select>
+          <label className="block">
+            <span className="text-sm font-semibold text-semear-green">Bairro</span>
+            <div className="mt-2">
+              <SearchableSelect
+                options={[
+                  { value: "", label: "Todos" },
+                  ...neighborhoods.map((n) => ({ value: n.id, label: formatNeighborhoodOption(n) }))
+                ]}
+                value={filters.neighborhoodId}
+                onChange={(val) => updateFilter("neighborhoodId", val)}
+                placeholder="Todos"
+                searchPlaceholder="Buscar bairro..."
+              />
+            </div>
+          </label>
           <Select label="Visibilidade" value={filters.visibility} onChange={(value) => updateFilter("visibility", value)}>
             <option value="">Todas</option>
             <option value="internal">Interna</option>

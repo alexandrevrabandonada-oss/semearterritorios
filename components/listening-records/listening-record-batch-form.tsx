@@ -9,6 +9,7 @@ import { hasPossibleSensitiveOccupation } from "@/lib/action-pilot";
 import { formatNeighborhoodOption, getOfficialNeighborhoodsForSelect } from "@/lib/neighborhoods";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { SemearAlert, SemearButton, SemearCard, SemearPageHeader, SemearStatusBadge } from "@/components/ui/semear-primitives";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 type BatchFormValues = {
   free_speech_text: string;
@@ -393,18 +394,20 @@ export function ListeningRecordBatchForm() {
                       />
                     </label>
                     {respondentCityIsVoltaRedonda && (
-                      <label>
+                      <label className="block">
                         <span className="text-sm font-semibold text-semear-green">Bairro / território de referência</span>
-                        <select
-                          className="mt-2 min-h-12 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
-                          value={values.respondent_neighborhood_id}
-                          onChange={e => updateField("respondent_neighborhood_id", e.target.value)}
-                        >
-                          <option value="">Selecione o bairro...</option>
-                          {neighborhoods.map(n => (
-                            <option key={n.id} value={n.id}>{formatNeighborhoodOption(n)}</option>
-                          ))}
-                        </select>
+                        <div className="mt-2">
+                          <SearchableSelect
+                            options={[
+                              { value: "", label: "Selecione o bairro..." },
+                              ...neighborhoods.map((n) => ({ value: n.id, label: formatNeighborhoodOption(n) }))
+                            ]}
+                            value={values.respondent_neighborhood_id}
+                            onChange={(val) => updateField("respondent_neighborhood_id", val)}
+                            placeholder="Selecione o bairro..."
+                            searchPlaceholder="Buscar bairro..."
+                          />
+                        </div>
                       </label>
                     )}
                     <label>

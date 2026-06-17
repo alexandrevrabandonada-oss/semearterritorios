@@ -19,6 +19,7 @@ import { calculateRespondentTerritoryQuality } from "@/lib/territorial-quality";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { formatNeighborhoodOption, getOfficialNeighborhoodsForSelect } from "@/lib/neighborhoods";
 import { getIndividualListeningRecords, isConversationCircleRecord } from "@/lib/listening-record-methodology";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 type RecordWithRelations = TerritorialReviewRecord & {
   actions: Pick<Action, "id" | "title" | "action_type"> | null;
@@ -200,14 +201,36 @@ export function TerritorialReviewQueue() {
                       <option value="">Todas</option>
                       {actions.map((action) => <option key={action.id} value={action.id}>{action.title}</option>)}
                     </Select>
-                    <Select label="Bairro da ação" value={filters.neighborhoodId} onChange={(value) => updateFilter("neighborhoodId", value)}>
-                      <option value="">Todos</option>
-                      {neighborhoods.map((neighborhood) => <option key={neighborhood.id} value={neighborhood.id}>{formatNeighborhoodOption(neighborhood)}</option>)}
-                    </Select>
-                    <Select label="Bairro de referência" value={filters.respondentNeighborhoodId} onChange={(value) => updateFilter("respondentNeighborhoodId", value)}>
-                      <option value="">Todos</option>
-                      {neighborhoods.map((neighborhood) => <option key={neighborhood.id} value={neighborhood.id}>{formatNeighborhoodOption(neighborhood)}</option>)}
-                    </Select>
+                    <label className="block">
+                      <span className="text-sm font-semibold text-semear-green">Bairro da ação</span>
+                      <div className="mt-2">
+                        <SearchableSelect
+                          options={[
+                            { value: "", label: "Todos" },
+                            ...neighborhoods.map((n) => ({ value: n.id, label: formatNeighborhoodOption(n) }))
+                          ]}
+                          value={filters.neighborhoodId}
+                          onChange={(val) => updateFilter("neighborhoodId", val)}
+                          placeholder="Todos"
+                          searchPlaceholder="Buscar bairro..."
+                        />
+                      </div>
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-semibold text-semear-green">Bairro de referência</span>
+                      <div className="mt-2">
+                        <SearchableSelect
+                          options={[
+                            { value: "", label: "Todos" },
+                            ...neighborhoods.map((n) => ({ value: n.id, label: formatNeighborhoodOption(n) }))
+                          ]}
+                          value={filters.respondentNeighborhoodId}
+                          onChange={(val) => updateFilter("respondentNeighborhoodId", val)}
+                          placeholder="Todos"
+                          searchPlaceholder="Buscar bairro..."
+                        />
+                      </div>
+                    </label>
                   </div>
 
                   {loading ? <StateBox>Carregando fila territorial...</StateBox> : null}
