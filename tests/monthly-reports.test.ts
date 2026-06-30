@@ -79,6 +79,59 @@ describe("relatório mensal interpretativo", () => {
     expect(publicVersion).not.toContain("draft");
     expect(publicVersion).toContain("Versão pública sem lista individualizada");
   });
+
+  it("trata roda de conversa como relato coletivo separado das escutas individuais", () => {
+    const rodaReport = buildMonthlyReportData("2026-04", [
+      ...buildActions(),
+      {
+        id: "action-roda",
+        title: "Roda de conversa no CRAS",
+        action_date: "2026-04-22",
+        action_type: "roda",
+        neighborhoods: { id: "n-action-3", name: "Rústico" }
+      }
+    ] as any[], [
+      ...buildRecords().slice(0, 2),
+      {
+        id: "record-roda-1",
+        date: "2026-04-22",
+        action_id: "action-roda",
+        actions: { id: "action-roda", title: "Roda de conversa no CRAS", action_type: "roda" },
+        neighborhoods: { id: "n-action-3", name: "Rústico" },
+        respondent_neighborhood_id: null,
+        respondent_neighborhoods: null,
+        source_type: "roda",
+        review_status: "reviewed",
+        interviewer_team_member_id: "member-1",
+        interviewer_name: "Entrevistadora",
+        free_speech_text: "relato unificado da roda",
+        team_summary: "síntese coletiva da roda",
+        words_used: "poeira, medo",
+        priority_mentioned: "fiscalização do poder público",
+        unexpected_notes: "moradores citaram outros bairros afetados",
+        respondent_city: null,
+        respondent_territory_relation: null,
+        respondent_occupation: null,
+        places_mentioned_text: "Bairros citados na roda: Rústico, Retiro",
+        listening_record_themes: [{ themes: themes.air }],
+        listening_record_mentioned_neighborhoods: [
+          { neighborhoods: { id: "n-rustico", name: "Rústico" } },
+          { neighborhoods: { id: "n-retiro", name: "Retiro" } }
+        ]
+      }
+    ] as any[]);
+
+    expect(rodaReport.totalRecords).toBe(3);
+    expect(rodaReport.individualListeningRecords).toBe(2);
+    expect(rodaReport.conversationCircleSummary.reports).toBe(1);
+    expect(rodaReport.territorialQuality.totalRecords).toBe(2);
+    expect(rodaReport.respondentWithoutNeighborhood).toBe(0);
+    expect(rodaReport.conversationCircleSummary.mentionedNeighborhoods.map((item) => item.name)).toEqual(["Retiro", "Rústico"]);
+
+    const markdown = buildMonthlyReportMarkdown(rodaReport, "internal");
+    expect(markdown).toContain("## 5. Rodas de conversa");
+    expect(markdown).toContain("Bairros citados nas rodas: Retiro (1), Rústico (1)");
+  });
 });
 
 function buildActions() {

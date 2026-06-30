@@ -45,7 +45,9 @@ type ActionWithNeighborhood = Action & {
 type RecordWithRelations = ListeningRecord & {
   actions: Pick<Action, "id" | "title" | "action_type"> | null;
   neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
+  respondent_neighborhoods?: Pick<Neighborhood, "id" | "name"> | null;
   listening_record_themes: Array<{ themes: Pick<Theme, "id" | "name"> | null }>;
+  listening_record_mentioned_neighborhoods?: Array<{ neighborhoods: Pick<Neighborhood, "id" | "name"> | null }>;
 };
 
 type MonthlyReportDetailProps = {
@@ -81,7 +83,7 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
 
       const [actionsResult, recordsResult, closuresResult, debriefsResult] = await Promise.all([
         supabase.from("actions").select("*, neighborhoods:neighborhood_id(id, name)").gte("action_date", `${month}-01`).lt("action_date", nextMonth(month)).order("action_date", { ascending: true }),
-        supabase.from("listening_records").select("*, actions:action_id(id, title, action_type), neighborhoods:neighborhood_id(id, name), respondent_neighborhoods:respondent_neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name))").gte("date", `${month}-01`).lt("date", nextMonth(month)).order("date", { ascending: true }),
+        supabase.from("listening_records").select("*, actions:action_id(id, title, action_type), neighborhoods:neighborhood_id(id, name), respondent_neighborhoods:respondent_neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name)), listening_record_mentioned_neighborhoods(neighborhoods:neighborhood_id(id, name))").gte("date", `${month}-01`).lt("date", nextMonth(month)).order("date", { ascending: true }),
         supabase.from("action_closures").select("*"),
         supabase.from("action_debriefs").select("*")
       ]);
@@ -256,6 +258,29 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
         </Panel>
         <Panel title="Temas dominantes" icon={<Tag className="h-5 w-5" />}>
           {report.topThemes.length > 0 ? <TagList items={report.topThemes.map((item) => `${item.name} (${item.count})`)} /> : <PedagogicEmpty text="Nenhum tema marcado nas escutas do mês." />}
+        </Panel>
+      </div>
+
+      <div className="mt-5">
+        <Panel title="Rodas de conversa" icon={<UsersRound className="h-5 w-5" />}>
+          {report.conversationCircleSummary.reports > 0 ? (
+            <div className="space-y-4">
+              <p className="text-sm leading-6 text-stone-700">
+                Cada entrevistador registra um relato unificado da roda inteira. Esses relatos entram como síntese coletiva por entrevistador, separados das escutas individuais.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <SmallMetric label="Relatos" value={report.conversationCircleSummary.reports} />
+                <SmallMetric label="Ações com roda" value={report.conversationCircleSummary.actions} />
+                <SmallMetric label="Entrevistadores" value={report.conversationCircleSummary.interviewers} />
+              </div>
+              <div className="grid gap-4 xl:grid-cols-2">
+                <SummaryTags title="Bairros citados" items={report.conversationCircleSummary.mentionedNeighborhoods} />
+                <SummaryTags title="Temas percebidos" items={report.conversationCircleSummary.themes} />
+                <SummaryTags title="Palavras fortes" items={report.conversationCircleSummary.words} />
+                <SummaryTags title="Prioridades percebidas" items={report.conversationCircleSummary.priorities} />
+              </div>
+            </div>
+          ) : <PedagogicEmpty text="Nenhuma roda de conversa foi registrada neste mês." />}
         </Panel>
       </div>
 
@@ -475,7 +500,9 @@ function MonthlyReportPrintSheet({ report, mode }: { report: MonthlyReportData; 
       <section className="mb-6 grid grid-cols-4 gap-3">
         <PrintMetric label="Mês de referência" value={formatMonthLabel(report.month)} />
         <PrintMetric label="Ações" value={report.totalActions} />
-        <PrintMetric label="Escutas" value={report.totalRecords} />
+        <PrintMetric label="Registros" value={report.totalRecords} />
+        <PrintMetric label="Escutas individuais" value={report.individualListeningRecords} />
+        <PrintMetric label="Relatos de roda" value={report.conversationCircleReports} />
         <PrintMetric label="Cobertura territorial" value={`${report.territorialQuality.coveragePercent}%`} />
       </section>
 
@@ -485,6 +512,18 @@ function MonthlyReportPrintSheet({ report, mode }: { report: MonthlyReportData; 
 
       <PrintSection title="O que escutamos">
         <p>{report.pedagogicalSummary}</p>
+      </PrintSection>
+
+      <PrintSection title="Rodas de conversa">
+        {report.conversationCircleSummary.reports > 0 ? (
+          <div>
+            <p>
+              {report.conversationCircleSummary.reports} relato(s) de roda, em {report.conversationCircleSummary.actions} ação(ões), por {report.conversationCircleSummary.interviewers} entrevistador(es).
+            </p>
+            <PrintCountList title="Bairros citados nas rodas" items={report.conversationCircleSummary.mentionedNeighborhoods} />
+            <PrintCountList title="Temas percebidos nas rodas" items={report.conversationCircleSummary.themes} />
+          </div>
+        ) : <p>Nenhum relato de roda registrado no mês.</p>}
       </PrintSection>
 
       <section className="mb-6 grid grid-cols-2 gap-5">
@@ -512,7 +551,7 @@ function MonthlyReportPrintSheet({ report, mode }: { report: MonthlyReportData; 
       <PrintSection title="Qualidade territorial e limites da leitura">
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
           <p><strong>Status:</strong> {report.territorialMethodologyNote.status}</p>
-          <p><strong>Escutas sem território de referência:</strong> {report.territorialQuality.recordsWithoutRespondentTerritory}</p>
+          <p><strong>Escutas individuais sem território de referência:</strong> {report.territorialQuality.recordsWithoutRespondentTerritory}</p>
           <p>{report.territorialMethodologyNote.fullText}</p>
           <p><strong>Recomendação:</strong> {report.territorialMethodologyNote.operationalRecommendation}</p>
         </div>
@@ -639,6 +678,24 @@ function SimpleList({ items }: { items: string[] }) {
     <ul className="space-y-2 text-sm leading-6 text-stone-700">
       {items.map((item) => <li className="rounded-xl bg-semear-offwhite px-3 py-2" key={item}>{item}</li>)}
     </ul>
+  );
+}
+
+function SmallMetric({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="rounded-2xl bg-semear-offwhite p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-semear-green">{value}</p>
+    </div>
+  );
+}
+
+function SummaryTags({ title, items }: { title: string; items: Array<{ name: string; count: number }> }) {
+  return (
+    <div className="rounded-2xl bg-semear-offwhite p-4">
+      <p className="mb-3 text-sm font-semibold text-semear-green">{title}</p>
+      {items.length > 0 ? <TagList items={items.map((item) => `${item.name} (${item.count})`)} /> : <p className="text-sm text-stone-600">Nenhum registro.</p>}
+    </div>
   );
 }
 

@@ -18,6 +18,18 @@ type RecordWithRelations = ListeningRecord & {
   neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
   respondent_neighborhoods?: Pick<Neighborhood, "id" | "name"> | null;
   listening_record_themes: Array<{ themes: Pick<Theme, "id" | "name"> | null }>;
+  listening_record_mentioned_neighborhoods?: Array<{ neighborhoods: Pick<Neighborhood, "id" | "name"> | null }>;
+};
+
+type ConversationCircleSummary = {
+  reports: number;
+  actions: number;
+  interviewers: number;
+  mentionedNeighborhoods: Array<{ name: string; count: number }>;
+  themes: Array<{ name: string; count: number }>;
+  words: Array<{ name: string; count: number }>;
+  priorities: Array<{ name: string; count: number }>;
+  unexpected: Array<{ name: string; count: number }>;
 };
 
 export type MonthlyReportData = {
@@ -27,6 +39,7 @@ export type MonthlyReportData = {
   totalActions: number;
   totalRecords: number;
   conversationCircleReports: number;
+  conversationCircleSummary: ConversationCircleSummary;
   individualListeningRecords: number;
   operationNeighborhoods: string[];
   respondentNeighborhoods: string[];
@@ -104,7 +117,9 @@ export function buildMonthlyReportData(month: string, actions: ActionWithNeighbo
     ...records.map((item) => item.respondent_neighborhoods?.name).filter(Boolean)
   ] as string[])).sort((a, b) => a.localeCompare(b, "pt-BR"));
   const individualRecords = getIndividualListeningRecords(records);
-  const conversationCircleReports = records.filter((item) => isConversationCircleRecord(item)).length;
+  const conversationCircleRecords = records.filter((item) => isConversationCircleRecord(item));
+  const conversationCircleReports = conversationCircleRecords.length;
+  const conversationCircleSummary = buildConversationCircleSummary(conversationCircleRecords);
   const respondentWithoutNeighborhood = individualRecords.filter((item) => !item.respondent_neighborhood_id).length;
 
   const actionTypeCounts = countBy(actions, (item) => getActionTypeLabel(item.action_type));
@@ -114,7 +129,7 @@ export function buildMonthlyReportData(month: string, actions: ActionWithNeighbo
   const territorialMethodologyNote = buildTerritorialQualityMethodologyNote(territorialQuality);
   const topThemes = countThemes(records).slice(0, 8);
   const sourceTypeCounts = countBy(records, (item) => getSourceTypeLabel(item.source_type));
-  const occupationSummary = summarizeOccupations(records);
+  const occupationSummary = summarizeOccupations(individualRecords);
   const occupationCounts = occupationSummary.groups.map((item) => ({ name: item.label, count: item.count }));
   const allPriorities = countTextValues(records, (item) => item.priority_mentioned);
   const priorities = allPriorities.slice(0, 8);
@@ -133,6 +148,7 @@ export function buildMonthlyReportData(month: string, actions: ActionWithNeighbo
     totalActions: actions.length,
     totalRecords: records.length,
     conversationCircleReports,
+    conversationCircleSummary,
     individualListeningRecords: individualRecords.length,
     operationNeighborhoods,
     respondentNeighborhoods,
@@ -179,6 +195,9 @@ export function buildMonthlyReportPlainText(report: MonthlyReportData, mode: Mon
     "O que escutamos",
     report.pedagogicalSummary,
     "",
+    "Leitura das rodas de conversa",
+    formatConversationCircleSummary(report.conversationCircleSummary),
+    "",
     "Temas dominantes",
     formatCountList(report.topThemes),
     "",
@@ -224,7 +243,9 @@ export function buildMonthlyReportMarkdown(report: MonthlyReportData, mode: Mont
     `**Mês de referência:** ${formatMonthLabel(report.month)}  `,
     `**Versão:** ${includeInternal ? "interna" : "pública"}  `,
     `**Total de ações:** ${report.totalActions}  `,
-    `Total de escutas: ${report.totalRecords}  `,
+    `**Total de registros:** ${report.totalRecords}  `,
+    `**Escutas individuais:** ${report.individualListeningRecords}  `,
+    `**Relatos de roda:** ${report.conversationCircleReports}  `,
     `**Cobertura territorial:** ${report.territorialQuality.coveragePercent}% (${report.territorialQuality.qualityStatus})`,
     "",
     "## 1. Capa / resumo do mês",
@@ -232,10 +253,12 @@ export function buildMonthlyReportMarkdown(report: MonthlyReportData, mode: Mont
     "",
     "## 2. Indicadores principais",
     `- Ações realizadas: ${report.totalActions}`,
-    `- Escutas registradas: ${report.totalRecords}`,
+    `- Registros cadastrados: ${report.totalRecords}`,
+    `- Escutas individuais: ${report.individualListeningRecords}`,
+    `- Relatos de roda de conversa: ${report.conversationCircleReports}`,
     `- Territórios onde houve ação: ${report.operationNeighborhoods.length}`,
     `- Territórios de referência informados: ${report.respondentNeighborhoods.length}`,
-    `- Escutas sem território de referência: ${report.respondentWithoutNeighborhood}`,
+    `- Escutas individuais sem território de referência: ${report.respondentWithoutNeighborhood}`,
     "",
     "## 3. Leitura executiva",
     report.executiveSummary,
@@ -243,47 +266,50 @@ export function buildMonthlyReportMarkdown(report: MonthlyReportData, mode: Mont
     "## 4. O que escutamos",
     report.pedagogicalSummary,
     "",
-    "## 5. Temas dominantes",
+    "## 5. Rodas de conversa",
+    formatConversationCircleSummary(report.conversationCircleSummary),
+    "",
+    "## 6. Temas dominantes",
     formatBulletList(report.topThemes),
     "",
-    "## 6. Prioridades agrupadas",
+    "## 7. Prioridades agrupadas",
     formatPriorityGroups(report.priorityGroups),
     "",
-    "## 7. Sinais qualitativos relevantes",
+    "## 8. Sinais qualitativos relevantes",
     formatQualitativeSignals(report.qualitativeSignals),
     "",
-    "## 8. Territórios da ação x territórios de referência",
+    "## 9. Territórios da ação x territórios de referência",
     `- Ações por território da ação: ${formatCountList(report.actionTerritoryCounts)}`,
     `- Escutas por território de referência: ${formatCountList(report.respondentTerritoryCounts)}`,
     report.territorialQuality.qualityStatus === "crítica" ? "- Alerta: cobertura territorial crítica. O relatório não deve produzir conclusão forte por bairro." : "",
     "",
-    "## 9. Qualidade territorial e limites da leitura",
+    "## 10. Qualidade territorial e limites da leitura",
     `- Status: ${report.territorialMethodologyNote.status}`,
     `- Cobertura: ${report.territorialQuality.coveragePercent}% (${report.territorialQuality.recordsWithRespondentTerritory}/${report.territorialQuality.totalRecords})`,
-    `- Escutas sem território de referência: ${report.territorialQuality.recordsWithoutRespondentTerritory}`,
+    `- Escutas individuais sem território de referência: ${report.territorialQuality.recordsWithoutRespondentTerritory}`,
     `- O que pode ser lido: ${buildWhatCanBeRead(report)}`,
     `- O que exige cautela: ${buildWhatRequiresCaution(report)}`,
     `- Recomendação: ${includeInternal ? report.territorialMethodologyNote.operationalRecommendation : report.territorialMethodologyNote.publicRecommendation}`,
     "",
-    "## 10. O que aprendemos neste mês",
+    "## 11. O que aprendemos neste mês",
     formatSentenceList(visibleLearnings),
     "",
-    "## 11. Encaminhamentos recomendados",
+    "## 12. Encaminhamentos recomendados",
     formatSentenceList(visibleReferrals),
     "",
-    "## 12. Ações realizadas",
+    "## 13. Ações realizadas",
     report.actions.length > 0
       ? report.actions.map((action) => `- ${formatDate(action.action_date)} | ${action.title} | ${getActionTypeLabel(action.action_type)} | ${action.neighborhoods?.name ?? "Território da ação não informado"}`).join("\n")
       : "- Nenhuma ação cadastrada no mês.",
     ...(includeInternal ? [
     "",
-    "## 13. Pendências e próximos passos",
+    "## 14. Pendências e próximos passos",
     report.pendingReviews.length > 0
       ? report.pendingReviews.map((record) => `- ${formatDate(record.date)} | ação em ${record.neighborhoods?.name ?? "Território da ação não informado"} | referência ${record.respondent_neighborhoods?.name ?? "Não informado"} | revisar cadastro antes de publicação.`).join("\n")
       : "- Nenhuma pendência de revisão no mês.",
     ] : []),
     "",
-    "## 14. Anexo técnico",
+    "## 15. Anexo técnico",
     includeInternal
       ? [
           "### Tipos de ação",
@@ -293,7 +319,10 @@ export function buildMonthlyReportMarkdown(report: MonthlyReportData, mode: Mont
           formatBulletList(report.occupationCounts),
           "",
           "### Território de referência do entrevistado",
-          buildRespondentTerritoryMarkdown(report.records)
+          buildRespondentTerritoryMarkdown(getIndividualListeningRecords(report.records)),
+          "",
+          "### Bairros citados nas rodas de conversa",
+          formatBulletList(report.conversationCircleSummary.mentionedNeighborhoods)
         ].join("\n")
       : "Versão pública sem lista individualizada, dado pessoal ou campo técnico interno."
   ].join("\n");
@@ -302,6 +331,7 @@ export function buildMonthlyReportMarkdown(report: MonthlyReportData, mode: Mont
 export function buildMonthlyReportCsv(report: MonthlyReportData) {
   const headers = [
     "data",
+    "tipo_registro",
     "territorio_acao_registro",
     "territorio_acao",
     "acao",
@@ -317,6 +347,7 @@ export function buildMonthlyReportCsv(report: MonthlyReportData) {
     "bairro_referencia_entrevistado",
     "vinculo_territorio"
     ,"ocupacao_atividade_principal"
+    ,"bairros_citados_roda"
     ,"cobertura_territorial_percentual"
     ,"escutas_sem_territorio_referencia"
     ,"status_qualidade_territorial"
@@ -324,6 +355,7 @@ export function buildMonthlyReportCsv(report: MonthlyReportData) {
 
   const rows = report.records.map((record) => [
     record.date,
+    isConversationCircleRecord(record) ? "relato_roda" : "escuta_individual",
     record.neighborhoods?.name ?? "",
     record.neighborhoods?.name ?? "",
     record.actions?.title ?? "",
@@ -339,6 +371,7 @@ export function buildMonthlyReportCsv(report: MonthlyReportData) {
     (record as RecordWithRelations).respondent_neighborhoods?.name ?? "",
     record.respondent_territory_relation ? getRespondentTerritoryRelationLabel(record.respondent_territory_relation) : "",
     record.respondent_occupation ?? "",
+    getRecordMentionedNeighborhoodNames(record).join(" | "),
     report.territorialQuality.coveragePercent.toString(),
     report.territorialQuality.recordsWithoutRespondentTerritory.toString(),
     report.territorialQuality.qualityStatus
@@ -385,7 +418,37 @@ function buildExecutiveSummary(
 ) {
   const themeText = topThemes.length > 0 ? topThemes.slice(0, 5).map((item) => item.name).join(", ") : "sem temas dominantes marcados";
   const mainPriority = priorityGroups[0]?.axis ?? "revisão dos registros e planejamento de nova escuta";
-  return `O mês reuniu ${formatPlural(totalActions, "ação", "ações")} e ${formatPlural(totalRecords, "escuta", "escutas")}. Os temas dominantes foram ${themeText}. O principal alerta metodológico é: ${note.shortText} A principal recomendação operacional é priorizar ${mainPriority.toString().toLowerCase()} sem produzir conclusão territorial forte quando a cobertura estiver baixa.`;
+  return `O mês reuniu ${formatPlural(totalActions, "ação", "ações")} e ${formatPlural(totalRecords, "registro", "registros")} de escuta/roda. Os temas dominantes foram ${themeText}. O principal alerta metodológico é: ${note.shortText} A principal recomendação operacional é priorizar ${mainPriority.toString().toLowerCase()} sem produzir conclusão territorial forte quando a cobertura estiver baixa.`;
+}
+
+function buildConversationCircleSummary(records: RecordWithRelations[]): ConversationCircleSummary {
+  const actionIds = new Set(records.map((record) => record.action_id).filter(Boolean));
+  const interviewers = new Set(records.map((record) => record.interviewer_team_member_id ?? record.interviewer_name?.trim()).filter(Boolean));
+  const mentionedNeighborhoods = countTextValues(records, (record) => getRecordMentionedNeighborhoodNames(record).join("\n")).slice(0, 12);
+
+  return {
+    reports: records.length,
+    actions: actionIds.size,
+    interviewers: interviewers.size,
+    mentionedNeighborhoods,
+    themes: countThemes(records).slice(0, 8),
+    words: countTextValues(records, (record) => record.words_used).slice(0, 8),
+    priorities: countTextValues(records, (record) => record.priority_mentioned).slice(0, 8),
+    unexpected: countTextValues(records, (record) => record.unexpected_notes).slice(0, 8)
+  };
+}
+
+function formatConversationCircleSummary(summary: ConversationCircleSummary) {
+  if (summary.reports === 0) return "Nenhum relato de roda de conversa registrado no mês.";
+
+  return [
+    `${formatPlural(summary.reports, "relato de roda", "relatos de roda")} registrados por ${formatPlural(summary.interviewers, "entrevistador", "entrevistadores")} em ${formatPlural(summary.actions, "ação", "ações")}. Cada relato representa a leitura unificada do entrevistador sobre a roda inteira, não uma fala individual.`,
+    `- Bairros citados nas rodas: ${formatCountList(summary.mentionedNeighborhoods)}`,
+    `- Temas percebidos nas rodas: ${formatCountList(summary.themes)}`,
+    `- Palavras que chamaram atenção: ${formatCountList(summary.words)}`,
+    `- Prioridades percebidas: ${formatCountList(summary.priorities)}`,
+    `- Pontos inesperados: ${formatCountList(summary.unexpected)}`
+  ].join("\n");
 }
 
 function buildMonthlyLearnings(
@@ -555,6 +618,19 @@ function countBy<TItem>(items: TItem[], getValue: (item: TItem) => string) {
     map.set(value, (map.get(value) ?? 0) + 1);
   });
   return Array.from(map.entries()).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "pt-BR"));
+}
+
+function getRecordMentionedNeighborhoodNames(record: RecordWithRelations) {
+  const structured = record.listening_record_mentioned_neighborhoods
+    ?.map((item) => item.neighborhoods?.name)
+    .filter(Boolean) as string[] | undefined;
+
+  if (structured && structured.length > 0) return Array.from(new Set(structured));
+
+  const match = record.places_mentioned_text?.match(/Bairros citados na roda:\s*([^\n]+)/i);
+  if (!match?.[1]) return [];
+
+  return Array.from(new Set(match[1].split(",").map((value) => normalizeTextToken(value)).filter(Boolean)));
 }
 
 function normalizeTextToken(value: string) {
