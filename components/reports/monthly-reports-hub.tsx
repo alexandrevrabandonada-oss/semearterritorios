@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, FileText, MapPinned, Plus, LibraryBig, ShieldCheck, Clock3 } from "lucide-react";
-import type { Action, ListeningRecord, Neighborhood, WeeklyTeamReport, ProjectMemoryEntry } from "@/lib/database.types";
+import type { Action, ListeningRecord, Neighborhood, WeeklyTeamReport, ProjectMemoryEntry, WorkshopRecord } from "@/lib/database.types";
 import { extractHighlights } from "@/lib/project-memory";
 import { formatWeekTitle } from "@/lib/team-calendar";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -23,6 +23,7 @@ export function MonthlyReportsHub() {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const [actions, setActions] = useState<ActionWithNeighborhood[]>([]);
   const [records, setRecords] = useState<RecordWithNeighborhood[]>([]);
+  const [workshops, setWorkshops] = useState<WorkshopRecord[]>([]);
   const [weeklyReports, setWeeklyReports] = useState<WeeklyTeamReport[]>([]);
   const [memoryEntries, setMemoryEntries] = useState<ProjectMemoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,23 +39,25 @@ export function MonthlyReportsHub() {
         return;
       }
 
-      const [actionsResult, recordsResult, weeklyReportsResult, entriesResult] = await Promise.all([
+      const [actionsResult, recordsResult, workshopsResult, weeklyReportsResult, entriesResult] = await Promise.all([
         supabase.from("actions").select("*, neighborhoods:neighborhood_id(id, name)").order("action_date", { ascending: false }),
         supabase.from("listening_records").select("*, neighborhoods:neighborhood_id(id, name), respondent_neighborhoods:respondent_neighborhood_id(id, name)").order("date", { ascending: false }),
+        supabase.from("workshop_records").select("*").order("workshop_date", { ascending: false }),
         supabase.from("weekly_team_reports").select("*").order("week_start", { ascending: false }),
         supabase.from("project_memory_entries").select("*").order("entry_date", { ascending: false })
       ]);
 
       if (ignore) return;
 
-      if (actionsResult.error || recordsResult.error || weeklyReportsResult.error) {
-        setError(actionsResult.error?.message ?? recordsResult.error?.message ?? weeklyReportsResult.error?.message ?? "Erro ao carregar os relatórios mensais.");
+      if (actionsResult.error || recordsResult.error || workshopsResult.error || weeklyReportsResult.error) {
+        setError(actionsResult.error?.message ?? recordsResult.error?.message ?? workshopsResult.error?.message ?? weeklyReportsResult.error?.message ?? "Erro ao carregar os relatórios mensais.");
         setLoading(false);
         return;
       }
 
       setActions((actionsResult.data ?? []) as ActionWithNeighborhood[]);
       setRecords((recordsResult.data ?? []) as unknown as RecordWithNeighborhood[]);
+      setWorkshops((workshopsResult.data ?? []) as WorkshopRecord[]);
       setWeeklyReports((weeklyReportsResult.data ?? []) as WeeklyTeamReport[]);
       setMemoryEntries((entriesResult.data ?? []) as ProjectMemoryEntry[]);
       setLoading(false);
@@ -194,6 +197,8 @@ export function MonthlyReportsHub() {
             {availableMonths.map((month) => {
               const monthActions = actions.filter((item) => getMonthValue(item.action_date) === month);
               const monthRecords = records.filter((item) => getMonthValue(item.date) === month);
+              const monthWorkshops = workshops.filter((item) => getMonthValue(item.workshop_date ?? item.created_at) === month);
+              const workshopParticipants = monthWorkshops.reduce((total, item) => total + (item.participants_estimated ?? 0), 0);
               const actionNeighborhoodsCount = new Set([
                 ...monthActions.map((item) => item.neighborhoods?.name).filter(Boolean),
               ]).size;
@@ -214,6 +219,8 @@ export function MonthlyReportsHub() {
                   <div className="mt-5 grid gap-3 sm:grid-cols-4">
                     <StatChip icon={<CalendarDays className="h-4 w-4" />} label="Ações" value={monthActions.length} />
                     <StatChip icon={<FileText className="h-4 w-4" />} label="Escutas" value={monthRecords.length} />
+                    <StatChip icon={<FileText className="h-4 w-4" />} label="Oficinas" value={monthWorkshops.length} />
+                    <StatChip icon={<FileText className="h-4 w-4" />} label="Participantes em oficinas" value={workshopParticipants} />
                     <StatChip icon={<MapPinned className="h-4 w-4" />} label="Bairros com ação" value={actionNeighborhoodsCount} />
                     <StatChip icon={<MapPinned className="h-4 w-4" />} label="Bairros de referência" value={respondentNeighborhoodsCount} />
                   </div>
