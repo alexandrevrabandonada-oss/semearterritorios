@@ -13,6 +13,28 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { getActionPilotMetrics, summarizeOccupations, hasPossibleSensitiveData } from "@/lib/action-pilot";
 import { normalizePlaceKey } from "@/lib/normalized-places-quality";
 import { calculateIndividualRespondentTerritoryQuality, getIndividualListeningRecords } from "@/lib/listening-record-methodology";
+import type { WorkshopRecord } from "@/lib/database.types";
+
+export type WorkshopAnalytics = {
+  workshopSummary: string; participantsEstimated: number | null; collectiveDiagnosis: string | null;
+  mainConclusions: string | null; consensusPoints: string | null; disagreements: string | null;
+  proposals: string | null; priorities: string | null; agreements: string | null; nextSteps: string | null;
+  themes: string | null; placesMentioned: string | null; materialsProduced: string | null;
+  methodologicalWarnings: MethodologicalWarning[];
+};
+
+/** Análise própria: não produz métricas, falas ou territórios de entrevistados. */
+export function buildWorkshopAnalytics(record: WorkshopRecord): WorkshopAnalytics {
+  return {
+    workshopSummary: record.main_conclusions || record.collective_diagnosis || "Oficina sem síntese coletiva registrada.",
+    participantsEstimated: record.participants_estimated, collectiveDiagnosis: record.collective_diagnosis,
+    mainConclusions: record.main_conclusions, consensusPoints: record.consensus_points,
+    disagreements: record.disagreements_or_tensions, proposals: record.proposals, priorities: record.priorities,
+    agreements: record.agreements, nextSteps: record.next_steps, themes: record.themes,
+    placesMentioned: record.places_mentioned, materialsProduced: record.materials_produced,
+    methodologicalWarnings: [{ code: "oficina_coletiva", severity: "info", title: "Registro coletivo de oficina", description: "As conclusões foram produzidas pelo grupo presente e não representam estatisticamente a população; não devem ser convertidas em escutas individuais." }]
+  };
+}
 
 function isPlaceSensitive(place: string): boolean {
   const sensitivePatterns = [

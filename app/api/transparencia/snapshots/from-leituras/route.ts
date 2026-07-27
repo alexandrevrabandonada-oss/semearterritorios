@@ -41,7 +41,8 @@ export async function POST(request: Request) {
     actionsResult,
     neighborhoodsResult,
     recordThemesResult,
-    placesResult
+    placesResult,
+    workshopsResult
   ] = await Promise.all([
     supabase
       .from("listening_records")
@@ -58,10 +59,11 @@ export async function POST(request: Request) {
     supabase
       .from("place_mentioned")
       .select("normalized_places!inner(id, normalized_name, visibility, neighborhoods(name))")
-      .eq("normalized_places.visibility", "public_safe")
+      .eq("normalized_places.visibility", "public_safe"),
+    supabase.from("workshop_records").select("action_id, workshop_date, participants_estimated, status").eq("status", "approved")
   ]);
 
-  if (recordsResult.error || actionsResult.error || neighborhoodsResult.error || recordThemesResult.error || placesResult.error) {
+  if (recordsResult.error || actionsResult.error || neighborhoodsResult.error || recordThemesResult.error || placesResult.error || workshopsResult.error) {
     return NextResponse.json(
       {
         error:
@@ -70,6 +72,7 @@ export async function POST(request: Request) {
           neighborhoodsResult.error?.message ??
           recordThemesResult.error?.message ??
           placesResult.error?.message ??
+          workshopsResult.error?.message ??
           "Falha ao carregar dados de Leituras Coletivas."
       },
       { status: 500 }
@@ -216,6 +219,19 @@ export async function POST(request: Request) {
   };
 
   const built = buildTransparencySnapshotFromCollectiveReading({ filters, data });
+  const approvedWorkshops = (workshopsResult.data ?? []).filter((workshop) => selectedActionIds.has(workshop.action_id));
+  if (approvedWorkshops.length > 0) {
+    const participantsEstimated = approvedWorkshops.reduce((total, workshop) => total + (workshop.participants_estimated ?? 0), 0);
+    built.totals = { ...built.totals, approved_workshops: approvedWorkshops.length, workshop_participants_estimated: participantsEstimated };
+    built.action_timeline = [
+      ...built.action_timeline,
+      ...approvedWorkshops.map((workshop) => {
+        const action = selectedActions.find((item) => item.id === workshop.action_id);
+        return { date: workshop.workshop_date ?? action?.action_date ?? "", title: action?.title ?? "Oficina", territory: (action as any)?.neighborhoods?.name ?? "Território não informado", action_type: "Oficina", action_status: "conclusão coletiva aprovada", debrief_status: "requer revisão editorial" };
+      })
+    ].sort((a, b) => a.date.localeCompare(b.date));
+    built.privacy_notes = `${built.privacy_notes}\nOficinas aprovadas entram apenas como ação coletiva e contagem estimada; conclusões, propostas e materiais internos exigem revisão editorial antes de qualquer uso público.`;
+  }
 
   const preview = {
     period: {
@@ -235,6 +251,7 @@ export async function POST(request: Request) {
       "Temas agregados",
       "Palavras recorrentes sanitizadas",
       "Silêncios/lacunas com baixa amostra"
+      ,"Oficinas aprovadas como ações coletivas, sem relatos individuais"
     ],
     exclude_list: [
       "Fala original bruta",
@@ -243,6 +260,7 @@ export async function POST(request: Request) {
       "CPF/telefone/e-mail/endereço",
       "Lugar sensível",
       "Coordenada individual"
+      ,"Materiais internos, lista de participantes e conclusões não revisadas"
     ],
     alerts: [
       "Territórios com menos de 5 escutas revisadas serão marcados como dados insuficientes para síntese pública.",

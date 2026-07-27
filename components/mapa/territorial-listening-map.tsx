@@ -139,7 +139,7 @@ export function TerritorialListeningMap() {
       <SemearPageHeader
         eyebrow="Mapa-lista territorial"
         title="Leitura territorial sem ambiguidade"
-        description="Separação clara entre território da ação e território de referência das pessoas escutadas."
+        description="Separação clara entre território da ação e território de referência das pessoas escutadas. Oficinas aparecem apenas como ações realizadas; territórios representados não são origem individual."
       />
       <SemearCard>
         <SemearAlert tone="neutral">

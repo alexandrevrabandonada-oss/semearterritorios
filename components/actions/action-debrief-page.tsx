@@ -39,6 +39,7 @@ import type {
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { MethodologicalWarningsPanel } from "@/components/actions/analytical-panels";
 import { SemearAlert, SemearButton, SemearCard, SemearMetricCard, SemearPageHeader, SemearStatusBadge } from "@/components/ui/semear-primitives";
+import { WorkshopDebrief } from "@/components/actions/workshop-publications";
 
 type Props = {
   actionId: string;
@@ -198,6 +199,7 @@ export function ActionDebriefPage({ actionId }: Props) {
 
   if (loading) return <StateBox>Carregando devolutiva da ação...</StateBox>;
   if (error || !action) return <StateBox tone="error">{error ?? "Ação não encontrada."}</StateBox>;
+  if (action.action_type === "oficina") return <WorkshopDebrief actionId={actionId} />;
 
   const loadedAction = action;
   const metrics = getActionPilotMetrics(records);

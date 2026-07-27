@@ -12,6 +12,12 @@ const steps = [
   "Conferir relatório mensal"
 ];
 
+const actionFormats = [
+  ["Escuta", "Registra a fala individual de uma pessoa."],
+  ["Roda de conversa", "Registra percepções de uma conversa coletiva."],
+  ["Oficina", "Atividade orientada que registra a conclusão coletiva produzida pelo grupo."]
+];
+
 const realDataChecklist = [
   "migrations aplicadas",
   "usuários criados",
@@ -103,9 +109,9 @@ const firstRealActionReady = [
 
 const officialNeighborhoodChecklist = [
   "lista oficial aplicada no banco remoto/homologação",
-  "55 bairros oficiais validados",
+  "56 bairros oficiais validados",
   "setores preservados em campo próprio",
-  "códigos oficiais de 1 a 55 preservados",
+  "códigos oficiais de 1 a 56 preservados",
   "bairros usados como agregação territorial",
   "sem endereço pessoal",
   "Jardim Suiça e Santa Inez seguem com grafia pendente registrada"
@@ -144,6 +150,13 @@ export default function AjudaPage() {
             Guia rápido para rodar a primeira Banca de Escuta no SEMEAR Territórios sem expor dados pessoais e mantendo revisão humana.
           </p>
         </div>
+
+        <Panel className="mt-6" icon={<UsersRound className="h-5 w-5" />} title="Diferença entre escuta, roda de conversa e oficina">
+          <div className="grid gap-3 md:grid-cols-3">
+            {actionFormats.map(([title, text]) => <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4" key={title}><p className="font-semibold text-semear-green">{title}</p><p className="mt-2 text-sm leading-6 text-stone-600">{text}</p></div>)}
+          </div>
+          <p className="mt-4 text-sm leading-6 text-stone-700">Na oficina, não é necessário anotar tudo em tempo real. Registre principalmente o que foi produzido como conclusão, consenso, proposta e encaminhamento — sem dados pessoais ou fala individual bruta.</p>
+        </Panel>
 
         <div className="mt-6 grid gap-4 md:grid-cols-3">
           <QuickLink href="/escutas/lote" icon={<Keyboard className="h-5 w-5" />} title="Digitar fichas" text="Modo lote para cadastrar fichas da banca como rascunho." />
@@ -652,9 +665,9 @@ export default function AjudaPage() {
         <Panel className="mt-6" icon={<ShieldCheck className="h-5 w-5" />} title="Territórios oficiais e provisórios">
           <div className="grid gap-3 md:grid-cols-2">
             <div className="rounded-2xl border border-semear-gray bg-semear-offwhite p-4">
-              <p className="font-semibold text-semear-green">55 bairros oficiais</p>
+              <p className="font-semibold text-semear-green">56 bairros oficiais</p>
               <p className="mt-2 text-sm leading-6 text-stone-600">
-                O sistema possui 55 bairros oficiais aplicados, extraídos da lista oficial do município de Volta Redonda. Apenas esses bairros aparecem nos formulários operacionais de ações e escutas.
+                O sistema possui 56 bairros oficiais aplicados, extraídos da lista oficial do município de Volta Redonda. Apenas esses bairros aparecem nos formulários operacionais de ações e escutas.
               </p>
             </div>
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
