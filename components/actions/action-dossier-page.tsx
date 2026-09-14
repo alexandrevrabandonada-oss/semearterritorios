@@ -40,6 +40,7 @@ import type {
 } from "@/lib/database.types";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { SemearAlert, SemearButton, SemearCard, SemearMetricCard, SemearPageHeader, SemearStatusBadge } from "@/components/ui/semear-primitives";
+import { WorkshopDossier } from "@/components/actions/workshop-publications";
 
 type Props = {
   actionId: string;
@@ -199,6 +200,7 @@ export function ActionDossierPage({ actionId }: Props) {
 
   if (loading) return <StateBox>Carregando dossiê da ação...</StateBox>;
   if (error || !action) return <StateBox tone="error">{error ?? "Ação não encontrada."}</StateBox>;
+  if (action.action_type === "oficina") return <WorkshopDossier actionId={actionId} />;
 
   const loadedAction = action;
   const metrics = getActionPilotMetrics(records);

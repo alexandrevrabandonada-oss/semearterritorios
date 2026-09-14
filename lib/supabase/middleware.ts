@@ -33,6 +33,12 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  function redirectWithCookies(url: URL) {
+    const response = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
+    return response;
+  }
+
   const pathname = request.nextUrl.pathname;
   const isPublicRoute =
     pathname.startsWith("/login") ||
@@ -44,7 +50,7 @@ export async function updateSession(request: NextRequest) {
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    return redirectWithCookies(url);
   }
 
   if (!user) {
@@ -70,19 +76,19 @@ export async function updateSession(request: NextRequest) {
     });
     const url = request.nextUrl.clone();
     url.pathname = "/aguardando-liberacao";
-    return NextResponse.redirect(url);
+    return redirectWithCookies(url);
   }
 
   if (hasAuthorizedProfile && pathname.startsWith("/aguardando-liberacao")) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
-    return NextResponse.redirect(url);
+    return redirectWithCookies(url);
   }
 
   if (pathname.startsWith("/login")) {
     const url = request.nextUrl.clone();
     url.pathname = hasAuthorizedProfile ? "/" : "/aguardando-liberacao";
-    return NextResponse.redirect(url);
+    return redirectWithCookies(url);
   }
 
   return supabaseResponse;

@@ -21,7 +21,7 @@ import { BarChart3, Users, Map, MessageSquare, Briefcase, Sparkles, Info } from 
 import Link from "next/link";
 
 export default async function LeiturasPage() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   
   const [
     overview,

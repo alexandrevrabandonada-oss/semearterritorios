@@ -55,6 +55,7 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
   const [participants, setParticipants] = useState<ParticipantWithTeamMember[]>([]);
   const [debrief, setDebrief] = useState<ActionDebrief | null>(null);
   const [closure, setClosure] = useState<ActionClosure | null>(null);
+  const [workshopStatus, setWorkshopStatus] = useState<string | null>(null);
   const [weeklyReports, setWeeklyReports] = useState<LinkedWeeklyReport[]>([]);
   const [weeklyReportAttachments, setWeeklyReportAttachments] = useState<WeeklyTeamReportAttachment[]>([]);
   const [memoryEntries, setMemoryEntries] = useState<MemoryEntryWithReport[]>([]);
@@ -75,7 +76,7 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
       }
 
       setLoading(true);
-      const [result, recordsResult, participantsResult, debriefResult, closureResult, linkedReportsResult, memoryEntriesResult, calendarEventsResult] = await Promise.all([
+      const [result, recordsResult, participantsResult, debriefResult, closureResult, linkedReportsResult, memoryEntriesResult, calendarEventsResult, workshopResult] = await Promise.all([
         supabase
           .from("actions")
           .select("*, neighborhoods:neighborhood_id(id, name)")
@@ -94,14 +95,15 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
         supabase.from("action_closures").select("*").eq("action_id", actionId).maybeSingle(),
         supabase.from("weekly_team_report_actions").select("report_id, weekly_team_reports:report_id(*, team_members:team_member_id(id, display_name))").eq("action_id", actionId),
         supabase.from("project_memory_entries").select("*, weekly_team_reports:source_report_id(id, title)").eq("action_id", actionId).order("entry_date", { ascending: false }),
-        supabase.from("team_calendar_events").select("*").eq("action_id", actionId).order("starts_at", { ascending: true })
+        supabase.from("team_calendar_events").select("*").eq("action_id", actionId).order("starts_at", { ascending: true }),
+        supabase.from("workshop_records").select("status").eq("action_id", actionId).maybeSingle()
       ]);
 
       if (ignore) {
         return;
       }
 
-      if (result.error || recordsResult.error || participantsResult.error || debriefResult.error || closureResult.error || linkedReportsResult.error || memoryEntriesResult.error || calendarEventsResult.error) {
+      if (result.error || recordsResult.error || participantsResult.error || debriefResult.error || closureResult.error || linkedReportsResult.error || memoryEntriesResult.error || calendarEventsResult.error || workshopResult.error) {
         setError(
           result.error?.message ??
             recordsResult.error?.message ??
@@ -111,6 +113,7 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
             linkedReportsResult.error?.message ??
             memoryEntriesResult.error?.message ??
             calendarEventsResult.error?.message ??
+            workshopResult.error?.message ??
             "Erro ao carregar ação."
         );
         setLoading(false);
@@ -122,6 +125,7 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
       setParticipants((participantsResult.data ?? []) as ParticipantWithTeamMember[]);
       setDebrief(debriefResult.data as ActionDebrief | null);
       setClosure(closureResult.data as ActionClosure | null);
+      setWorkshopStatus((workshopResult.data as { status: string } | null)?.status ?? null);
 
       const linkedReports = ((linkedReportsResult.data ?? []) as unknown as Array<{ weekly_team_reports: LinkedWeeklyReport | null }>)
         .map((item) => item.weekly_team_reports)
@@ -250,13 +254,16 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
           <FlaskConical className="h-4 w-4" aria-hidden="true" />
           Piloto da banca
         </Link>
-        <Link
+        {action.action_type === "oficina" ? <Link
+          className="inline-flex min-h-11 items-center gap-2 rounded-full bg-semear-green px-5 text-sm font-bold text-white shadow-premium-sm transition hover:bg-semear-green/90"
+          href={`/acoes/${actionId}/oficina`}
+        ><ClipboardList className="h-4 w-4" aria-hidden="true" />Registrar oficina{workshopStatus ? ` · ${workshopStatus}` : ""}</Link> : <Link
           className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/60 bg-white/80 px-4 text-sm font-bold text-semear-green shadow-premium-sm transition hover:bg-white active:scale-[0.98] duration-200"
           href="/escutas/lote"
         >
           <ClipboardList className="h-4 w-4" aria-hidden="true" />
           Digitalizar fichas
-        </Link>
+        </Link>}
         <Link
           className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/60 bg-white/80 px-4 text-sm font-bold text-semear-green shadow-premium-sm transition hover:bg-white active:scale-[0.98] duration-200"
           href={calendarEvents[0] ? `/agenda/${calendarEvents[0].id}` : `/agenda/novo?actionId=${actionId}&startsAt=${encodeURIComponent(suggestedEventStart)}&endsAt=${encodeURIComponent(suggestedEventEnd)}&allDay=${action.all_day ? "1" : "0"}`}

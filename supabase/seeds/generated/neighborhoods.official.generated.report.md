@@ -1,7 +1,7 @@
 # Relatorio de validacao da lista oficial
 
 - Resultado: ok
-- Linhas lidas: 55
+- Linhas lidas: 56
 - Linhas com erro: 0
 
 ## Erros
@@ -65,3 +65,4 @@
 - Fazendinha | Volta Redonda | oficial
 - Nova Esperança | Volta Redonda | oficial
 - São Carlos | Volta Redonda | oficial
+- Nova Primavera | Volta Redonda | oficial

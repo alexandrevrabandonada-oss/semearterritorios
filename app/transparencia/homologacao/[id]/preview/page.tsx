@@ -1,5 +1,6 @@
 import { TransparencyHomologationPreviewPage } from "@/components/transparency/transparency-homologation-workspace";
 
-export default function TransparenciaHomologacaoPreviewByIdPage({ params }: { params: { id: string } }) {
+export default async function TransparenciaHomologacaoPreviewByIdPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   return <TransparencyHomologationPreviewPage packageId={params.id} />;
 }

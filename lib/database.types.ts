@@ -151,6 +151,17 @@ export type ActionTeamMember = TimestampedRow &
     responsibility: string | null;
   };
 
+export type WorkshopStatus = "draft" | "submitted" | "reviewed" | "approved" | "archived";
+export type WorkshopRecord = TimestampedRow & CreatedByRow & {
+  id: string; action_id: string; workshop_date: string | null; facilitator_team_member_id: string | null;
+  rapporteur_team_member_id: string | null; participants_estimated: number | null; participant_profile: string | null;
+  territories_represented: string | null; objective: string | null; methodology: string | null; activities_done: string | null;
+  collective_diagnosis: string | null; main_conclusions: string | null; consensus_points: string | null;
+  disagreements_or_tensions: string | null; proposals: string | null; priorities: string | null; agreements: string | null;
+  next_steps: string | null; materials_produced: string | null; places_mentioned: string | null; themes: string | null;
+  privacy_notes: string | null; status: WorkshopStatus; reviewed_by: string | null; reviewed_at: string | null;
+};
+
 /** Vínculo do entrevistado com o território de referência (Tijolo 039). */
 export type RespondentTerritoryRelation =
   | "mora"
@@ -674,6 +685,12 @@ export type Database = {
             referencedColumns: ["id"];
           }
         ];
+      };
+      workshop_records: {
+        Row: WorkshopRecord;
+        Insert: Partial<Omit<WorkshopRecord, "id" | "created_at" | "updated_at">> & { action_id: string; id?: string };
+        Update: Partial<Omit<WorkshopRecord, "id" | "created_at" | "updated_at">>;
+        Relationships: [];
       };
       team_members: {
         Row: TeamMember;

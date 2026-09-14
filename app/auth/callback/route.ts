@@ -1,18 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import type { Database } from "@/lib/database.types";
-
-function getSafeNextPath(nextParam: string | null) {
-  if (!nextParam) {
-    return "/";
-  }
-
-  if (!nextParam.startsWith("/") || nextParam.startsWith("//")) {
-    return "/";
-  }
-
-  return nextParam;
-}
+import { getSafeNextPath } from "@/lib/auth-policy";
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);

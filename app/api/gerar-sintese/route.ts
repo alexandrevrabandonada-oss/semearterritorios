@@ -1,12 +1,27 @@
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { NextResponse } from "next/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { hasAuthorizedRole } from "@/lib/auth-policy";
 
 export async function POST(request: Request) {
   try {
-    const { month, actionsSummary, recordsData } = await request.json();
+    const supabase = await createSupabaseServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
+    }
+    const { data: profile, error: profileError } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+    if (profileError || !hasAuthorizedRole(profile?.role)) {
+      return NextResponse.json({ error: "Perfil sem permissão para gerar sínteses." }, { status: 403 });
+    }
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Corpo JSON inválido." }, { status: 400 });
+    }
+    const { month, actionsSummary, recordsData } = body;
 
-    if (!month || !recordsData) {
+    if (typeof month !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || !recordsData) {
       return NextResponse.json({ error: "Dados incompletos passados para a IA." }, { status: 400 });
     }
 
@@ -47,9 +62,8 @@ Você deve atuar apenas como SUGESTÃO, em tom analítico e acolhedor, voltado �
     return NextResponse.json({ text: result.text });
   } catch (error) {
     console.error("Erro ao gerar síntese:", error);
-    const message = error instanceof Error ? error.message : "Erro desconhecido";
     return NextResponse.json(
-      { error: `Ocorreu um erro ao processar a geração com a IA: ${message}` },
+      { error: "Ocorreu um erro ao processar a geração com a IA." },
       { status: 500 }
     );
   }

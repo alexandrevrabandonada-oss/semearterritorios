@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { hasAuthorizedRole } from "@/lib/auth-policy";
 import { 
   extractTextFromDocx, 
   extractTextFromPdf, 
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
           global: { headers: { Authorization: `Bearer ${bearerToken}` } },
         }
       )
-    : createSupabaseServerClient();
+    : await createSupabaseServerClient();
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabase = serviceRoleKey
     ? createClient(
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
     // 1. Buscar metadados do anexo
     const { data: attachment, error: attachmentError } = await supabase
       .from("weekly_team_report_attachments")
-      .select("*, weekly_team_reports:report_id(id, profile_id, team_member_id, team_members:team_member_id(profile_id))")
+      .select("*, weekly_team_reports:report_id(id, status, profile_id, team_member_id, team_members:team_member_id(profile_id))")
       .eq("id", attachmentId)
       .single();
 
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    if (profileError || !profile) {
+    if (profileError || !profile || !hasAuthorizedRole(profile.role)) {
       return NextResponse.json({ error: "Perfil do usuário não encontrado." }, { status: 403 });
     }
 
@@ -85,6 +86,10 @@ export async function POST(req: NextRequest) {
 
     if (!canProcess) {
       return NextResponse.json({ error: "Você não tem permissão para processar este anexo." }, { status: 403 });
+    }
+
+    if (profile.role === "equipe" && (!report || !["draft", "needs_changes"].includes(report.status))) {
+      return NextResponse.json({ error: "Apenas relatórios em rascunho ou devolvidos para ajustes podem ser reprocessados pela equipe." }, { status: 403 });
     }
 
     if (attachment.file_size && attachment.file_size > MAX_PROCESS_BYTES) {
@@ -105,6 +110,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Erro ao baixar arquivo: ${downloadError?.message}` }, { status: 500 });
     }
 
+    if (fileData.size > MAX_PROCESS_BYTES) {
+      return NextResponse.json({ error: "Arquivo muito grande para processamento automático." }, { status: 413 });
+    }
     const buffer = Buffer.from(await fileData.arrayBuffer());
     let extractedText = "";
     let status: "extracted" | "failed" | "unsupported" | "needs_manual_transcription" = "extracted";

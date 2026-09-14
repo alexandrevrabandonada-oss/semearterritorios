@@ -26,7 +26,7 @@ type ConnectionRow = Pick<
 >;
 
 async function getAuthenticatedProfile() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const userResult = await supabase.auth.getUser();
   const user = userResult.data.user;
 

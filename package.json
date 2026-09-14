@@ -10,10 +10,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest run",
     "test:reports": "vitest run tests/monthly-reports.test.ts",
     "test:transparencia": "vitest run tests/transparencia",
     "smoke:transparencia": "node scripts/test_transparencia_remote_048.mjs",
-    "verify": "npm run lint && npm run build && npm run test:reports && npm run test:transparencia"
+    "verify": "npm run lint && npm run build && npm test"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.53",
@@ -24,10 +25,15 @@
     "dotenv": "^17.4.2",
     "lucide-react": "^0.468.0",
     "mammoth": "^1.12.0",
-    "next": "^14.2.15",
+    "next": "15.5.25",
     "pdf-parse": "^1.1.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.28"
+    }
   },
   "devDependencies": {
     "@types/node": "^20.17.6",
@@ -36,7 +42,7 @@
     "@types/react-dom": "^18.3.1",
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.1",
-    "eslint-config-next": "^14.2.15",
+    "eslint-config-next": "15.5.25",
     "postcss": "^8.4.49",
     "supabase": "^2.98.1",
     "tailwindcss": "^3.4.15",

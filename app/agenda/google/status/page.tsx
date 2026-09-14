@@ -8,7 +8,7 @@ import { getGoogleCalendarSyncStatusLabel, getGoogleCalendarSyncStatusTone } fro
 type SafeEvent = Pick<TeamCalendarEvent, "id" | "title" | "google_sync_status" | "google_synced_at" | "updated_at">;
 
 export default async function GoogleCalendarStatusPage() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const config = getGoogleCalendarConfig();
   const userResult = await supabase.auth.getUser();
   const user = userResult.data.user;
