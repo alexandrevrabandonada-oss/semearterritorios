@@ -61,23 +61,24 @@ type PublicTransparencyPageProps = {
 export function PublicTransparencyPage({ apiPath }: PublicTransparencyPageProps) {
   const [data, setData] = useState<PublicApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     let active = true;
 
     async function load() {
+      setLoading(true);
+      setLoadError(false);
       try {
         const response = await fetch(apiPath, { method: "GET" });
-        const payload = (await response.json().catch(() => ({ snapshot: null }))) as PublicApiResponse;
+        if (!response.ok) throw new Error("Falha ao carregar publicação");
+        const payload = (await response.json()) as PublicApiResponse;
         if (!active) return;
-        if (!response.ok) {
-          setData({ snapshot: null });
-        } else {
-          setData(payload);
-        }
+        setData(payload);
       } catch {
         if (!active) return;
-        setData({ snapshot: null });
+        setLoadError(true);
       } finally {
         if (active) setLoading(false);
       }
@@ -88,13 +89,27 @@ export function PublicTransparencyPage({ apiPath }: PublicTransparencyPageProps)
     return () => {
       active = false;
     };
-  }, [apiPath]);
+  }, [apiPath, retry]);
 
   if (loading) {
     return (
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <section className="rounded-[2rem] border border-semear-green/10 bg-white p-8 shadow-soft">
           <p className="text-sm text-stone-600">Carregando síntese pública...</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <section role="alert" className="rounded-[2rem] border border-semear-green/10 bg-white p-8 shadow-soft">
+          <h1 className="text-3xl font-semibold tracking-tight text-semear-green sm:text-5xl">Não foi possível carregar a Transparência Viva</h1>
+          <p className="mt-4 text-base leading-7 text-stone-700">Tente novamente em alguns instantes.</p>
+          <button type="button" onClick={() => setRetry((value) => value + 1)} className="mt-6 min-h-11 rounded-full bg-semear-green px-6 py-3 text-sm font-semibold text-white">
+            Tentar novamente
+          </button>
         </section>
       </main>
     );

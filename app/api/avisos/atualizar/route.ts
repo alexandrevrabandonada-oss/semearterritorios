@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { refreshInternalNotificationsForCurrentUser } from "@/lib/notifications/refresh-internal-notifications";
 
 export async function POST(request: Request) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const body = (await request.json().catch(() => ({}))) as {
     scope?: "self" | "role" | "all";

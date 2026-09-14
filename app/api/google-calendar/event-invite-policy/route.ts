@@ -8,7 +8,7 @@ type Body = {
 };
 
 export async function POST(request: Request) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const userResult = await supabase.auth.getUser();
   const user = userResult.data.user;
 

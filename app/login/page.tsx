@@ -89,6 +89,7 @@ export default function LoginPage() {
               id="email"
               name="email"
               type="email"
+              autoComplete="email"
               required
               className="mt-2 min-h-11 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
             />
@@ -101,6 +102,7 @@ export default function LoginPage() {
               id="password"
               name="password"
               type="password"
+              autoComplete="current-password"
               required
               className="mt-2 min-h-11 w-full rounded-2xl border border-semear-gray bg-white px-4 text-sm outline-none focus:border-semear-green"
             />

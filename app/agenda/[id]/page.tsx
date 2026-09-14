@@ -4,15 +4,17 @@ import { TeamCalendarEventDetail } from "@/components/agenda/team-calendar-event
 import { TeamCalendarEventForm } from "@/components/agenda/team-calendar-event-form";
 
 type AgendaDetalhePageProps = {
-  params: {
+  params: Promise<{
     id: string;
-  };
-  searchParams?: {
+  }>;
+  searchParams?: Promise<{
     editar?: string;
-  };
+  }>;
 };
 
-export default function AgendaDetalhePage({ params, searchParams }: AgendaDetalhePageProps) {
+export default async function AgendaDetalhePage(props: AgendaDetalhePageProps) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const editing = searchParams?.editar === "1";
 
   return (

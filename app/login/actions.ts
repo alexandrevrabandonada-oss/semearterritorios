@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function login(formData: FormData) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
@@ -28,7 +28,7 @@ export async function login(formData: FormData) {
 }
 
 export async function logout() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();
   revalidatePath("/", "layout");
   redirect("/login");

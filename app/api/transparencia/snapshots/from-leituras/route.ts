@@ -15,7 +15,7 @@ function tokenizeWords(text: string) {
 }
 
 export async function POST(request: Request) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const body = await request.json().catch(() => ({}));
   const mode = body?.mode === "create" ? "create" : "preview";
   const filters = (body?.filters ?? {}) as CollectiveReadingSnapshotFilters;

@@ -27,11 +27,12 @@ export const metadata: Metadata = {
   }
 };
 
-export default function LancamentoRoute({
-  searchParams
-}: {
-  searchParams?: SearchParams;
-}) {
+export default async function LancamentoRoute(
+  props: {
+    searchParams?: Promise<SearchParams>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const refCode = typeof searchParams?.ref === "string" ? searchParams.ref : undefined;
 
   return <LancamentoPage refCode={refCode} />;

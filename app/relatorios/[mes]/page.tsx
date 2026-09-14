@@ -2,12 +2,13 @@ import { AppShell } from "@/components/app-shell";
 import { MonthlyReportDetail } from "@/components/reports/monthly-report-detail";
 
 type RelatorioMensalPageProps = {
-  params: {
+  params: Promise<{
     mes: string;
-  };
+  }>;
 };
 
-export default function RelatorioMensalPage({ params }: RelatorioMensalPageProps) {
+export default async function RelatorioMensalPage(props: RelatorioMensalPageProps) {
+  const params = await props.params;
   return (
     <AppShell activeHref="/relatorios">
       <MonthlyReportDetail month={params.mes} />

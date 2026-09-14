@@ -8,6 +8,7 @@ import {
 import { calculateExtractionQuality } from "@/lib/report-extraction-quality";
 import { detectImportPrivacyRisks } from "@/lib/report-import-privacy";
 import { sanitizeUploadFileName } from "@/lib/project-memory";
+import { hasAuthorizedRole } from "@/lib/auth-policy";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -83,8 +84,19 @@ export async function POST(req: NextRequest) {
     const weekEnd = getRequiredString(formData, "week_end");
     const teamMemberId = getRequiredString(formData, "team_member_id");
     const linkedEventId = getRequiredString(formData, "team_calendar_event_id") || null;
-    const selectedActionIds = JSON.parse(getRequiredString(formData, "action_ids") || "[]") as string[];
-    const selectedNeighborhoodIds = JSON.parse(getRequiredString(formData, "neighborhood_ids") || "[]") as string[];
+    let selectedActionIds: string[];
+    let selectedNeighborhoodIds: string[];
+    try {
+      selectedActionIds = JSON.parse(getRequiredString(formData, "action_ids") || "[]");
+      selectedNeighborhoodIds = JSON.parse(getRequiredString(formData, "neighborhood_ids") || "[]");
+      if (![selectedActionIds, selectedNeighborhoodIds].every((ids) => Array.isArray(ids) && ids.every((id) => typeof id === "string" && id.length > 0))) {
+        throw new Error("Vínculos inválidos");
+      }
+      selectedActionIds = Array.from(new Set(selectedActionIds));
+      selectedNeighborhoodIds = Array.from(new Set(selectedNeighborhoodIds));
+    } catch {
+      return NextResponse.json({ error: "Ações e bairros devem ser listas válidas de identificadores." }, { status: 400 });
+    }
 
     if (!weekStart || !weekEnd || !teamMemberId) {
       return NextResponse.json({ error: "Semana e membro da equipe são obrigatórios." }, { status: 400 });
@@ -95,7 +107,7 @@ export async function POST(req: NextRequest) {
       supabase.from("team_members").select("id, profile_id").eq("id", teamMemberId).single(),
     ]);
 
-    if (profileResult.error || !profileResult.data) {
+    if (profileResult.error || !profileResult.data || !hasAuthorizedRole(profileResult.data.role)) {
       return NextResponse.json({ error: "Perfil do usuário não encontrado." }, { status: 403 });
     }
 
@@ -172,9 +184,12 @@ export async function POST(req: NextRequest) {
     }
 
     const attachment = attachmentResult.data;
-    await supabase.from("weekly_team_reports").update({ imported_attachment_id: attachment.id }).eq("id", report.id);
+    const attachmentLinkResult = await supabase.from("weekly_team_reports").update({ imported_attachment_id: attachment.id }).eq("id", report.id);
+    if (attachmentLinkResult.error) {
+      return NextResponse.json({ error: "Não foi possível vincular o anexo ao relatório.", reportId: report.id }, { status: 500 });
+    }
 
-    await Promise.all([
+    const linkResults = await Promise.all([
       selectedActionIds.length > 0
         ? supabase.from("weekly_team_report_actions").insert(selectedActionIds.map((actionId) => ({ report_id: report.id, action_id: actionId, created_by: user.id })))
         : Promise.resolve({ error: null }),
@@ -182,6 +197,9 @@ export async function POST(req: NextRequest) {
         ? supabase.from("weekly_team_report_neighborhoods").insert(selectedNeighborhoodIds.map((neighborhoodId) => ({ report_id: report.id, neighborhood_id: neighborhoodId, created_by: user.id })))
         : Promise.resolve({ error: null }),
     ]);
+    if (linkResults.some((result) => result.error)) {
+      return NextResponse.json({ error: "Não foi possível salvar os vínculos de ações e bairros.", reportId: report.id }, { status: 500 });
+    }
 
     let extractedText = "";
     let status: ExtractionStatus = "extracted";
@@ -214,7 +232,7 @@ export async function POST(req: NextRequest) {
       hasPrivacyAlerts: privacyAlerts?.hasRisk || false,
     });
 
-    await supabase
+    const extractionResult = await supabase
       .from("weekly_team_report_attachments")
       .update({
         extraction_status: status,
@@ -225,6 +243,9 @@ export async function POST(req: NextRequest) {
         sections_detected_count: sectionsCount,
       })
       .eq("id", attachment.id);
+    if (extractionResult.error) {
+      return NextResponse.json({ error: "Não foi possível salvar a extração do anexo.", reportId: report.id }, { status: 500 });
+    }
 
     const reportUpdatePayload: Record<string, unknown> = {
       import_status: status === "extracted" ? (privacyAlerts?.hasRisk ? "needs_review" : "extracted_draft") : status === "needs_manual_transcription" ? "needs_review" : "extraction_failed",
@@ -242,7 +263,10 @@ export async function POST(req: NextRequest) {
       if (mappedData.next_steps) reportUpdatePayload.next_steps = mappedData.next_steps;
     }
 
-    await supabase.from("weekly_team_reports").update(reportUpdatePayload).eq("id", report.id);
+    const reportUpdateResult = await supabase.from("weekly_team_reports").update(reportUpdatePayload).eq("id", report.id);
+    if (reportUpdateResult.error) {
+      return NextResponse.json({ error: "Não foi possível salvar o relatório extraído.", reportId: report.id }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,

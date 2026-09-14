@@ -26,7 +26,7 @@ type SyncConnection = Pick<
 >;
 
 async function insertLog(params: {
-  supabase: ReturnType<typeof createSupabaseServerClient>;
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
   eventId: string;
   userId: string;
   action: "create" | "update" | "cancel" | "unlink" | "error";
@@ -49,7 +49,7 @@ async function insertLog(params: {
 }
 
 export async function POST(request: Request) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const requestUrl = new URL(request.url);
   const body = (await request.json().catch(() => null)) as { event_id?: string; action?: SyncAction } | null;
   const eventId = body?.event_id?.trim();
