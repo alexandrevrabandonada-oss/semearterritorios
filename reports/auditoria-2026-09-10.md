@@ -58,3 +58,13 @@ Playwright CLI em Chromium, `http://localhost:3100`, com viewports 1440×900 e 3
 - Verificação final concluída: `npm run verify` passou com lint, checagem TypeScript, compilação de produção (54 páginas geradas) e 54 testes em 9 arquivos. Avisos de depreciação de `next lint` e futura configuração nativa do Vite são não bloqueantes.
 
 Referências: [migração oficial para Next.js 15](https://nextjs.org/docs/app/guides/upgrading/version-15), [aviso de segurança do Next.js](https://github.com/vercel/next.js/security/advisories/GHSA-p293-qw3h-jr36), [aviso de segurança do PostCSS](https://github.com/postcss/postcss/security/advisories/GHSA-r28c-9q8g-f849).
+
+## Continuação — 14/09/2026
+
+- Santa Rita de Cássia foi adicionada ao Setor Oeste com código operacional 57 e disponibilizada nos formulários do sistema.
+- O pacote da auditoria foi publicado em produção no commit `dda89af` e verificado no domínio público.
+- A migração `20260914220018_harden_remaining_function_search_paths.sql` fixou o `search_path` das sete funções apontadas pelo advisor e removeu chamadas diretas às quatro funções de trigger pela Data API.
+- A verificação remota confirmou todos os `search_path` protegidos e execução direta bloqueada para `anon` e `authenticated` nas funções de trigger.
+- Os cinco avisos restantes de `SECURITY DEFINER` correspondem a helpers usados pelas próprias políticas RLS e mantêm validação por `auth.uid()`. Retirar `EXECUTE` do papel autenticado interromperia essas políticas.
+- O aviso de proteção de senhas vazadas não afeta o login atual, que usa Google OAuth e não autenticação por senha.
+- Verificação final aprovada: build de 54 páginas e 54 testes em 9 arquivos.
