@@ -68,6 +68,7 @@ export type FecFinding = {
   description: string;
   evidence: EvidenceRef[];
   status: "draft" | "reviewed";
+  reviewedAt: string | null; // mês próprio do achado, não herdado da atividade
 };
 export type FecProposal = {
   id: string;
@@ -135,6 +136,7 @@ export function validateFecFinding(finding: FecFinding): string[] {
   const errors: string[] = [];
   if (!filled(finding.id) || !filled(finding.cycleId) || !filled(finding.description)) errors.push("Achado exige identificação, ciclo e descrição.");
   if (!finding.evidence.length || finding.evidence.some(item => !filled(item.sourceId))) errors.push("Nenhum achado sem fonte: informar ao menos uma evidência rastreável.");
+  if (finding.status === "reviewed" && (!finding.reviewedAt || !validIsoDate(finding.reviewedAt))) errors.push("Achado revisado exige data de revisão válida.");
   return errors;
 }
 
@@ -161,10 +163,17 @@ export function buildFecTechnicalMonth(input: FecMonthInput) {
     const previous = products.get(product.id);
     if (!previous || product.version > previous.version) products.set(product.id, product);
   }
+  const approvedActivities = new Set(allActivities.filter(a => a.status === "approved").map(a => `${a.cycleId}:${a.id}`));
   const approvedProducts = [...products.values()];
+  for (const product of approvedProducts) {
+    if (!product.sourceActivityIds.some(id => approvedActivities.has(`${product.cycleId}:${id}`))) {
+      throw new Error(`Produto ${product.id}: não há atividade-fonte aprovada no mesmo ciclo.`);
+    }
+  }
   const newProducts = approvedProducts.filter(p => p.firstApprovedAt?.startsWith(`${input.month}-`));
-  const monthlyFindings = input.findings.filter(f => cycles.has(f.cycleId) && f.status === "reviewed" && validateFecFinding(f).length === 0 && f.evidence.some(e => performedSet.has(e.sourceId)));
-  const monthlyProposals = input.proposals.filter(p => cycles.has(p.cycleId) && p.date.startsWith(`${input.month}-`) && performedSet.has(p.sourceActivityId));
+  const approvedSources = new Set([...approvedActivities, ...approvedProducts.map(p => `${p.cycleId}:${p.id}`)]);
+  const monthlyFindings = input.findings.filter(f => cycles.has(f.cycleId) && f.status === "reviewed" && f.reviewedAt?.startsWith(`${input.month}-`) && validateFecFinding(f).length === 0 && f.evidence.some(e => approvedSources.has(`${f.cycleId}:${e.sourceId}`)));
+  const monthlyProposals = input.proposals.filter(p => cycles.has(p.cycleId) && p.date.startsWith(`${input.month}-`) && approvedActivities.has(`${p.cycleId}:${p.sourceActivityId}`));
   return {
     month: input.month,
     workstreamId: FEC_WORKSTREAM,
