@@ -220,7 +220,7 @@ export function ProjectMemoryEntryWorkspace({ entryId }: ProjectMemoryEntryWorks
                   {getProjectMemoryVisibilityLabel(formValues.visibility)}
                 </span>
                 <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider">
-                  Origem: {report ? "Relatório Semanal" : action ? "Ação Territorial" : "Manual"}
+                  Origem: {entry?.source_monthly_report_id ? "Relatório mensal do profissional" : report ? "Relatório Semanal" : action ? "Ação Territorial" : "Manual"}
                 </span>
               </div>
               <input 
@@ -271,6 +271,7 @@ export function ProjectMemoryEntryWorkspace({ entryId }: ProjectMemoryEntryWorks
           </article>
 
           {/* Origem e Contexto */}
+          {entry?.source_monthly_report_id ? <div className="rounded-2xl border bg-white p-5"><h3 className="font-semibold">Relatório mensal de origem</h3><Link className="text-semear-green underline" href={`/memoria/mensais/${entry.source_monthly_report_id}`}>Abrir fechamento mensal do profissional</Link></div> : null}
           <section className="rounded-[2rem] border border-white/80 bg-white/70 p-6 shadow-soft">
             <h3 className="flex items-center gap-2 font-semibold text-semear-green">
               <History className="h-5 w-5" />

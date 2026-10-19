@@ -70,7 +70,7 @@ export function MonthlyReportsHub() {
     };
   }, [supabase]);
 
-  const availableMonths = collectAvailableMonths(actions, records);
+  const availableMonths = Array.from(new Set([...collectAvailableMonths(actions, records), ...weeklyReports.flatMap(report => [getMonthValue(report.week_start), getMonthValue(report.week_end)])])).sort().reverse();
   const latestMonth = availableMonths[0] ?? getMonthValue(new Date().toISOString());
   const latestWeeklyReports = weeklyReports.filter((report) => getMonthValue(report.week_start) === latestMonth);
   const latestApprovedWeeklyReports = latestWeeklyReports.filter((report) => report.status === "approved");

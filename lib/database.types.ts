@@ -1,3 +1,5 @@
+import type { MonthlyTable } from "./monthly-table-types";
+
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type SourceType =
@@ -540,6 +542,8 @@ export type WeeklyTeamReportNeighborhood = TimestampedRow &
   };
 
 export type WeeklyTeamReportAttachment = TimestampedRow & {
+  activity_item_id?: string | null;
+  product_version_id?: string | null;
   id: string;
   report_id: string;
   storage_path: string;
@@ -577,6 +581,7 @@ export type ProjectMemoryEntry = TimestampedRow &
   CreatedByRow & {
     id: string;
     source_report_id: string | null;
+    source_monthly_report_id?: string | null;
     action_id: string | null;
     entry_date: string;
     title: string;
@@ -850,6 +855,17 @@ export type Database = {
           }
         ];
       };
+      professional_monthly_reports: MonthlyTable<import("./professional-monthly-reports").MonthlyReport>;
+      weekly_activity_items: MonthlyTable<import("./weekly-activities").WeeklyActivity>;
+      weekly_activity_products: MonthlyTable<import("./weekly-activities").ActivityProduct>;
+      monthly_syntheses: MonthlyTable<import("./monthly-synthesis").MonthlySynthesis>;
+      monthly_synthesis_history: MonthlyTable<{ id: string; synthesis_id: string; actor_id: string; event: string; details: Json; created_at: string }>;
+      weekly_activity_review_history: MonthlyTable<{ id: string; report_id: string; actor_id: string; from_status: string; to_status: string; note: string | null; created_at: string }>;
+      professional_monthly_activity_links: MonthlyTable<import("./professional-monthly-reports").MonthlyActivityLink>;
+      professional_monthly_neighborhoods: MonthlyTable<{ id: string; report_id: string; neighborhood_id: string }>;
+      professional_monthly_deliveries: MonthlyTable<import("./professional-monthly-reports").MonthlyDelivery>;
+      professional_monthly_attachments: MonthlyTable<import("./professional-monthly-reports").MonthlyAttachment>;
+      professional_monthly_history: MonthlyTable<import("./professional-monthly-reports").MonthlyHistory>;
       project_memory_entries: {
         Row: ProjectMemoryEntry;
         Insert: Omit<ProjectMemoryEntry, "id" | "created_at" | "updated_at" | "visibility" | "review_checklist" | "reviewed_by" | "reviewed_at" | "team_calendar_event_id"> & {

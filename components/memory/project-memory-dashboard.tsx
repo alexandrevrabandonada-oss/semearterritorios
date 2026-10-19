@@ -267,16 +267,17 @@ export function ProjectMemoryDashboard() {
       <SemearPageHeader
         eyebrow="Arquivo vivo"
         title="Memória do Projeto"
-        description="Relatórios semanais internos, anexos privados e linha do tempo da memória institucional. Não inclua CPF, telefone, endereço pessoal ou dado sensível desnecessário."
+        description="Relatórios semanais, relatórios mensais do profissional e memória institucional com anexos privados e revisão."
         actions={
           <>
+            <SemearButton href="/memoria/mensais" variant="secondary">Relatórios mensais do profissional</SemearButton>
             <SemearButton href={`/agenda/novo?eventType=relatorio_semanal&title=${encodeURIComponent(`Entrega dos relatórios semanais — ${formatWeekTitle(currentWeekStart)}`)}&startsAt=${currentWeekStart}T00:00&endsAt=${currentWeekStart}T23:59&allDay=1`} variant="secondary">
               <FileText className="h-4 w-4" aria-hidden="true" />
               Agendar prazo de relatório semanal
             </SemearButton>
             <SemearButton href="/memoria/novo" variant="primary">
               <Plus className="h-4 w-4" aria-hidden="true" />
-              Novo relatório
+              Novo relatório semanal
             </SemearButton>
           </>
         }

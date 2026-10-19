@@ -37,6 +37,7 @@ import {
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { getActionPilotMetrics, hasPossibleSensitiveData, type ListeningRecordForPilot } from "@/lib/action-pilot";
 import { getClosureStatusLabel } from "@/lib/action-closures";
+import { MonthlySynthesisWorkspace } from "@/components/memory/monthly-synthesis-workspace";
 
 type ActionWithNeighborhood = Action & {
   neighborhoods: Pick<Neighborhood, "id" | "name"> | null;
@@ -64,6 +65,7 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [reportMode, setReportMode] = useState<MonthlyReportMode>("internal");
+  const [showLegacy, setShowLegacy] = useState(false);
 
   useEffect(() => {
     let ignore = false;
@@ -167,6 +169,8 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
     setFeedback("CSV exportado.");
   }
 
+  if (!showLegacy) return <><div className="no-print mb-5 flex flex-wrap gap-4"><Link className="underline" href="/relatorios">Voltar aos meses</Link><button className="underline" onClick={()=>setShowLegacy(true)}>Consultar relatório determinístico anterior de ações e escutas</button></div><MonthlySynthesisWorkspace month={month} /></>;
+
   if (loading) {
     return <StateBox>Gerando relatório mensal...</StateBox>;
   }
@@ -177,6 +181,7 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
 
   return (
     <>
+    <button className="no-print mb-4 underline" onClick={()=>setShowLegacy(false)}>Voltar à síntese mensal revisável</button>
     <section className="no-print pb-10">
       <div className="mb-5 flex flex-wrap gap-3">
         <Link className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white/70 px-4 text-sm font-semibold text-semear-green transition hover:bg-white" href="/relatorios">
