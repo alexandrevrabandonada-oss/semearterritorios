@@ -171,7 +171,7 @@ export function buildFecTechnicalMonth(input: FecMonthInput) {
     }
   }
   const newProducts = approvedProducts.filter(p => p.firstApprovedAt?.startsWith(`${input.month}-`));
-  const approvedSources = new Set([...approvedActivities, ...approvedProducts.map(p => `${p.cycleId}:${p.id}`)]);
+  const approvedSources = new Set(Array.from(approvedActivities).concat(approvedProducts.map(p => `${p.cycleId}:${p.id}`)));
   const monthlyFindings = input.findings.filter(f => cycles.has(f.cycleId) && f.status === "reviewed" && f.reviewedAt?.startsWith(`${input.month}-`) && validateFecFinding(f).length === 0 && f.evidence.some(e => approvedSources.has(`${f.cycleId}:${e.sourceId}`)));
   const monthlyProposals = input.proposals.filter(p => cycles.has(p.cycleId) && p.date.startsWith(`${input.month}-`) && approvedActivities.has(`${p.cycleId}:${p.sourceActivityId}`));
   return {
