@@ -89,10 +89,10 @@ export type FecMonthInput = {
   proposals: FecProposal[];
 };
 
-const WORKSHOP_TYPES: ReadonlySet<TechnicalActivityType> = new Set([
+const WORKSHOP_TYPES: ReadonlySet<TechnicalActivityType> = new Set<TechnicalActivityType>([
   "cartography_workshop", "territorial_reading_workshop", "environmental_education_workshop", "planting_workshop",
 ]);
-const NO_PUBLIC_TYPES: ReadonlySet<TechnicalActivityType> = new Set(["preparation", "systematization"]);
+const NO_PUBLIC_TYPES: ReadonlySet<TechnicalActivityType> = new Set<TechnicalActivityType>(["preparation", "systematization"]);
 const ISO_MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 const ISO_DATE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 const filled = (value: string | null | undefined) => Boolean(value?.trim());
