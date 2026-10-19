@@ -37,7 +37,7 @@ describe("trilha técnica FEC independente da APS", () => {
   it("exige legenda e metodologia do mapa e fonte de cada achado", () => {
     expect(validateFecProduct(map(1))).toEqual([]);
     expect(validateFecProduct({ ...map(1), legend: "" })).toContain("Mapa social exige método de construção e legenda.");
-    expect(validateFecFinding({ id: "f1", cycleId: cycle.id, status: "reviewed", description: "Relato de poeira", evidence: [] })).toHaveLength(1);
+    expect(validateFecFinding({ id: "f1", cycleId: cycle.id, status: "reviewed", description: "Relato de poeira", evidence: [], reviewedAt: "2026-10-14" })).toHaveLength(1);
   });
 
   it("consolida o mês, preserva datas, categorias e revisões sem inflar produtos", () => {
@@ -46,8 +46,8 @@ describe("trilha técnica FEC independente da APS", () => {
       activities: [activity("workshop-1", "2026-10-12", "cartography_workshop"), activity("prep", "2026-10-13", "preparation", null), activity("other-month", "2026-11-01", "planting_workshop"), { ...activity("draft", "2026-10-15", "training"), status: "draft" }],
       products: [map(1), map(2)],
       findings: [
-        { id: "finding-1", cycleId: cycle.id, description: "Percepção comunitária", evidence: [{ sourceId: "workshop-1", kind: "participant_account" }], status: "reviewed" },
-        { id: "finding-invalid", cycleId: cycle.id, description: "Sem fonte", evidence: [], status: "reviewed" },
+        { id: "finding-1", cycleId: cycle.id, description: "Percepção comunitária", evidence: [{ sourceId: "workshop-1", kind: "participant_account" }], status: "reviewed", reviewedAt: "2026-10-17" },
+        { id: "finding-invalid", cycleId: cycle.id, description: "Sem fonte", evidence: [], status: "reviewed", reviewedAt: "2026-10-17" },
       ],
       proposals: [{ id: "proposal-1", cycleId: cycle.id, text: "Solicitar dados", sourceActivityId: "workshop-1", date: "2026-10-12", status: "recorded" }],
     });
@@ -64,7 +64,7 @@ describe("trilha técnica FEC independente da APS", () => {
 
   it("não transforma versão 2 de mapa antigo em um novo produto no mês", () => {
     const report = buildFecTechnicalMonth({ month: "2026-11", professionalId: cycle.professionalId, cycles: [cycle],
-      activities: [], products: [{ ...map(2), firstApprovedAt: "2026-10-17" }], findings: [], proposals: [] });
+      activities: [activity("workshop-1", "2026-10-12", "cartography_workshop")], products: [{ ...map(2), firstApprovedAt: "2026-10-17" }], findings: [], proposals: [] });
     expect(report.mapIds).toEqual([]);
   });
 
