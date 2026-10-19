@@ -27,4 +27,4 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
       - name: Testar contratos da frente FEC
-        run: npx vitest run tests/fec-technical-cycles.test.ts tests/fec-field-protocol.test.ts tests/fec-api-input.test.ts tests/fec-schema-contract.test.ts
+        run: npx vitest run tests/fec-technical-cycles.test.ts tests/fec-field-protocol.test.ts tests/fec-api-input.test.ts tests/fec-schema-contract.test.ts tests/fec-monthly-activity-extract.test.ts
