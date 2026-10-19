@@ -12,6 +12,10 @@ import {
 import { POST as review } from "@/app/api/fec/review/route";
 import { POST as upload } from "@/app/api/fec/files/route";
 import { GET as territory } from "@/app/api/fec/territories/route";
+import {
+  GET as versions,
+  POST as closeMonthly,
+} from "@/app/api/fec/monthly/reports/route";
 afterEach(() => {
   vi.unstubAllEnvs();
   factory.mockReset();
@@ -28,9 +32,11 @@ describe("flag e sessão antes de qualquer acesso FEC", () => {
       review(request()),
       upload(request()),
       territory(request()),
+      versions(request()),
+      closeMonthly(request()),
     ]);
     expect(responses.map((r) => r.status)).toEqual([
-      503, 503, 503, 503, 503, 503, 503,
+      503, 503, 503, 503, 503, 503, 503, 503, 503,
     ]);
     expect(factory).not.toHaveBeenCalled();
   });

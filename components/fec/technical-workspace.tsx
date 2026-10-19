@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
+import { FecMonthlyWorkspace } from "@/components/fec/monthly-workspace";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { uploadFecFile } from "@/lib/fec-files";
 import type { FecActivityRow, FecCycleRow } from "@/lib/fec-persistence.types";
@@ -147,10 +148,7 @@ export function FecTechnicalWorkspace({ enabled }: { enabled: boolean }) {
     [fieldNotes, setFieldNotes] = useState(""),
     [results, setResults] = useState("");
   const [knowledge, setKnowledge] = useState<KnowledgeDraft>(blankKnowledge);
-  const [month, setMonth] = useState(() =>
-      new Date().toISOString().slice(0, 7),
-    ),
-    [report, setReport] = useState("");
+  const [monthlyDirty, setMonthlyDirty] = useState(false);
   const [territoryId, setTerritoryId] = useState(""),
     [territorial, setTerritorial] = useState<{
       note: string;
@@ -222,7 +220,6 @@ export function FecTechnicalWorkspace({ enabled }: { enabled: boolean }) {
     setRecords([]);
     setFiles([]);
     setHistory([]);
-    setReport("");
     setKnowledge(blankKnowledge());
     setActivityId("");
     setActivityDraft({ ...emptyFecFieldDraft });
@@ -471,7 +468,16 @@ export function FecTechnicalWorkspace({ enabled }: { enabled: boolean }) {
                   aria-label="Ciclo em consulta"
                   className={control}
                   value={cycleId}
-                  onChange={(e) => setCycleId(e.target.value)}
+                  onChange={(e) => {
+                    if (
+                      monthlyDirty &&
+                      !window.confirm(
+                        "Há alterações mensais não salvas. Descartar e trocar o ciclo?",
+                      )
+                    )
+                      return;
+                    setCycleId(e.target.value);
+                  }}
                 >
                   <option value="">Escolha um ciclo</option>
                   {catalog.cycles.map((c) => (
@@ -506,25 +512,36 @@ export function FecTechnicalWorkspace({ enabled }: { enabled: boolean }) {
                         ? " bg-green-50 ring-2 ring-semear-green"
                         : "")
                     }
-                    onClick={() => setTab(id)}
+                    onClick={() => {
+                      if (
+                        tab === "monthly" &&
+                        monthlyDirty &&
+                        !window.confirm(
+                          "Há alterações mensais não salvas. Descartar e sair do fechamento?",
+                        )
+                      )
+                        return;
+                      setTab(id);
+                    }}
                   >
                     {text}
                   </button>
                 ))}
               </nav>
-              {supervisor && (
-                <Box title="Observação da supervisão">
-                  <Area
-                    title="Justificativa para ajustes ou reabertura"
-                    value={reason}
-                    onChange={setReason}
-                  />
-                  <p className="mt-2 text-sm">
-                    A aprovação técnica não equivale a aceite financeiro ou
-                    validação comunitária.
-                  </p>
-                </Box>
-              )}
+              {supervisor &&
+                ["cycles", "activities", "knowledge"].includes(tab) && (
+                  <Box title="Observação da supervisão">
+                    <Area
+                      title="Justificativa para ajustes ou reabertura"
+                      value={reason}
+                      onChange={setReason}
+                    />
+                    <p className="mt-2 text-sm">
+                      A aprovação técnica não equivale a aceite financeiro ou
+                      validação comunitária.
+                    </p>
+                  </Box>
+                )}
               {tab === "cycles" && (
                 <Box title="Ciclo técnico territorial">
                   {cycle && (
@@ -1232,69 +1249,14 @@ export function FecTechnicalWorkspace({ enabled }: { enabled: boolean }) {
                 </Box>
               )}
               {tab === "monthly" && cycle && (
-                <Box title="Relatório técnico mensal individual FEC">
-                  <label className={label}>
-                    Mês de referência
-                    <input
-                      className={control}
-                      type="month"
-                      value={month}
-                      onChange={(e) => {
-                        setMonth(e.target.value);
-                        setReport("");
-                      }}
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    className={button + " mt-3"}
-                    disabled={busy}
-                    onClick={() =>
-                      void run(async () => {
-                        const data = await api<{ markdown: string }>(
-                          "monthly?month=" +
-                            month +
-                            "&engagementId=" +
-                            cycle.engagement_id +
-                            "&professionalId=" +
-                            cycle.owner_id,
-                        );
-                        setReport(data.markdown);
-                      })
-                    }
-                  >
-                    Consolidar fontes aprovadas
-                  </button>
-                  <p className="mt-3 text-sm">
-                    A minuta usa registros persistidos e aprovados. Não
-                    representa aprovação do relatório, síntese institucional ou
-                    aceite financeiro.
-                  </p>
-                  {report && (
-                    <>
-                      <pre className="mt-4 max-h-[40rem] overflow-auto whitespace-pre-wrap break-words rounded-xl bg-stone-50 p-4 text-xs leading-6">
-                        {report}
-                      </pre>
-                      <button
-                        type="button"
-                        className={button + " mt-3"}
-                        onClick={() => {
-                          const blob = new Blob([report], {
-                            type: "text/markdown;charset=utf-8",
-                          });
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement("a");
-                          a.href = url;
-                          a.download = `relatorio-fec-${month}.md`;
-                          a.click();
-                          URL.revokeObjectURL(url);
-                        }}
-                      >
-                        Baixar minuta Markdown
-                      </button>
-                    </>
-                  )}
-                </Box>
+                <FecMonthlyWorkspace
+                  key={cycle.engagement_id + ":" + cycle.owner_id}
+                  engagementId={cycle.engagement_id}
+                  professionalId={cycle.owner_id}
+                  userId={catalog.userId}
+                  canReview={supervisor}
+                  onDirtyChange={setMonthlyDirty}
+                />
               )}
               {tab === "territory" && (
                 <Box title="Contribuições por território">

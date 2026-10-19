@@ -6,6 +6,10 @@
 import type { Database } from "@/lib/database.types";
 import type { TechnicalActivityType } from "@/lib/fec-technical-cycles";
 import type { FecKnowledgeRow, FecKnowledgeInsert } from "@/lib/fec-knowledge";
+import type {
+  FecMonthlyRow,
+  FecMonthlyHistory,
+} from "@/lib/fec-monthly-versions";
 
 export type FecApprovalState =
   | "draft"
@@ -121,6 +125,8 @@ export type FecActivityInsert = Pick<
 export type FecDatabase = Omit<Database, "public"> & {
   public: Omit<Database["public"], "Tables" | "Functions"> & {
     Tables: Database["public"]["Tables"] & {
+      fec_monthly_reports: NewTable<FecMonthlyRow, never>;
+      fec_monthly_history: NewTable<FecMonthlyHistory, never>;
       fec_knowledge_records: NewTable<FecKnowledgeRow, FecKnowledgeInsert>;
       fec_knowledge_files: NewTable<
         {
@@ -191,6 +197,41 @@ export type FecDatabase = Omit<Database, "public"> & {
       >;
     };
     Functions: Database["public"]["Functions"] & {
+      fec_monthly_open: {
+        Args: {
+          p_engagement_id: string;
+          p_month: string;
+          p_previous_id?: string | null;
+        };
+        Returns: FecMonthlyRow;
+      };
+      fec_monthly_save: {
+        Args: {
+          p_id: string;
+          p_revision: number;
+          p_blocks: import("@/lib/database.types").Json;
+          p_no_activity_reason: string;
+        };
+        Returns: FecMonthlyRow;
+      };
+      fec_monthly_refresh: {
+        Args: { p_id: string; p_revision: number };
+        Returns: FecMonthlyRow;
+      };
+      fec_monthly_transition: {
+        Args: {
+          p_id: string;
+          p_revision: number;
+          p_decision: string;
+          p_reason: string;
+          p_checklist: import("@/lib/database.types").Json;
+        };
+        Returns: FecMonthlyRow;
+      };
+      fec_monthly_check: {
+        Args: { p_id: string };
+        Returns: { stale: boolean; source_hash: string; current_hash: string };
+      };
       fec_review_record: {
         Args: {
           p_record_kind: "cycle" | "activity" | "knowledge";

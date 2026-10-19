@@ -6,6 +6,7 @@ on:
       - "lib/fec-*.ts"
       - "tests/fec-*.test.ts"
       - "tests/fec-rls.mjs"
+      - "tests/fec-monthly-rls.mjs"
       - "app/api/fec/**"
       - "app/fec/**"
       - "components/fec/**"
@@ -13,6 +14,7 @@ on:
       - "package.json"
       - "package-lock.json"
       - "supabase/migrations/20261019190000_fec_technical_cycles_staged.sql"
+      - "supabase/migrations/20261019190720_fec_monthly_report_versions.sql"
       - ".github/workflows/fec-domain-tests.yml"
   workflow_dispatch:
 

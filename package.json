@@ -11,7 +11,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "test:fec:db": "node tests/fec-rls.mjs",
+    "test:fec:db": "node tests/fec-rls.mjs && node tests/fec-monthly-rls.mjs",
     "test:reports": "vitest run tests/monthly-reports.test.ts",
     "test:transparencia": "vitest run tests/transparencia",
     "smoke:transparencia": "node scripts/test_transparencia_remote_048.mjs",

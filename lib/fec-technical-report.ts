@@ -4,6 +4,7 @@ import {
   knowledgeLabels,
   type FecKnowledgeRow,
 } from "@/lib/fec-knowledge";
+import { fecFieldTypes } from "@/lib/fec-field-protocol";
 
 type FileRef = { id: string; record_id: string; title: string };
 export type FecReportSources = {
@@ -11,7 +12,24 @@ export type FecReportSources = {
   activities: FecActivityRow[];
   records: FecKnowledgeRow[];
   files: FileRef[];
+  neighborhoods?: { id: string; name: string }[];
+  engagement?: { id: string; contract_reference: string; title: string };
 };
+const reviewDateFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Sao_Paulo",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+export function fecReviewDay(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  const parts = reviewDateFormatter.formatToParts(date);
+  return ["year", "month", "day"]
+    .map((k) => parts.find((p) => p.type === k)?.value)
+    .join("-");
+}
 const workshops = new Set([
   "cartography_workshop",
   "territorial_reading_workshop",
@@ -47,7 +65,8 @@ export function buildFecTechnicalReport(
       r.owner_id === professionalId &&
       r.status === "approved" &&
       r.reviewed_at &&
-      r.reviewed_at.slice(0, 10) < until,
+      !!fecReviewDay(r.reviewed_at) &&
+      fecReviewDay(r.reviewed_at) < until,
   );
   const eligibleIds = new Set(eligible.map((r) => r.id));
   // Uma origem que foi reaberta não pode sustentar silenciosamente a leitura mensal.
@@ -81,14 +100,22 @@ export function buildFecTechnicalReport(
     eligible
       .filter((r) => r.record_key === key)
       .map((r) => r.reviewed_at!)
-      .sort()[0];
+      .sort((a, b) => Date.parse(a) - Date.parse(b))[0];
   const newMaps = records.filter(
-    (r) => r.kind === "map" && firstApproval(r.record_key)?.startsWith(month),
+    (r) =>
+      r.kind === "map" &&
+      firstApproval(r.record_key) &&
+      fecReviewDay(firstApproval(r.record_key)).startsWith(month),
   );
-  const thisMonth = records.filter((r) => r.reviewed_at?.startsWith(month));
+  const thisMonth = records.filter(
+    (r) => r.reviewed_at && fecReviewDay(r.reviewed_at).startsWith(month),
+  );
   const mapVersions = eligible.filter(
     (r) =>
-      valid.has(r.id) && r.kind === "map" && r.reviewed_at?.startsWith(month),
+      valid.has(r.id) &&
+      r.kind === "map" &&
+      r.reviewed_at &&
+      fecReviewDay(r.reviewed_at).startsWith(month),
   );
   const activeCycleIds = new Set([
     ...activities.map((a) => a.cycle_id),
@@ -161,8 +188,12 @@ export function buildFecTechnicalReport(
     {
       title: "2. Territórios trabalhados",
       text:
-        Array.from(new Set(cycles.map((c) => c.neighborhood_id))).join("\n") ||
-        "Nenhum território com registro aprovado no período.",
+        Array.from(new Set(cycles.map((c) => c.neighborhood_id)))
+          .map((id) => {
+            const n = sources.neighborhoods?.find((n) => n.id === id);
+            return n ? `${n.name} — ${id}` : id;
+          })
+          .join("\n") || "Nenhum território com registro aprovado no período.",
       sourceIds: cycles.map((c) => c.id),
     },
     {
@@ -182,7 +213,7 @@ export function buildFecTechnicalReport(
         activities
           .map(
             (a) =>
-              `${a.activity_date} — ${a.activity_type}: ${a.objective}. Método: ${a.methodology}. Temas: ${a.themes || "não informados"}. Resultados: ${a.preliminary_results || "não informados"}.`,
+              `${a.activity_date.slice(0, 10)} — ${fecFieldTypes.find((t) => t.value === a.activity_type)?.label ?? a.activity_type}: ${a.objective}. Método: ${a.methodology}. Temas: ${a.themes || "não informados"}. Resultados: ${a.preliminary_results || "não informados"}.`,
           )
           .join("\n") || "Sem atividade aprovada.",
       sourceIds: activities.map((a) => a.id),
@@ -244,6 +275,7 @@ export function buildFecTechnicalReport(
     month,
     engagementId,
     professionalId,
+    contractReference: sources.engagement?.contract_reference ?? engagementId,
     workstream: "fec_cartografia" as const,
     approval: "not_submitted" as const,
     metrics: {
@@ -288,7 +320,7 @@ export function fecReportMarkdown(
   return [
     "# Relatório técnico individual FEC — " + report.month,
     "",
-    `Profissional: ${report.professionalId} | Aditivo: ${report.engagementId}`,
+    `Profissional: ${report.professionalId} | Aditivo: ${report.contractReference}`,
     "",
     ...report.caveats.map((s) => "- " + s),
     "",

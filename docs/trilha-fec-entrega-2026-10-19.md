@@ -1,5 +1,7 @@
 # Trilha técnica FEC — incremento funcional de 19/10/2026
 
+> Continuação no mesmo dia: o fechamento mensal agora possui persistência, revisão própria, indicadores congelados e versões imutáveis após aprovação. Consulte [o relatório atualizado do fechamento mensal](trilha-fec-fechamento-mensal-2026-10-19.md). As referências abaixo a minuta recalculável e próximo incremento descrevem o estado anterior, no commit `874d9db`.
+
 ## Entregue
 
 A Trilha FEC passou de uma minuta local e APIs iniciais para um fluxo de ciclos, atividades, acervo territorial versionado e relatório mensal individual. O código está na PR #2, em rascunho. A persistência continua desativada por padrão, aguardando homologação.
