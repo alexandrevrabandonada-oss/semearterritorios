@@ -1,0 +1,29 @@
+name: Trilha FEC — testes de dominio
+
+on:
+  pull_request:
+    paths:
+      - "lib/fec-*.ts"
+      - "tests/fec-*.test.ts"
+      - ".github/workflows/fec-domain-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fec-domain-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout da PR
+        uses: actions/checkout@v4
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Testar contratos da frente FEC
+        run: npx vitest run tests/fec-technical-cycles.test.ts tests/fec-field-protocol.test.ts
