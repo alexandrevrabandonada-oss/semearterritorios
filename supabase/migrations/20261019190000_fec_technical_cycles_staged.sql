@@ -37,6 +37,16 @@ as $$
   );
 $$;
 
+-- Leitura historica continua possivel apos encerramento; escrita exige contrato ativo.
+create function public.fec_scope_is_active(p_engagement_id uuid)
+returns boolean language sql stable security definer set search_path = ''
+as $
+  select exists (
+    select 1 from public.fec_engagements scope_row
+    where scope_row.id = p_engagement_id and scope_row.status = 'active'
+  );
+$;
+
 create table public.fec_cycles (
   id uuid primary key default gen_random_uuid(),
   engagement_id uuid not null references public.fec_engagements(id) on delete restrict,
@@ -140,6 +150,7 @@ as $$
       and c.owner_id = auth.uid()
       and c.status in ('draft','needs_changes','approved')
       and public.fec_has_assignment(c.engagement_id, 'executor')
+      and public.fec_scope_is_active(c.engagement_id)
   );
 $$;
 
@@ -277,14 +288,17 @@ for insert to authenticated with check (
   owner_id = auth.uid() and status = 'draft'
   and reviewed_by is null and reviewed_at is null and review_notes is null
   and public.fec_has_assignment(engagement_id,'executor')
+  and public.fec_scope_is_active(engagement_id)
 );
 create policy "fec_cycles_update_executor_open" on public.fec_cycles
 for update to authenticated using (
   owner_id = auth.uid() and status in ('draft','needs_changes')
   and public.fec_has_assignment(engagement_id,'executor')
+  and public.fec_scope_is_active(engagement_id)
 ) with check (
   owner_id = auth.uid() and status in ('draft','submitted')
   and public.fec_has_assignment(engagement_id,'executor')
+  and public.fec_scope_is_active(engagement_id)
 );
 
 create policy "fec_activities_read_owner_or_supervisor" on public.fec_activities
@@ -322,6 +336,10 @@ revoke all on public.fec_engagements, public.fec_access_grants,
 grant select on public.fec_engagements, public.fec_access_grants,
   public.fec_review_log to authenticated;
 grant select, insert, update on public.fec_cycles, public.fec_activities to authenticated;
+grant all on public.fec_engagements, public.fec_access_grants,
+  public.fec_cycles, public.fec_activities, public.fec_review_log to service_role;
+revoke all on function public.fec_scope_is_active(uuid) from public;
+grant execute on function public.fec_scope_is_active(uuid) to authenticated;
 revoke all on function public.fec_has_assignment(uuid,text) from public;
 revoke all on function public.fec_can_read_cycle(uuid) from public;
 revoke all on function public.fec_can_edit_cycle(uuid) from public;
