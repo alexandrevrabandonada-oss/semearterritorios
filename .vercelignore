@@ -1,0 +1,15 @@
+.git
+.vercel
+.next
+node_modules
+out
+.env*
+*.log
+*.tsbuildinfo
+.codex-remote-attachments
+supabase/.temp
+/tmp_pdf_images/
+/scratch/
+/scripts/
+/reports/
+/docs/

@@ -42,6 +42,8 @@ import {
 } from "@/lib/memory-privacy";
 import { MemoryEntryPrivacyChecklist } from "@/components/memory/memory-entry-privacy-checklist";
 import { getExtractionQualityLabel, getExtractionQualityColor } from "@/lib/report-extraction-quality";
+import { WeeklyActivityEditor } from "@/components/memory/weekly-activity-editor";
+import { WeeklyReviewHistory } from "@/components/memory/weekly-review-history";
 
 type ReportActionLink = {
   action_id: string;
@@ -148,7 +150,7 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
   const canReview = currentProfile?.role === "admin" || currentProfile?.role === "coordenacao";
   const linkedTeamMember = teamMembers.find((member) => member.profile_id === currentProfile?.id);
   const isOwner = Boolean(report && currentProfile?.id && (report.created_by === currentProfile.id || report.profile_id === currentProfile.id));
-  const canEditReport = !report ? true : canReview || (isOwner && ["draft", "needs_changes"].includes(report.status));
+  const canEditReport = !report ? true : ["draft", "needs_changes"].includes(report.status) && (canReview || isOwner);
 
   const queryEventId = searchParams.get("eventId") ?? "";
   const queryActionId = searchParams.get("actionId") ?? "";
@@ -326,7 +328,7 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
       learnings: nullableText(formValues.learnings),
       pending_items: nullableText(formValues.pending_items),
       next_steps: nullableText(formValues.next_steps),
-      review_notes: canReview ? nullableText(formValues.review_notes) : null,
+      ...(canReview ? { review_notes: nullableText(formValues.review_notes) } : {}),
       team_calendar_event_id: linkedEventId || null,
     };
 
@@ -1018,6 +1020,7 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
               </div>
             )}
 
+            {report ? <div className="mt-5"><WeeklyActivityEditor report={report} canEdit={canEditReport} actions={actions} neighborhoods={neighborhoods} /><WeeklyReviewHistory reportId={report.id} updatedAt={report.updated_at}/></div> : <p className="mt-5 text-sm">Crie o rascunho para preencher as atividades datadas e seus produtos no roteiro guiado.</p>}
             <div className="mt-5 grid gap-5 lg:grid-cols-2">
               <SelectionPanel
                 title="Ações relacionadas"
@@ -1158,16 +1161,19 @@ export function ProjectMemoryReportWorkspace({ reportId }: { reportId?: string }
 
               {report && canReview ? (
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {["draft", "needs_changes"].includes(report.status) ? (
+                    <ActionButton label="Enviar para revisão" icon={<Send className="h-4 w-4" />} onClick={() => void changeStatus("submitted")} disabled={submitting} />
+                  ) : null}
                   {report.status === "submitted" ? (
                     <ActionButton label="Marcar em revisão" icon={<FileText className="h-4 w-4" />} onClick={() => void changeStatus("in_review")} disabled={submitting} />
                   ) : null}
-                  {report.status !== "approved" ? (
+                  {report.status === "in_review" ? (
                     <ActionButton label="Aprovar" icon={<CheckCircle2 className="h-4 w-4" />} onClick={() => void changeStatus("approved")} disabled={submitting} />
                   ) : null}
-                  {report.status !== "needs_changes" ? (
-                    <ActionButton label="Pedir ajustes" icon={<Send className="h-4 w-4" />} onClick={() => void changeStatus("needs_changes")} disabled={submitting} tone="secondary" />
+                  {["submitted", "in_review", "approved"].includes(report.status) ? (
+                    <ActionButton label={report.status==="approved"?"Reabrir com justificativa":"Pedir ajustes"} icon={<Send className="h-4 w-4" />} onClick={() => void changeStatus("needs_changes")} disabled={submitting} tone="secondary" />
                   ) : null}
-                  {report.status !== "archived" ? (
+                  {["draft", "needs_changes", "submitted", "in_review"].includes(report.status) ? (
                     <ActionButton label="Arquivar" icon={<Archive className="h-4 w-4" />} onClick={() => void changeStatus("archived")} disabled={submitting} tone="secondary" />
                   ) : null}
                 </div>

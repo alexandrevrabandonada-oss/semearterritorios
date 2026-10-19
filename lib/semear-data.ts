@@ -12,6 +12,7 @@ import {
   MessageSquareText,
   Tag,
   LibraryBig,
+  BookOpenCheck,
   UsersRound,
 } from "lucide-react";
 import type { ComponentType } from "react";
@@ -46,6 +47,7 @@ export const navigationItems: NavigationItem[] = [
   { label: "Equipe", href: "/equipe", icon: UsersRound },
   { label: "Memória", href: "/memoria", icon: LibraryBig },
   { label: "Territórios", href: "/territorios", icon: MapPinned },
+  { label: "Trilha FEC (prévia)", href: "/fec/cartografia", icon: BookOpenCheck },
   { label: "Mapa", href: "/mapa", icon: Map },
   { label: "Relatórios", href: "/relatorios", icon: FileText },
   { label: "Pós-banca", href: "/pos-banca", icon: Lightbulb },

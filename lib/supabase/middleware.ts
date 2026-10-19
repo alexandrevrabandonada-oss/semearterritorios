@@ -64,8 +64,14 @@ export async function updateSession(request: NextRequest) {
     .maybeSingle();
 
   const hasAuthorizedProfile = !!profile?.role && AUTHORIZED_ROLES.includes(profile.role);
+  // FEC tem autorização contratual própria: nunca concede papel APS/admin para acessar a trilha.
+  let hasFecAssignment = false;
+  if (pathname.startsWith("/fec/") && process.env.SEMEAR_FEC_PERSISTENCE_ENABLED === "true") {
+    const { data: grant } = await supabase.from("fec_access_grants").select("id").eq("user_id", user.id).eq("active", true).limit(1).maybeSingle();
+    hasFecAssignment = !!grant;
+  }
 
-  if (!hasAuthorizedProfile && !pathname.startsWith("/aguardando-liberacao") && !isPublicRoute) {
+  if (!hasAuthorizedProfile && !hasFecAssignment && !pathname.startsWith("/aguardando-liberacao") && !isPublicRoute) {
     // Audit-friendly diagnostic to investigate unexpected access gating.
     console.warn("[auth-gate] redirecting user to /aguardando-liberacao", {
       userId: user.id,

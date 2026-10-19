@@ -1,0 +1,43 @@
+name: Trilha FEC — testes de dominio
+
+on:
+  pull_request:
+    paths:
+      - "lib/fec-*.ts"
+      - "tests/fec-*.test.ts"
+      - "tests/fec-rls.mjs"
+      - "tests/fec-monthly-rls.mjs"
+      - "app/api/fec/**"
+      - "app/fec/**"
+      - "components/fec/**"
+      - "lib/supabase/middleware.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "supabase/migrations/20261019190000_fec_technical_cycles_staged.sql"
+      - "supabase/migrations/20261019190720_fec_monthly_report_versions.sql"
+      - ".github/workflows/fec-domain-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fec-domain-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout da PR
+        uses: actions/checkout@v4
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Testar contratos da frente FEC
+        run: npm test
+      - name: Executar PostgreSQL e políticas RLS isoladas
+        run: npm run test:fec:db
+      - name: Conferir lint e tipos
+        run: npm run lint && npx tsc --noEmit
