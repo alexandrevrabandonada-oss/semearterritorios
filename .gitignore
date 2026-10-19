@@ -8,3 +8,4 @@ out
 supabase/.temp/
 
 .vercel
+*.tsbuildinfo

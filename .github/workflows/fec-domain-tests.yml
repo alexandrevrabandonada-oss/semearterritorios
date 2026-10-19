@@ -5,6 +5,13 @@ on:
     paths:
       - "lib/fec-*.ts"
       - "tests/fec-*.test.ts"
+      - "tests/fec-rls.mjs"
+      - "app/api/fec/**"
+      - "app/fec/**"
+      - "components/fec/**"
+      - "lib/supabase/middleware.ts"
+      - "package.json"
+      - "package-lock.json"
       - "supabase/migrations/20261019190000_fec_technical_cycles_staged.sql"
       - ".github/workflows/fec-domain-tests.yml"
   workflow_dispatch:
@@ -27,4 +34,8 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
       - name: Testar contratos da frente FEC
-        run: npx vitest run tests/fec-technical-cycles.test.ts tests/fec-field-protocol.test.ts tests/fec-api-input.test.ts tests/fec-schema-contract.test.ts tests/fec-monthly-activity-extract.test.ts
+        run: npm test
+      - name: Executar PostgreSQL e políticas RLS isoladas
+        run: npm run test:fec:db
+      - name: Conferir lint e tipos
+        run: npm run lint && npx tsc --noEmit

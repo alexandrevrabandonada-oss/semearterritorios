@@ -1,7 +1,8 @@
 # Relatório: fluxo semanal, síntese mensal e transparência
 
-**Projeto:** Acompanhamento Acadêmico e Popular da Poluição do Ar em Volta Redonda – RJ  
-**Data deste relatório:** 19/10/2026  
+**Projeto:** Acompanhamento Acadêmico e Popular da Poluição do Ar em Volta Redonda – RJ
+
+**Data deste relatório:** 19/10/2026
 **Situação de produção descrita:** verificações realizadas em 15/10/2026
 
 ## Resumo

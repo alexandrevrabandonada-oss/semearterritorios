@@ -1,57 +1,92 @@
-import { NextResponse, type NextRequest } from "next/server";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { buildFecMonthlyActivityExtract } from "@/lib/fec-monthly-activity-extract";
-import type { FecDatabase, FecCycleRow, FecActivityRow } from "@/lib/fec-persistence.types";
+import { fecResponse, fecSession } from "@/lib/fec-server";
+import { fecUuid } from "@/lib/fec-knowledge";
+import {
+  buildFecTechnicalReport,
+  fecReportMarkdown,
+} from "@/lib/fec-technical-report";
 
-const enabled = () => process.env.SEMEAR_FEC_PERSISTENCE_ENABLED === "true";
-const respond = (body: object, status: number) =>
-  NextResponse.json(body, { status, headers: { "Cache-Control": "private, no-store" } });
-const uuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
-const monthValid = (m: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(m);
-
-export async function GET(request: NextRequest) {
-  if (!enabled()) return respond({ error: "Persistência FEC não habilitada neste ambiente." }, 503);
-  const supabase = await createSupabaseServerClient() as unknown as SupabaseClient<FecDatabase>;
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return respond({ error: "Autenticação necessária." }, 401);
-  const params = request.nextUrl.searchParams;
-  const month = params.get("month") ?? "";
-  const engagementId = params.get("engagementId") ?? "";
-  const professionalId = params.get("professionalId") ?? "";
-  if (!monthValid(month) || !uuid(engagementId) || !uuid(professionalId)) {
-    return respond({ error: "Mês, aditivo e profissional precisam de identificadores válidos." }, 400);
-  }
-  // A lista de ciclos é filtrada por RLS, além do filtro de contrato/profissional.
-  const cycleResult = await supabase.from("fec_cycles")
-    .select("id,engagement_id,owner_id,neighborhood_id,title,guiding_question,status,reviewed_by,reviewed_at,review_notes,created_at,updated_at")
-    .eq("engagement_id", engagementId).eq("owner_id", professionalId)
-    .order("created_at", { ascending: false }).limit(101);
-  if (cycleResult.error) return respond({ error: "Falha na leitura dos ciclos autorizados." }, 503);
-  const cycles = (cycleResult.data ?? []) as FecCycleRow[];
-  if (cycles.length > 100) return respond({ error: "Volume de ciclos excede o limite desta prévia; pagine antes de consolidar." }, 409);
-  const cycleIds = cycles.map(c => c.id);
-  if (!cycleIds.length) return respond({
-    kind: "preliminary_fec_activity_extract", month, engagementId, professionalId,
-    activityCount: 0, activityIds: [],
-    caveat: "Nenhum ciclo visível neste recorte; isso não equivale a relatório entregue."
-  }, 200);
-
-  const [year, monthNumber] = month.split("-").map(Number);
-  const nextMonth = monthNumber === 12
-    ? String(year + 1) + "-01-01"
-    : String(year) + "-" + String(monthNumber + 1).padStart(2, "0") + "-01";
-  const activityResult = await supabase.from("fec_activities")
-    .select("*").in("cycle_id", cycleIds)
-    .gte("activity_date", month + "-01").lt("activity_date", nextMonth)
-    .order("activity_date", { ascending: true }).limit(501);
-  if (activityResult.error) return respond({ error: "Falha na leitura das atividades autorizadas." }, 503);
-  const activities = (activityResult.data ?? []) as FecActivityRow[];
-  if (activities.length > 500) return respond({ error: "Volume excedido. Paginação e revisão necessárias." }, 409);
+export async function GET(request: Request) {
+  const session = await fecSession();
+  if (session.response) return session.response;
+  const params = new URL(request.url).searchParams;
+  const month = params.get("month") ?? "",
+    engagementId = params.get("engagementId") ?? "",
+    professionalId = params.get("professionalId") ?? "";
+  if (
+    !/^\d{4}-(0[1-9]|1[0-2])$/.test(month) ||
+    !fecUuid(engagementId) ||
+    !fecUuid(professionalId)
+  )
+    return fecResponse(
+      { error: "Mês, aditivo ou profissional inválidos." },
+      400,
+    );
+  const cycles = await session.db
+    .from("fec_cycles")
+    .select("*")
+    .eq("engagement_id", engagementId)
+    .eq("owner_id", professionalId)
+    .limit(501);
+  if (cycles.error) return fecResponse({ error: "Ciclos indisponíveis." }, 503);
+  if (cycles.data.length > 500)
+    return fecResponse({ error: "Volume exige paginação." }, 409);
+  const ids = cycles.data.map((c) => c.id);
+  if (!ids.length)
+    return fecResponse(
+      {
+        error:
+          "Nenhum ciclo autorizado neste recorte. Isso não comprova relatório entregue.",
+      },
+      404,
+    );
+  const [activities, records, files] = await Promise.all([
+    session.db
+      .from("fec_activities")
+      .select("*")
+      .in("cycle_id", ids)
+      .order("activity_date")
+      .limit(1001),
+    session.db
+      .from("fec_knowledge_records")
+      .select("*")
+      .in("cycle_id", ids)
+      .limit(1001),
+    session.db
+      .from("fec_knowledge_files")
+      .select("id,record_id,title")
+      .limit(1001),
+  ]);
+  if (activities.error || records.error || files.error)
+    return fecResponse({ error: "Fontes mensais indisponíveis." }, 503);
+  if (
+    activities.data.length > 1000 ||
+    records.data.length > 1000 ||
+    files.data.length > 1000
+  )
+    return fecResponse(
+      {
+        error:
+          "Volume exige paginação. Relatório não foi emitido com fontes truncadas.",
+      },
+      409,
+    );
   try {
-    const report = buildFecMonthlyActivityExtract(month, engagementId, professionalId, cycles, activities);
-    return respond({ report }, 200);
+    const report = buildFecTechnicalReport(
+      month,
+      engagementId,
+      professionalId,
+      {
+        cycles: cycles.data,
+        activities: activities.data,
+        records: records.data,
+        files: files.data,
+      },
+    );
+    return fecResponse({ report, markdown: fecReportMarkdown(report) });
   } catch {
-    return respond({ error: "Inconsistência nos registros: extrato não emitido." }, 409);
+    return fecResponse(
+      { error: "Fontes inconsistentes; relatório não emitido." },
+      409,
+    );
   }
 }

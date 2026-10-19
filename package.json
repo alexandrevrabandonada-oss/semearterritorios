@@ -11,6 +11,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
+    "test:fec:db": "node tests/fec-rls.mjs",
     "test:reports": "vitest run tests/monthly-reports.test.ts",
     "test:transparencia": "vitest run tests/transparencia",
     "smoke:transparencia": "node scripts/test_transparencia_remote_048.mjs",
@@ -36,6 +37,7 @@
     }
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.10",
     "@types/node": "^20.17.6",
     "@types/pdf-parse": "^1.1.5",
     "@types/react": "^18.3.12",

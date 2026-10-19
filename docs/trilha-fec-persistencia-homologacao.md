@@ -1,5 +1,7 @@
 # Trilha FEC — Persistência e homologação (PR #2)
 
+> Atualização em 19/10/2026: a [entrega funcional](trilha-fec-entrega-2026-10-19.md) substitui os limites da prévia inicial descritos neste documento. A interface usa APIs quando a flag está ativa, há acervo versionado e a migração passou por testes RLS em PostgreSQL isolado. O esquema permanece **não aplicado** ao banco produtivo. Consulte a [reconciliação dos ambientes](trilha-fec-reconciliacao-2026-10-19.md).
+
 **Estado:** proposta; migration NÃO aplicada e API bloqueada por padrão.
 
 ## Objetivo
