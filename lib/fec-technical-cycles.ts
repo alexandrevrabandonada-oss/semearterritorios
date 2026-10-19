@@ -152,7 +152,7 @@ export function buildFecTechnicalMonth(input: FecMonthInput) {
   if (bad.length) throw new Error(`Atividades inconsistentes: ${bad.join(" | ")}`);
   const performed = unique(allActivities.filter(a => a.status === "approved" && a.date.startsWith(`${input.month}-`)).map(a => a.id));
   const performedSet = new Set(performed);
-  const selected = [...new Map(allActivities.filter(a => performedSet.has(a.id) && a.status === "approved").map(a => [a.id, a])).values()];
+  const selected = Array.from(new Map(allActivities.filter(a => performedSet.has(a.id) && a.status === "approved").map(a => [a.id, a])).values());
   const workshops = selected.filter(a => WORKSHOP_TYPES.has(a.type));
   const declaredParticipation = selected.filter(a => a.participation.kind !== "not_recorded");
   const products = new Map<string, FecProductRevision>();
@@ -164,7 +164,7 @@ export function buildFecTechnicalMonth(input: FecMonthInput) {
     if (!previous || product.version > previous.version) products.set(product.id, product);
   }
   const approvedActivities = new Set(allActivities.filter(a => a.status === "approved").map(a => `${a.cycleId}:${a.id}`));
-  const approvedProducts = [...products.values()];
+  const approvedProducts = Array.from(products.values());
   for (const product of approvedProducts) {
     if (!product.sourceActivityIds.some(id => approvedActivities.has(`${product.cycleId}:${id}`))) {
       throw new Error(`Produto ${product.id}: não há atividade-fonte aprovada no mesmo ciclo.`);
@@ -178,7 +178,7 @@ export function buildFecTechnicalMonth(input: FecMonthInput) {
     month: input.month,
     workstreamId: FEC_WORKSTREAM,
     professionalId: input.professionalId,
-    cycleIds: [...cycles.keys()].sort(),
+    cycleIds: Array.from(cycles.keys()).sort(),
     activityIds: performed.sort(),
     activityCount: performed.length,
     workshopCount: workshops.length,
@@ -216,7 +216,7 @@ export function buildTerritorialContributionIndex(contributions: TerritorialCont
     eventCount: identities.size,
     apsContributionIds: unique(performed.filter(c => c.workstreamId === APS_WORKSTREAM).map(c => c.id)).sort(),
     fecContributionIds: unique(performed.filter(c => c.workstreamId === FEC_WORKSTREAM).map(c => c.id)).sort(),
-    eventIdentities: [...identities].sort(),
+    eventIdentities: Array.from(identities).sort(),
     note: "Um evento partilhado tem uma identidade; contribuições e responsáveis permanecem atribuídos por frente.",
   };
 }
