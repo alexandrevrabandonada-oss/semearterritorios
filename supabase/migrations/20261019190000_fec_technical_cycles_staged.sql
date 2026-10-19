@@ -138,7 +138,7 @@ as $$
     select 1 from public.fec_cycles c
     where c.id = p_cycle_id
       and c.owner_id = auth.uid()
-      and c.status in ('draft','needs_changes')
+      and c.status in ('draft','needs_changes','approved')
       and public.fec_has_assignment(c.engagement_id, 'executor')
   );
 $$;
