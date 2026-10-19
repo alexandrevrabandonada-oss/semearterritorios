@@ -13,7 +13,7 @@ Este incremento cria apenas um módulo de domínio sem efeitos colaterais, que p
 - `lib/fec-technical-cycles.ts`: contratos de dados para ciclo FEC, atividade, revisão de produto, achado com evidência e proposta; validadores; síntese individual mensal; índice de contribuições por território com evento compartilhado não duplicado.
 - `tests/fec-technical-cycles.test.ts`: seis testes de regras centrais (isolamento da frente, validações, relatórios, versões, deduplicação).
 
-**Fronteiras intencionais:** nenhuma tabela nova, rota, alteração de autenticação ou de painel APS; nenhuma gravação em banco, atribuição de permissão, publicação de PDF nem atesto financeiro.
+**Fronteiras intencionais:** nenhuma tabela nova, alteração de autenticação, de painéis de escuta APS ou de dados de produção; nenhuma gravação em banco, atribuição de permissão, publicação de PDF nem atesto financeiro. A rota demonstrativa `/fec/cartografia` é uma prévia local, sem gravação.
 
 ## Fluxo proposto para a próxima integração
 
@@ -24,6 +24,16 @@ Este incremento cria apenas um módulo de domínio sem efeitos colaterais, que p
 5. Achados apontam para fontes concretas. Cartografia exige legenda, método e revisão de privacidade.
 6. Fechamento mensal deriva somente de execução aprovada, referenciada e datada. A síntese do projeto pode citar a frente sem creditá-la à APS.
 7. Publicação exige curadoria separada; validação comunitária e aceite financeiro não são inferidos do status de revisão técnica.
+
+## Protótipo navegável da metodologia (sem persistência)
+
+- A rota `/fec/cartografia`, identificada na navegação como **Trilha FEC (prévia)**, foi criada como formulário local dividido em contexto, atividade e conhecimento territorial.
+- O navegador não salva os dados e não transmite o conteúdo do formulário para a API. A geração da minuta acontece localmente; exige copiar manualmente o texto antes de sair.
+- Campos distinguem relato de participante, observação da equipe e referência técnica. A validação exige legenda e método em oficina de cartografia; preparação não contabiliza público; achado sem fonte não é aceito.
+- Proteção provisória sinaliza formatos usuais de e-mail, telefone e CPF, mas não substitui uma política de tratamento de dados pessoais nem deve ser interpretada como anonimização garantida.
+- O profissional não recebe automaticamente acesso à produção: esta etapa requer aditivo/supervisor definidos e controle de permissões por executor.
+- **Não se deve confundir a minuta copiada com relatório enviado ou produto técnico aprovado.** Registro oficial, anexos, ciclo territorial e síntese do mês ainda precisam de persistência autorizada.
+- Testes de validação e texto de saída foram incluídos em `tests/fec-field-protocol.test.ts`; build de prévia Vercel é o gate técnico para esta tela.
 
 ## Checklist para unir a trilha ao sistema existente
 
