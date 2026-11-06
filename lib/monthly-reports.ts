@@ -91,7 +91,7 @@ export function getMonthValue(date: string) {
 }
 
 export function isMonthValue(value: string) {
-  return /^\d{4}-\d{2}$/.test(value);
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
 }
 
 export function formatMonthLabel(value: string) {
@@ -221,14 +221,14 @@ export function buildMonthlyReportPlainText(report: MonthlyReportData, mode: Mon
     "Encaminhamentos recomendados",
     formatSentenceList(visibleReferrals),
     "",
-    "Ações realizadas:",
+    "Ações cadastradas (realização não necessariamente confirmada):",
     ...report.actions.map((action) => `- ${formatDate(action.action_date)} | ${action.title} | ${getActionTypeLabel(action.action_type)} | ${action.neighborhoods?.name ?? "Território da ação não informado"}`),
     ...(mode === "internal" ? [
     "",
     "Pendências e próximos passos:",
     ...(report.pendingReviews.length > 0
       ? report.pendingReviews.map((record) => `- ${formatDate(record.date)} | ação em ${record.neighborhoods?.name ?? "Território da ação não informado"} | referência ${record.respondent_neighborhoods?.name ?? "Não informado"} | revisar cadastro antes de publicar.`)
-      : ["- Nenhuma pendência de revisão no mês."])
+      : ["- Nenhum registro com status de rascunho no mês; esse status não comprova revisão humana."])
     ] : [])
   ].join("\n");
 }
@@ -249,10 +249,10 @@ export function buildMonthlyReportMarkdown(report: MonthlyReportData, mode: Mont
     `**Cobertura territorial:** ${report.territorialQuality.coveragePercent}% (${report.territorialQuality.qualityStatus})`,
     "",
     "## 1. Capa / resumo do mês",
-    `Este relatório consolida, de forma interpretativa, as ações e escutas registradas em ${formatMonthLabel(report.month)}. A leitura é agregada, sem transcrição individual nem dado pessoal.`,
+    `Este relatório consolida, de forma interpretativa, as ações e escutas registradas em ${formatMonthLabel(report.month)}. Os resultados não representam estatisticamente a população; a versão para circulação exige revisão humana de conteúdo e privacidade.`,
     "",
     "## 2. Indicadores principais",
-    `- Ações realizadas: ${report.totalActions}`,
+    `- Ações cadastradas no período: ${report.totalActions} (o status automático não comprova realização)`,
     `- Registros cadastrados: ${report.totalRecords}`,
     `- Escutas individuais: ${report.individualListeningRecords}`,
     `- Relatos de roda de conversa: ${report.conversationCircleReports}`,
@@ -297,7 +297,7 @@ export function buildMonthlyReportMarkdown(report: MonthlyReportData, mode: Mont
     "## 12. Encaminhamentos recomendados",
     formatSentenceList(visibleReferrals),
     "",
-    "## 13. Ações realizadas",
+    "## 13. Ações cadastradas (realização não necessariamente confirmada)",
     report.actions.length > 0
       ? report.actions.map((action) => `- ${formatDate(action.action_date)} | ${action.title} | ${getActionTypeLabel(action.action_type)} | ${action.neighborhoods?.name ?? "Território da ação não informado"}`).join("\n")
       : "- Nenhuma ação cadastrada no mês.",
@@ -306,7 +306,7 @@ export function buildMonthlyReportMarkdown(report: MonthlyReportData, mode: Mont
     "## 14. Pendências e próximos passos",
     report.pendingReviews.length > 0
       ? report.pendingReviews.map((record) => `- ${formatDate(record.date)} | ação em ${record.neighborhoods?.name ?? "Território da ação não informado"} | referência ${record.respondent_neighborhoods?.name ?? "Não informado"} | revisar cadastro antes de publicação.`).join("\n")
-      : "- Nenhuma pendência de revisão no mês.",
+      : "- Nenhum registro com status de rascunho no mês; esse status não comprova revisão humana.",
     ] : []),
     "",
     "## 15. Anexo técnico",
@@ -722,3 +722,4 @@ function buildRespondentTerritoryMarkdown(records: RecordWithRelations[]): strin
   if (withoutRef > 0) lines.push(`- Sem territorio de referencia: ${withoutRef} escuta${withoutRef !== 1 ? "s" : ""}`);
   return lines.join("\n");
 }
+
