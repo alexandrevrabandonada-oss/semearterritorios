@@ -91,5 +91,13 @@ describe("garantias metodológicas", () => {
     expect(csv).toContain("não comprovada");
     expect(csv).toContain("'=1+1");
   });
+
+  it("relatório mensal exclui datas de outros meses e IDs repetidos", () => {
+    const april = record({ id: "abril", date: "2026-04-30", actions: null, neighborhoods: null, respondent_neighborhoods: null });
+    const may = record({ id: "maio", date: "2026-05-01", actions: null, neighborhoods: null, respondent_neighborhoods: null });
+    const report = buildMonthlyReportData("2026-04", [], [april, april, may]);
+    expect(report.totalRecords).toBe(1);
+    expect(report.records.map((item) => item.id)).toEqual(["abril"]);
+  });
 });
 

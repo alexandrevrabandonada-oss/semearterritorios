@@ -110,6 +110,18 @@ export function collectAvailableMonths(actions: Array<Pick<Action, "action_date"
 }
 
 export function buildMonthlyReportData(month: string, actions: ActionWithNeighborhood[], records: RecordWithRelations[]): MonthlyReportData {
+  if (!isMonthValue(month)) throw new Error("Mês inválido; use AAAA-MM.");
+  // Protege os cálculos mesmo quando uma origem fornecer linhas repetidas ou fora do período.
+  const uniqueInMonth = <T extends { id: string }>(items: T[], dateOf: (item: T) => string): T[] => {
+    const seen = new Set<string>();
+    return items.filter((item) => {
+      if (getMonthValue(dateOf(item)) !== month || seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+  };
+  actions = uniqueInMonth(actions, (action) => action.action_date);
+  records = uniqueInMonth(records, (record) => record.date);
   const operationNeighborhoods = Array.from(new Set([
     ...actions.map((item) => item.neighborhoods?.name).filter(Boolean)
   ] as string[])).sort((a, b) => a.localeCompare(b, "pt-BR"));
