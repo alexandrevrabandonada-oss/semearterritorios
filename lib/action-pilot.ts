@@ -233,6 +233,8 @@ export function getActionReadiness(records: ListeningRecordForPilot[], sufficien
   const reviewedRatio = metrics.total > 0 ? metrics.reviewed / metrics.total : 0;
   const hasSeriousPending = metrics.possibleSensitive > 0;
 
+  if (hasSeriousPending) return "Em digitação";
+
   if (metrics.total > 0 && (metrics.reviewed === metrics.total || sufficientWithJustification)) {
     return "Pronta para relatório";
   }
@@ -258,3 +260,4 @@ export function getOperationRecommendation(status: ReadinessStatus) {
   if (status === "Em revisão" || status === "Pronta para revisão") return "revisar pendências";
   return "continuar digitando";
 }
+
