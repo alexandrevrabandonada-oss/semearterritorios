@@ -136,7 +136,7 @@ export async function POST(request: Request) {
 
   const themeCounter = new Map<string, number>();
   for (const record of reviewedRecords) {
-    for (const name of new Set((recordThemeMap.get(record.id) ?? []).map((theme) => theme.name))) {
+    for (const name of Array.from(new Set((recordThemeMap.get(record.id) ?? []).map((theme) => theme.name)))) {
       themeCounter.set(name, (themeCounter.get(name) ?? 0) + 1);
     }
   }
@@ -148,7 +148,7 @@ export async function POST(request: Request) {
 
   const wordCounter = new Map<string, number>();
   for (const record of reviewedRecords) {
-    for (const token of new Set(tokenizeWords(record.words_used ?? "").map((word) => word.toLocaleLowerCase("pt-BR")))) {
+    for (const token of Array.from(new Set(tokenizeWords(record.words_used ?? "").map((word) => word.toLocaleLowerCase("pt-BR"))))) {
       wordCounter.set(token, (wordCounter.get(token) ?? 0) + 1);
     }
   }

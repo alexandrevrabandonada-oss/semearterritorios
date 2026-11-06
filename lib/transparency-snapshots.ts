@@ -200,7 +200,7 @@ function buildDefaultTitle(periodStart: string | null, periodEnd: string | null)
 }
 
 function buildPublicSummary(totals: Record<string, number>) {
-  return `Síntese pública agregada com ${totals.actions_realized} ação(ões) realizada(s), ${totals.listening_records_reviewed} escuta(s) revisada(s), ${totals.territories_reached} território(s) de referência alcançado(s), ${totals.approved_debriefs} devolutiva(s) aprovada(s) e ${totals.closed_dossiers} dossiê(s) fechado(s).`;
+  return `Síntese pública agregada com ${totals.actions_realized} ação(ões) com realização confirmada, ${totals.listening_records_reviewed} registro(s) com revisão humana confirmada, ${totals.territories_reached} território(s) de ação ou referência informados, ${totals.approved_debriefs} devolutiva(s) aprovada(s) e ${totals.closed_dossiers} dossiê(s) fechado(s).`;
 }
 
 function rankThemes(records: SnapshotRecord[]) {
@@ -232,7 +232,7 @@ function rankThemes(records: SnapshotRecord[]) {
 function rankWords(records: SnapshotRecord[]) {
   const counts = new Map<string, number>();
   for (const record of records) {
-    for (const word of new Set(tokenizeWords(record.words_used ?? ""))) {
+    for (const word of Array.from(new Set(tokenizeWords(record.words_used ?? "")))) {
       counts.set(word, (counts.get(word) ?? 0) + 1);
     }
   }
