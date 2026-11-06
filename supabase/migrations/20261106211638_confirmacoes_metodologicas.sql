@@ -4,6 +4,10 @@ alter table public.listening_records add column human_reviewed_at timestamptz,
   add column human_reviewed_by uuid references public.profiles(id);
 alter table public.actions add column occurrence_confirmed_at timestamptz,
   add column occurrence_confirmed_by uuid references public.profiles(id);
+alter table public.listening_records add constraint listening_human_review_pair
+  check ((human_reviewed_at is null) = (human_reviewed_by is null));
+alter table public.actions add constraint action_occurrence_confirmation_pair
+  check ((occurrence_confirmed_at is null) = (occurrence_confirmed_by is null));
 
 create table public.methodology_confirmation_events (
   id bigint generated always as identity primary key,

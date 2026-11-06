@@ -42,13 +42,13 @@ export function ActionSynthesis({ actionId }: ActionSynthesisProps) {
   if (loading) return <div className="p-5 text-sm text-stone-500">Carregando síntese...</div>;
   const data = getActionPilotMetrics(records);
 
-  const shortText = `A ação registrou ${data.total} escuta(s), com ${data.reviewed} revisada(s) e ${data.draft} em rascunho. Os temas mais mencionados foram ${formatInline(data.topThemes.map((item) => item.label))}; as palavras recorrentes foram ${formatInline(data.topWords.map((item) => item.label))}.
+  const shortText = `A ação registrou ${data.total} registro(s), com ${data.reviewed} revisão(ões) humana(s) confirmada(s) e ${data.draft} em rascunho. Os temas mais mencionados foram ${formatInline(data.topThemes.map((item) => item.label))}; as palavras recorrentes foram ${formatInline(data.topWords.map((item) => item.label))}.
 
 Para a devolutiva, ainda devem ser observadas ${data.pending} pendência(s) de qualidade, incluindo rascunhos, campos incompletos ou possíveis dados sensíveis.`;
 
   const markdownText = `# Síntese Determinística da Ação
 
-- Total de escutas: ${data.total}
+- Total de registros: ${data.total}
 - Revisadas: ${data.reviewed}
 - Rascunhos: ${data.draft}
 

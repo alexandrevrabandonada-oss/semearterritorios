@@ -408,7 +408,7 @@ function buildPedagogicalSummary(
   const topThemeText = topThemes.length > 0 ? formatCountList(topThemes.slice(0, 3)) : "sem temas recorrentes marcados";
   const priorityText = priorities.length > 0 ? formatCountList(priorities.slice(0, 3)) : "sem prioridade recorrente preenchida";
   const unexpectedText = unexpectedTopics.length > 0 ? formatCountList(unexpectedTopics.slice(0, 3)) : "sem temas inesperados registrados";
-  return `Na leitura pedagógica de ${formatMonthLabel(month)}, foram identificadas ${formatPlural(reviewedCount, "escuta revisada", "escutas revisadas")} e ${formatPlural(recordsWithTeamSummary, "registro com síntese da equipe", "registros com síntese da equipe")} preenchida. Os temas mais recorrentes foram ${topThemeText}. Entre as prioridades apontadas, destacam-se ${priorityText}. Nos sinais qualitativos relevantes, apareceram ${unexpectedText}.`;
+  return `Na leitura pedagógica de ${formatMonthLabel(month)}, foram identificados ${formatPlural(reviewedCount, "registro com revisão humana confirmada", "registros com revisão humana confirmada")} e ${formatPlural(recordsWithTeamSummary, "registro com síntese da equipe", "registros com síntese da equipe")}. Os temas mais recorrentes foram ${topThemeText}. Entre as prioridades apontadas, destacam-se ${priorityText}. Nos sinais qualitativos relevantes, apareceram ${unexpectedText}.`;
 }
 
 function buildExecutiveSummary(
