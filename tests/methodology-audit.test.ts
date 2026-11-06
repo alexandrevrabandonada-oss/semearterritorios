@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildActionDebrief } from "@/lib/action-debriefs";
-import { getActionReadiness } from "@/lib/action-pilot";
+import { getActionPilotMetrics, getActionReadiness } from "@/lib/action-pilot";
 import { buildMonthlyReportCsv, buildMonthlyReportData, isMonthValue } from "@/lib/monthly-reports";
 import { buildTransparencySnapshotDraft } from "@/lib/transparency-snapshots";
 
@@ -52,6 +52,15 @@ describe("garantias metodológicas", () => {
     expect(result.totalsSnapshot.source_records_for_public_text).toBe(0);
     expect(result.publicSummary).not.toContain("exclusivo");
     expect(getActionReadiness([record({ review_status: "reviewed" })], true)).not.toBe("Pronta para relatório");
+  });
+
+  it("conta uma palavra ou prioridade no máximo uma vez por registro", () => {
+    const metrics = getActionPilotMetrics([
+      record({ words_used: "poeira poeira", priority_mentioned: "limpeza, limpeza" }),
+      record({ id: "r2", words_used: "poeira", priority_mentioned: "limpeza" })
+    ]);
+    expect(metrics.topWords.find((item) => item.label === "poeira")?.count).toBe(2);
+    expect(metrics.priorities.find((item) => item.label === "limpeza")?.count).toBe(2);
   });
 
   it("snapshot público usa somente confirmações humanas e não reaproveita devolutiva anterior à confirmação", () => {

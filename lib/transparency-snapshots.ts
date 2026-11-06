@@ -125,7 +125,7 @@ export function buildTransparencySnapshotDraft(input: TransparencyDraftInput) {
     word_summary: wordSummary,
     action_timeline: actionTimeline,
     debrief_links: debriefLinks,
-    methodology_notes: `Síntese pública produzida a partir de dados revisados, agregados e sanitizados pela equipe SEMEAR. ${territorialMethodology.fullText} Cobertura territorial: ${territorialQuality.coveragePercent}% (${territorialQuality.recordsWithRespondentTerritory}/${territorialQuality.totalRecords}).`,
+    methodology_notes: `Síntese pública produzida a partir de registros com revisão humana confirmada. Cada palavra é contada no máximo uma vez por registro; um registro não equivale necessariamente a uma pessoa única. Estes dados não representam estatisticamente a população. ${territorialMethodology.fullText} Cobertura territorial: ${territorialQuality.coveragePercent}% (${territorialQuality.recordsWithRespondentTerritory}/${territorialQuality.totalRecords}).`,
     opening_text: "Esta leitura pública apresenta apenas recortes agregados e aprovados pela coordenação.",
     listening_text: "O que estamos ouvindo aparece aqui em linguagem pública, sem fala original e sem identificar pessoas.",
     limits_text: territorialMethodology.status === "boa"
@@ -207,9 +207,11 @@ function rankThemes(records: SnapshotRecord[]) {
   const counts = new Map<string, { count: number; territories: Map<string, number> }>();
   for (const record of records) {
     const territory = record.respondent_neighborhood?.name ?? record.neighborhoods?.name ?? "Território não informado";
+    const seenThemes = new Set<string>();
     for (const item of record.listening_record_themes ?? []) {
       const name = item.themes?.name?.trim();
-      if (!name) continue;
+      if (!name || seenThemes.has(name)) continue;
+      seenThemes.add(name);
       const current = counts.get(name) ?? { count: 0, territories: new Map<string, number>() };
       current.count += 1;
       current.territories.set(territory, (current.territories.get(territory) ?? 0) + 1);
@@ -230,7 +232,7 @@ function rankThemes(records: SnapshotRecord[]) {
 function rankWords(records: SnapshotRecord[]) {
   const counts = new Map<string, number>();
   for (const record of records) {
-    for (const word of tokenizeWords(record.words_used ?? "")) {
+    for (const word of new Set(tokenizeWords(record.words_used ?? ""))) {
       counts.set(word, (counts.get(word) ?? 0) + 1);
     }
   }

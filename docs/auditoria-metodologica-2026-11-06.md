@@ -16,7 +16,7 @@ Consulta somente de leitura à produção em 6 de novembro de 2026. Nenhum conte
 - **Médio — relatório mensal:** listava todas as ações como realizadas mesmo quando calculava `actions.length` sem filtrar o status. Esta alteração descreve ações cadastradas e esclarece que a realização não está confirmada. O tratamento de status, datas e período em todos os formatos ainda deve ser harmonizado.
 - **Médio — prontidão e sensibilidade:** a regra de prontidão aceitava 100% com status revisado antes de verificar alertas sensíveis. A alteração prioriza o alerta sensível; demais campos e relações ainda precisam de avaliação.
 - **Médio — validade de período:** o formato anterior aceitava meses 00 e 13. A validação agora exige mês entre 01 e 12.
-- **Médio — frequências:** palavras na síntese de ação são contadas por ocorrência textual, podendo repetir em um único registro; temas são contados por vínculo. Outros relatórios usam regras distintas e cortam rankings. Falta definir e testar denominadores e deduplicação antes de comparar os números.
+- **Médio — frequências:** palavras e prioridades repetidas dentro do mesmo registro podiam inflar os rankings e produzir percentuais superiores a 100%. A proposta conta cada termo no máximo uma vez por registro nos caminhos corrigidos; palavras da síntese de ação usam o campo de palavras e, se vazio, o texto livre. O método de coleta e as regras de corte continuam devendo acompanhar qualquer comparação entre painéis.
 
 ## Fluxos identificados
 

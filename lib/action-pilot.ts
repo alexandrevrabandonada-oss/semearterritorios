@@ -164,9 +164,7 @@ export function hasNoWordsUsed(record: Pick<ListeningRecord, "words_used">) {
 
 function countList(values: string[]) {
   return values
-    .flatMap((value) => value.split(/[,;\n]+/))
-    .map((value) => value.trim().toLowerCase())
-    .filter(Boolean)
+    .flatMap((value) => Array.from(new Set(value.split(/[,;\n]+/).map((item) => item.trim().toLowerCase()).filter(Boolean))))
     .reduce<Record<string, number>>((acc, value) => {
       acc[value] = (acc[value] ?? 0) + 1;
       return acc;
@@ -185,20 +183,17 @@ export function getActionPilotMetrics(records: ListeningRecordForPilot[]) {
   const recurringWords: Record<string, number> = {};
 
   records.forEach((record) => {
-    record.listening_record_themes.forEach((item) => {
-      if (item.themes?.name) {
-        themeCounts[item.themes.name] = (themeCounts[item.themes.name] ?? 0) + 1;
-      }
-    });
+    const themes = new Set(record.listening_record_themes.map((item) => item.themes?.name).filter((name): name is string => Boolean(name)));
+    themes.forEach((name) => { themeCounts[name] = (themeCounts[name] ?? 0) + 1; });
 
     const source = record.words_used?.trim() || record.free_speech_text;
-    source
+    const words = source
       .toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .split(/[^a-z0-9]+/)
-      .filter((word) => word.length > 3 && !stopWords.has(word))
-      .forEach((word) => {
+      .filter((word) => word.length > 3 && !stopWords.has(word));
+    new Set(words).forEach((word) => {
         recurringWords[word] = (recurringWords[word] ?? 0) + 1;
       });
   });

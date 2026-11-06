@@ -14,7 +14,7 @@ import { calculateIndividualRespondentTerritoryQuality, getIndividualListeningRe
 import { hasHumanReview } from "@/lib/listening-records";
 
 export const defaultMethodologyNote =
-  "Esta devolutiva reúne percepções registradas durante a ação. Ela não substitui pesquisa estatística nem representa a totalidade da população. Seu objetivo é devolver ao território uma síntese inicial da escuta realizada.";
+  "Esta devolutiva reúne percepções registradas durante a ação. Ela não substitui pesquisa estatística nem representa a totalidade da população. Temas, palavras e prioridades são contados no máximo uma vez por registro; as palavras usam o campo de palavras ou, quando vazio, o texto livre. Um registro não equivale necessariamente a uma pessoa única.";
 
 export const defaultPrivacyNote =
   "Nenhuma informação pessoal identificável deve ser publicada. Falas individuais só devem ser usadas de forma anônima, revisada e não identificável.";

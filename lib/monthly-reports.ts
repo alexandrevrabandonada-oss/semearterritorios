@@ -592,24 +592,27 @@ function buildWhatRequiresCaution(report: MonthlyReportData) {
 function countThemes(records: RecordWithRelations[]) {
   const map = new Map<string, number>();
   records.forEach((record) => {
-    record.listening_record_themes.forEach((item) => {
-      if (!item.themes?.name) return;
-      map.set(item.themes.name, (map.get(item.themes.name) ?? 0) + 1);
-    });
+    const names = new Set(record.listening_record_themes.map((item) => item.themes?.name).filter((name): name is string => Boolean(name)));
+    names.forEach((name) => map.set(name, (map.get(name) ?? 0) + 1));
   });
   return Array.from(map.entries()).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "pt-BR"));
 }
 
 function countTextValues<TItem>(items: TItem[], pickValue: (item: TItem) => string | null) {
-  const map = new Map<string, number>();
+  const map = new Map<string, { name: string; count: number }>();
   items.forEach((item) => {
-    pickValue(item)
+    const values = pickValue(item)
       ?.split(/[,;\n]+/)
       .map((value) => normalizeTextToken(value))
-      .filter(Boolean)
-      .forEach((value) => map.set(value, (map.get(value) ?? 0) + 1));
+      .filter(Boolean) ?? [];
+    const unique = new Map(values.map((value) => [value.toLocaleLowerCase("pt-BR"), value]));
+    unique.forEach((value, key) => {
+      const current = map.get(key) ?? { name: value, count: 0 };
+      current.count += 1;
+      map.set(key, current);
+    });
   });
-  return Array.from(map.entries()).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "pt-BR"));
+  return Array.from(map.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "pt-BR"));
 }
 
 function countBy<TItem>(items: TItem[], getValue: (item: TItem) => string) {
