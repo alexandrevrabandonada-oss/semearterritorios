@@ -125,10 +125,10 @@ export function buildMonthlyReportData(month: string, actions: ActionWithNeighbo
   const operationNeighborhoods = Array.from(new Set([
     ...actions.map((item) => item.neighborhoods?.name).filter(Boolean)
   ] as string[])).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  const respondentNeighborhoods = Array.from(new Set([
-    ...records.map((item) => item.respondent_neighborhoods?.name).filter(Boolean)
-  ] as string[])).sort((a, b) => a.localeCompare(b, "pt-BR"));
   const individualRecords = getIndividualListeningRecords(records);
+  const respondentNeighborhoods = Array.from(new Set([
+    ...individualRecords.map((item) => item.respondent_neighborhoods?.name).filter(Boolean)
+  ] as string[])).sort((a, b) => a.localeCompare(b, "pt-BR"));
   const conversationCircleRecords = records.filter((item) => isConversationCircleRecord(item));
   const conversationCircleReports = conversationCircleRecords.length;
   const conversationCircleSummary = buildConversationCircleSummary(conversationCircleRecords);

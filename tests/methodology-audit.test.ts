@@ -78,6 +78,17 @@ describe("garantias metodológicas", () => {
     expect(unconfirmed.totals.listening_records_reviewed).toBe(0);
   });
 
+  it("não usa o bairro da ação como se fosse o território de referência", () => {
+    const records = Array.from({ length: 5 }, (_, i) => record({
+      id: `r${i}`, date: "2026-04-01", human_reviewed_at: "2026-04-03T00:00:00Z",
+      neighborhoods: { id: "local", name: "Local da ação" }, respondent_neighborhood: null,
+      listening_record_themes: [{ themes: { id: "t", name: "Tema" } }]
+    }));
+    const snapshot = buildTransparencySnapshotDraft({ actions: [], records, debriefs: [], closures: [] });
+    expect(snapshot.theme_summary[0].count).toBe(5);
+    expect(snapshot.theme_summary[0].territories).toEqual([]);
+  });
+
   it("rejeita meses fora do calendário", () => {
     expect(isMonthValue("2026-00")).toBe(false);
     expect(isMonthValue("2026-13")).toBe(false);

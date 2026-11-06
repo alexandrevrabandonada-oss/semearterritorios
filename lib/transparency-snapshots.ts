@@ -2,7 +2,7 @@ import type { Action, ActionClosure, ActionDebrief, ListeningRecord, Neighborhoo
 import { getActionStatusLabel, getActionTypeLabel } from "@/lib/actions";
 import { createEmptyTransparencyChecklist, normalizeTransparencyChecklist } from "@/lib/transparency-privacy";
 import { buildTerritorialQualityMethodologyNote } from "@/lib/territorial-quality";
-import { calculateIndividualRespondentTerritoryQuality, getIndividualListeningRecords } from "@/lib/listening-record-methodology";
+import { calculateIndividualRespondentTerritoryQuality, getIndividualListeningRecords, isConversationCircleRecord } from "@/lib/listening-record-methodology";
 import { hasHumanReview } from "@/lib/listening-records";
 
 export const MIN_PUBLIC_TERRITORY_SAMPLE = 5;
@@ -206,7 +206,7 @@ function buildPublicSummary(totals: Record<string, number>) {
 function rankThemes(records: SnapshotRecord[]) {
   const counts = new Map<string, { count: number; territories: Map<string, number> }>();
   for (const record of records) {
-    const territory = record.respondent_neighborhood?.name ?? record.neighborhoods?.name ?? "Território não informado";
+    const territory = isConversationCircleRecord(record) ? null : record.respondent_neighborhood?.name;
     const seenThemes = new Set<string>();
     for (const item of record.listening_record_themes ?? []) {
       const name = item.themes?.name?.trim();
@@ -214,7 +214,7 @@ function rankThemes(records: SnapshotRecord[]) {
       seenThemes.add(name);
       const current = counts.get(name) ?? { count: 0, territories: new Map<string, number>() };
       current.count += 1;
-      current.territories.set(territory, (current.territories.get(territory) ?? 0) + 1);
+      if (territory) current.territories.set(territory, (current.territories.get(territory) ?? 0) + 1);
       counts.set(name, current);
     }
   }
