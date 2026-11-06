@@ -24,6 +24,28 @@ describe("garantias metodológicas", () => {
     expect(getActionReadiness([record({ review_status: "reviewed", free_speech_text: "Contato maria@example.com" })])).not.toBe("Pronta para relatório");
   });
 
+  it("exclui da devolutiva um registro com contato no campo de prioridade", () => {
+    const result = buildActionDebrief(action, [record({ review_status: "reviewed", priority_mentioned: "contato maria@example.com" })]);
+    expect(result.totalsSnapshot.source_records_for_public_text).toBe(0);
+    expect(result.keyFindings).not.toContain("maria@example.com");
+  });
+
+  it("não inclui rascunhos no denominador territorial da síntese", () => {
+    const result = buildActionDebrief(action, [
+      record({ review_status: "reviewed", respondent_neighborhood_id: "bairro-a" }),
+      record({ id: "r2", respondent_neighborhood_id: null })
+    ]);
+    expect(result.totalsSnapshot.source_records_for_public_text).toBe(1);
+    expect(result.totalsSnapshot.territorial_coverage_percent).toBe(100);
+    expect(result.generatedMarkdown).not.toContain("bairro-a");
+  });
+
+  it("trata registros de uma ação de roda como relatos coletivos", () => {
+    const result = buildActionDebrief({ ...action, action_type: "roda" }, [record({ review_status: "reviewed" })]);
+    expect(result.totalsSnapshot.individual_listening_records).toBe(0);
+    expect(result.totalsSnapshot.conversation_circle_reports).toBe(1);
+  });
+
   it("rejeita meses fora do calendário", () => {
     expect(isMonthValue("2026-00")).toBe(false);
     expect(isMonthValue("2026-13")).toBe(false);
