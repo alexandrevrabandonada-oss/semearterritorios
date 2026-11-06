@@ -281,7 +281,7 @@ export function buildInternalNotifications(input: BuildInternalNotificationsInpu
     const closureByActionId = new Map(input.closures.map((item) => [item.action_id, item]));
 
     for (const action of input.actions) {
-      if (action.status !== "realizada") {
+      if (action.status !== "realizada" || !action.occurrence_confirmed_at) {
         continue;
       }
 
@@ -322,7 +322,7 @@ export function buildInternalNotifications(input: BuildInternalNotificationsInpu
   }
 
   if (input.preferences.listening_review_alerts) {
-    const drafts = input.listeningRecords.filter((record) => record.review_status === "draft");
+    const drafts = input.listeningRecords.filter((record) => !record.human_reviewed_at);
     const territorialPending = input.listeningRecords.filter((record) =>
       ["pending", "needs_attention"].includes(record.territorial_review_status)
     );
@@ -332,8 +332,8 @@ export function buildInternalNotifications(input: BuildInternalNotificationsInpu
         profile_id: null,
         team_member_id: null,
         audience_role: null,
-        title: "Escuta em rascunho",
-        body: "Uma escuta ainda está em rascunho e precisa de revisão.",
+        title: "Revisão de escuta pendente",
+        body: "Uma escuta ainda não tem revisão humana confirmada.",
         notification_type: "listening_review_pending",
         priority: "normal",
         source_type: "listening_records",
@@ -554,3 +554,4 @@ function safeTitle(value: string) {
 function toIso(value: Date) {
   return value.toISOString();
 }
+

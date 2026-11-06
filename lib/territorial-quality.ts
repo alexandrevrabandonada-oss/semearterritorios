@@ -29,7 +29,7 @@ export function buildTerritorialQualityByNeighborhood(neighborhoods: Neighborhoo
   return neighborhoods.map((neighborhood) => {
     const neighborhoodRecords = records.filter((record) => record.neighborhood_id === neighborhood.id);
     const totalRecords = neighborhoodRecords.length;
-    const reviewedRecords = neighborhoodRecords.filter((record) => record.review_status === "reviewed").length;
+    const reviewedRecords = neighborhoodRecords.filter((record) => Boolean(record.human_reviewed_at)).length;
     const pendingTerritorialReview = neighborhoodRecords.filter((record) => record.territorial_review_status === "pending").length;
     const territorialReviewed = neighborhoodRecords.filter((record) => record.territorial_review_status === "reviewed").length;
     const needsAttention = neighborhoodRecords.filter((record) => record.territorial_review_status === "needs_attention").length;
@@ -247,3 +247,4 @@ export function buildTerritorialQualityMethodologyNote(
       "Se publicar, explicitar limitação crítica e evitar ranking territorial como conclusão principal."
   };
 }
+

@@ -154,7 +154,7 @@ export function sanitizeCollectiveReadingForPublicSnapshot(data: CollectiveReadi
 }
 
 export function buildPublicReadingSummary(data: CollectiveReadingInputData) {
-  return `Leitura coletiva agregada com ${data.overview.reviewed_records} escutas revisadas, ${data.overview.territories_reached} territórios alcançados e ${data.overview.total_records} escutas registradas no período analisado.`;
+  return `Leitura coletiva agregada com ${data.overview.reviewed_records} registros com revisão humana confirmada, ${data.overview.territories_reached} territórios de referência informados e ${data.overview.total_records} registros no período analisado. Registros podem incluir relatos de roda e não correspondem necessariamente a pessoas únicas.`;
 }
 
 export function buildReadingMethodologyNote(data: CollectiveReadingInputData) {
@@ -230,3 +230,4 @@ export function buildTransparencySnapshotFromCollectiveReading(filters: {
     }
   };
 }
+

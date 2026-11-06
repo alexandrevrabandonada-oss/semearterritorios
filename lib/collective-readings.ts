@@ -30,7 +30,7 @@ export type TerritoryStats = {
 
 export async function getCollectiveOverview(supabase: SupabaseClient<Database>): Promise<CollectiveOverview> {
   const [recordsRes, neighborhoodsRes, themesRes] = await Promise.all([
-    supabase.from("listening_records").select("id, review_status, respondent_neighborhood_id, respondent_occupation"),
+    supabase.from("listening_records").select("id, review_status, human_reviewed_at, respondent_neighborhood_id, respondent_occupation"),
     supabase.from("neighborhoods").select("id"),
     supabase.from("themes").select("id"),
   ]);
@@ -39,7 +39,7 @@ export async function getCollectiveOverview(supabase: SupabaseClient<Database>):
   const neighborhoods = neighborhoodsRes.data ?? [];
   const themes = themesRes.data ?? [];
 
-  const reviewed = records.filter((r) => r.review_status === "reviewed");
+  const reviewed = records.filter((r) => Boolean(r.human_reviewed_at));
   const territoriesReached = new Set(records.map((r) => r.respondent_neighborhood_id).filter(Boolean)).size;
   const occupations = new Set(records.map((r) => r.respondent_occupation).filter(Boolean)).size;
 
@@ -50,7 +50,7 @@ export async function getCollectiveOverview(supabase: SupabaseClient<Database>):
     total_themes: themes.length,
     total_occupations: occupations,
     records_without_respondent_neighborhood: records.filter((r) => !r.respondent_neighborhood_id).length,
-    records_without_review: records.filter((r) => r.review_status !== "reviewed").length,
+    records_without_review: records.filter((r) => !r.human_reviewed_at).length,
     total_territories: neighborhoods.length,
     territories_without_records: neighborhoods.length - territoriesReached,
   };
@@ -229,7 +229,7 @@ export async function getSafeMentionedPlacesSummary(supabase: SupabaseClient<Dat
 
 export async function getSilenceAndCoverageGaps(supabase: SupabaseClient<Database>) {
   const [recordsRes, neighborhoodsRes] = await Promise.all([
-    supabase.from("listening_records").select("respondent_neighborhood_id, review_status"),
+    supabase.from("listening_records").select("respondent_neighborhood_id, review_status, human_reviewed_at"),
     supabase.from("neighborhoods").select("id, name").order("name"),
   ]);
 
@@ -244,7 +244,7 @@ export async function getSilenceAndCoverageGaps(supabase: SupabaseClient<Databas
   records.forEach((r) => {
     if (r.respondent_neighborhood_id && reachCount[r.respondent_neighborhood_id]) {
       reachCount[r.respondent_neighborhood_id].total++;
-      if (r.review_status === "reviewed") {
+      if (r.human_reviewed_at) {
         reachCount[r.respondent_neighborhood_id].reviewed++;
       }
     }
@@ -260,3 +260,4 @@ export async function getSilenceAndCoverageGaps(supabase: SupabaseClient<Databas
 
   return gaps.sort((a, b) => a.total - b.total);
 }
+

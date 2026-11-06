@@ -429,7 +429,7 @@ ${publicQuotes.length > 0 ? publicQuotes.map((quote) => `- [${quote.status}] ${(
           <div className="grid gap-5 lg:grid-cols-[1fr_18rem] lg:items-start">
             <div>
               <p className="text-sm leading-6 text-stone-600">
-                {new Date(`${loadedAction.action_date}T00:00:00`).toLocaleDateString("pt-BR")} · {loadedAction.neighborhoods?.name ?? "Sem bairro"} · {getActionTypeLabel(loadedAction.action_type)} · {getActionStatusLabel(loadedAction.status)}
+                {new Date(`${loadedAction.action_date}T00:00:00`).toLocaleDateString("pt-BR")} · {loadedAction.neighborhoods?.name ?? "Sem bairro"} · {getActionTypeLabel(loadedAction.action_type)} · {getActionStatusLabel(loadedAction.status)}{loadedAction.status === "realizada" ? loadedAction.occurrence_confirmed_at ? " · confirmação registrada" : " · confirmação não comprovada" : ""}
               </p>
               <p className="mt-2 text-sm leading-6 text-stone-600">
                 Leitura executiva para fechamento da ação, encaminhamentos e memória institucional.
@@ -750,3 +750,4 @@ function StateBox({ children, tone = "neutral" }: { children: ReactNode; tone?: 
     </div>
   );
 }
+

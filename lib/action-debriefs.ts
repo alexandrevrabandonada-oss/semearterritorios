@@ -7,14 +7,14 @@ import {
   type ActionForPilot,
   type ListeningRecordForPilot
 } from "@/lib/action-pilot";
-import { getRespondentTerritoryRelationLabel } from "@/lib/listening-records";
 import {
   buildTerritorialQualityMethodologyNote,
 } from "@/lib/territorial-quality";
 import { calculateIndividualRespondentTerritoryQuality, getIndividualListeningRecords } from "@/lib/listening-record-methodology";
+import { hasHumanReview } from "@/lib/listening-records";
 
 export const defaultMethodologyNote =
-  "Esta devolutiva reúne percepções registradas durante a ação. Ela não substitui pesquisa estatística nem representa a totalidade da população. Seu objetivo é devolver ao território uma síntese inicial da escuta realizada.";
+  "Esta devolutiva reúne percepções registradas durante a ação. Ela não substitui pesquisa estatística nem representa a totalidade da população. Temas, palavras e prioridades são contados no máximo uma vez por registro; as palavras usam o campo de palavras ou, quando vazio, o texto livre. Um registro não equivale necessariamente a uma pessoa única.";
 
 export const defaultPrivacyNote =
   "Nenhuma informação pessoal identificável deve ser publicada. Falas individuais só devem ser usadas de forma anônima, revisada e não identificável.";
@@ -47,69 +47,27 @@ function sanitizePublicPlace(value: string) {
     .trim();
 }
 
-function buildRespondentTerritorySection(records: ListeningRecordForPilot[], neighborhoodNames: Map<string, string>): string {
-  const groups = new Map<string, ListeningRecordForPilot[]>();
-  for (const r of records) {
-    if (!r.respondent_neighborhood_id) continue;
-    const bucket = groups.get(r.respondent_neighborhood_id) ?? [];
-    bucket.push(r);
-    groups.set(r.respondent_neighborhood_id, bucket);
-  }
-  if (groups.size === 0) return "";
-  const lines: string[] = ["## Leitura por território de referência do entrevistado", ""];
-  lines.push("_Os dados abaixo agrupam falas pelo bairro de referência de quem falou, não pelo local da ação._", "");
-  for (const [nbId, recs] of Array.from(groups.entries()).sort((a, b) => b[1].length - a[1].length)) {
-    const name = neighborhoodNames.get(nbId) ?? "Bairro não identificado";
-    const themeCount = new Map<string, number>();
-    const wordCount = new Map<string, number>();
-    const relations = new Set<string>();
-    for (const r of recs) {
-      if (r.respondent_territory_relation) relations.add(getRespondentTerritoryRelationLabel(r.respondent_territory_relation));
-      for (const w of (r.words_used ?? "").split(/[,;\s]+/).map((x) => x.trim().toLowerCase()).filter((x) => x.length > 3)) {
-        wordCount.set(w, (wordCount.get(w) ?? 0) + 1);
-      }
-    }
-    const topWords = Array.from(wordCount.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([w]) => w).join(", ");
-    lines.push(`### ${name} (${recs.length} escuta${recs.length !== 1 ? "s" : ""})`);
-    if (relations.size > 0) lines.push(`Vínculos: ${Array.from(relations).join(", ")}`);
-    if (topWords) lines.push(`Palavras recorrentes: ${topWords}`);
-    const priorities = recs.filter((r) => r.priority_mentioned?.trim()).map((r) => r.priority_mentioned!.trim());
-    if (priorities.length > 0) lines.push(`Prioridades: ${priorities.slice(0, 3).join(" / ")}`);
-    lines.push("");
-  }
-  return lines.join("\n");
-}
-
 export function buildActionDebrief(action: ActionForPilot, records: ListeningRecordForPilot[]): GeneratedActionDebrief {
   const fullMetrics = getActionPilotMetrics(records);
   const safeReviewedRecords = records.filter(
-    (record) => record.review_status === "reviewed" && !hasPossibleSensitiveData(record)
+    (record) => hasHumanReview(record) && !hasPossibleSensitiveData(record)
   );
-  const sourceRecords = safeReviewedRecords.length > 0
-    ? safeReviewedRecords
-    : records.filter((record) => !hasPossibleSensitiveData(record));
+  const sourceRecords = safeReviewedRecords;
   const metrics = getActionPilotMetrics(sourceRecords);
   const occupationSummary = summarizeOccupations(sourceRecords);
-  const individualRecords = getIndividualListeningRecords(records);
+  const recordsWithActionType = records.map((record) => ({ ...record, actions: { action_type: action.action_type } }));
+  const sourceWithActionType = sourceRecords.map((record) => ({ ...record, actions: { action_type: action.action_type } }));
+  const individualRecords = getIndividualListeningRecords(recordsWithActionType);
   const conversationCircleReports = records.length - individualRecords.length;
-  const territorialMetrics = calculateIndividualRespondentTerritoryQuality(records);
+  const territorialMetrics = calculateIndividualRespondentTerritoryQuality(sourceWithActionType);
   const territorialMethodology = buildTerritorialQualityMethodologyNote(territorialMetrics);
   const bairro = action.neighborhoods?.name ?? "território informado";
   const isFair = action.action_type === "banca_escuta" || action.title.toLowerCase().includes("feira");
   const title = isFair ? "O que ouvimos na feira" : "O que ouvimos nesta ação";
   const warnings: string[] = [];
 
-  // Construção do mapa nome de bairro a partir dos registros existentes (apenas IDs conhecidos)
-  const respondentNeighborhoodNames = new Map<string, string>();
-  for (const r of records) {
-    if (r.respondent_neighborhood_id && !respondentNeighborhoodNames.has(r.respondent_neighborhood_id)) {
-      // O nome é resolvido no servidor; aqui só mapeamos o que temos disponível
-      respondentNeighborhoodNames.set(r.respondent_neighborhood_id, r.respondent_neighborhood_id);
-    }
-  }
-
-  if (fullMetrics.draft > 0) {
-    warnings.push("Há escutas ainda não revisadas. Recomenda-se revisar antes de aprovar a devolutiva.");
+  if (fullMetrics.reviewed < fullMetrics.total) {
+    warnings.push("Há registros sem revisão humana confirmada. Eles não integram a síntese.");
   }
 
   if (fullMetrics.possibleSensitive > 0) {
@@ -122,10 +80,10 @@ export function buildActionDebrief(action: ActionForPilot, records: ListeningRec
 
   const publicSummary = [
     territorialMethodology.status === "boa"
-      ? `Na ação realizada em ${bairro}, foram registrados ${fullMetrics.total} registro(s): ${individualRecords.length} escuta(s) individual(is) e ${conversationCircleReports} relato(s) de roda.`
-      : `Na ação realizada em ${bairro}, foram registrados ${fullMetrics.total} registro(s): ${individualRecords.length} escuta(s) individual(is) e ${conversationCircleReports} relato(s) de roda. Entre as escutas individuais com território de referência preenchido, observam-se os padrões territoriais descritos abaixo.`,
+      ? `Na ação ${action.occurrence_confirmed_at ? "com realização confirmada" : "cadastrada (realização não confirmada)"} em ${bairro}, foram registrados ${fullMetrics.total} registro(s): ${individualRecords.length} escuta(s) individual(is) e ${conversationCircleReports} relato(s) de roda.`
+      : `Na ação ${action.occurrence_confirmed_at ? "com realização confirmada" : "cadastrada (realização não confirmada)"} em ${bairro}, foram registrados ${fullMetrics.total} registro(s): ${individualRecords.length} escuta(s) individual(is) e ${conversationCircleReports} relato(s) de roda. Entre as escutas individuais com território de referência preenchido, observam-se os padrões territoriais descritos abaixo.`,
     "As pessoas escutadas podem se referir a diferentes territórios de referência; relatos de roda são consolidações por entrevistador e não entram como pessoa individual na cobertura territorial.",
-    `Para esta devolutiva, a síntese considera preferencialmente registros revisados e sem alerta de dado sensível. Até o momento, ${fullMetrics.reviewed} escuta(s) estão revisada(s) e ${fullMetrics.draft} permanecem em rascunho.`,
+    `A síntese considera ${sourceRecords.length} de ${fullMetrics.total} registro(s), com revisão humana confirmada e sem alerta automático de dado sensível.`,
     `Os temas mais recorrentes foram: ${formatInline(metrics.topThemes.slice(0, 5))}. As palavras que mais apareceram foram: ${formatInline(metrics.topWords.slice(0, 8))}.`,
     occupationSummary.groups.length > 0
       ? `Entre as ocupações informadas, apareceram principalmente: ${occupationSummary.groups.slice(0, 5).map((item) => `${item.label} (${item.count})`).join(", ")}.`
@@ -166,8 +124,6 @@ ${formatBullets(unexpected, "- Nenhum ponto inesperado registrado.")}`;
   const nextSteps =
     "A equipe deve revisar esta síntese, confirmar se as pendências foram tratadas e definir quais pontos serão aprofundados em diálogo com o território.";
 
-  const respondentSection = buildRespondentTerritorySection(sourceRecords, respondentNeighborhoodNames);
-
   const generatedMarkdown = `# ${title}
 
 ## Dados da ação
@@ -190,13 +146,13 @@ ${keyFindings}
 
 ${nextSteps}
 
-${respondentSection ? `${respondentSection}\n` : ""}## Nota metodológica
+## Nota metodológica
 
 ${defaultMethodologyNote}
 
 ${territorialMethodology.fullText}
 
-Cobertura de território de referência nas escutas individuais desta ação: ${territorialMetrics.coveragePercent}% (${territorialMetrics.recordsWithRespondentTerritory}/${territorialMetrics.totalRecords}).
+Cobertura de território de referência entre os registros individuais selecionados para esta síntese: ${territorialMetrics.coveragePercent}% (${territorialMetrics.recordsWithRespondentTerritory}/${territorialMetrics.totalRecords}).
 
 Recomendação operacional: ${territorialMethodology.operationalRecommendation}
 
@@ -208,7 +164,7 @@ ${defaultPrivacyNote}
   return {
     title,
     publicSummary,
-    methodologyNote: `${defaultMethodologyNote}\n\n${territorialMethodology.fullText}\n\nCobertura de território de referência nas escutas individuais: ${territorialMetrics.coveragePercent}% (${territorialMetrics.recordsWithRespondentTerritory}/${territorialMetrics.totalRecords}). Relatos de roda são consolidados por entrevistador e analisados separadamente.`,
+    methodologyNote: `${defaultMethodologyNote}\n\n${territorialMethodology.fullText}\n\nCobertura de território de referência entre os registros individuais selecionados para a síntese: ${territorialMetrics.coveragePercent}% (${territorialMetrics.recordsWithRespondentTerritory}/${territorialMetrics.totalRecords}). Relatos de roda são consolidados por entrevistador e analisados separadamente.`,
     keyFindings,
     nextSteps,
     generatedMarkdown,
@@ -273,3 +229,4 @@ ${input.methodologyNote}
 ${defaultPrivacyNote}
 `;
 }
+

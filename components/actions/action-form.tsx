@@ -349,7 +349,7 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
           starts_at: startsAtIso,
           ends_at: endsAtIso,
           all_day: calendarAllDay,
-          status: values.status === "cancelada" ? "cancelled" : values.status === "realizada" ? "done" : "planned",
+          status: values.status === "cancelada" ? "cancelled" : "planned",
           action_id: actionDbId,
           neighborhood_id: values.neighborhood_id || null,
           created_by: user.id
@@ -646,3 +646,4 @@ export function ActionForm({ actionId, mode }: ActionFormProps) {
     </section>
   );
 }
+

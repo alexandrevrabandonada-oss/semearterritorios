@@ -223,7 +223,7 @@ export async function buildActionAnalytics(
   // 1. Basic counts
   const totalRecords = records.length;
   const individualRecords = getIndividualListeningRecords(records);
-  const reviewedCount = records.filter((r) => r.review_status === "reviewed").length;
+  const reviewedCount = records.filter((r) => Boolean(r.human_reviewed_at)).length;
   const draftCount = records.filter((r) => r.review_status === "draft").length;
   const sensitiveCount = records.filter((r) => hasPossibleSensitiveData(r)).length;
 
@@ -850,9 +850,10 @@ function determineReadiness(
   sensitiveCount: number
 ): "Em digitação" | "Pronta para revisão" | "Em revisão" | "Pronta para síntese" | "Pronta para relatório" {
   if (totalRecords === 0) return "Em digitação";
-  if (draftCount === 0 && sensitiveCount === 0) return "Pronta para relatório";
-  if (draftCount === 0) return "Pronta para síntese";
+  if (reviewedCount === totalRecords && sensitiveCount === 0) return "Pronta para relatório";
+  if (reviewedCount === totalRecords) return "Em revisão";
   const reviewPercent = Math.round((reviewedCount / totalRecords) * 100);
   if (reviewPercent >= 50) return "Em revisão";
   return "Pronta para revisão";
 }
+

@@ -91,7 +91,7 @@ export function getMonthValue(date: string) {
 }
 
 export function isMonthValue(value: string) {
-  return /^\d{4}-\d{2}$/.test(value);
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
 }
 
 export function formatMonthLabel(value: string) {
@@ -110,13 +110,25 @@ export function collectAvailableMonths(actions: Array<Pick<Action, "action_date"
 }
 
 export function buildMonthlyReportData(month: string, actions: ActionWithNeighborhood[], records: RecordWithRelations[]): MonthlyReportData {
+  if (!isMonthValue(month)) throw new Error("Mês inválido; use AAAA-MM.");
+  // Protege os cálculos mesmo quando uma origem fornecer linhas repetidas ou fora do período.
+  const uniqueInMonth = <T extends { id: string }>(items: T[], dateOf: (item: T) => string): T[] => {
+    const seen = new Set<string>();
+    return items.filter((item) => {
+      if (getMonthValue(dateOf(item)) !== month || seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+  };
+  actions = uniqueInMonth(actions, (action) => action.action_date);
+  records = uniqueInMonth(records, (record) => record.date);
   const operationNeighborhoods = Array.from(new Set([
     ...actions.map((item) => item.neighborhoods?.name).filter(Boolean)
   ] as string[])).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  const respondentNeighborhoods = Array.from(new Set([
-    ...records.map((item) => item.respondent_neighborhoods?.name).filter(Boolean)
-  ] as string[])).sort((a, b) => a.localeCompare(b, "pt-BR"));
   const individualRecords = getIndividualListeningRecords(records);
+  const respondentNeighborhoods = Array.from(new Set([
+    ...individualRecords.map((item) => item.respondent_neighborhoods?.name).filter(Boolean)
+  ] as string[])).sort((a, b) => a.localeCompare(b, "pt-BR"));
   const conversationCircleRecords = records.filter((item) => isConversationCircleRecord(item));
   const conversationCircleReports = conversationCircleRecords.length;
   const conversationCircleSummary = buildConversationCircleSummary(conversationCircleRecords);
@@ -136,7 +148,7 @@ export function buildMonthlyReportData(month: string, actions: ActionWithNeighbo
   const unexpectedTopics = countTextValues(records, (item) => item.unexpected_notes).slice(0, 8);
   const priorityGroups = groupPrioritiesByMacroAxis(allPriorities);
   const qualitativeSignals = groupQualitativeSignals(unexpectedTopics);
-  const pendingReviews = records.filter((item) => item.review_status === "draft");
+  const pendingReviews = records.filter((item) => !item.human_reviewed_at);
   const executiveSummary = buildExecutiveSummary(actions.length, records.length, topThemes, territorialMethodologyNote, priorityGroups);
   const monthlyLearnings = buildMonthlyLearnings(actions, records, topThemes, priorityGroups, qualitativeSignals, pendingReviews, territorialQuality);
   const recommendedReferrals = buildRecommendedReferrals(topThemes, priorityGroups, pendingReviews, territorialQuality, actions);
@@ -221,14 +233,14 @@ export function buildMonthlyReportPlainText(report: MonthlyReportData, mode: Mon
     "Encaminhamentos recomendados",
     formatSentenceList(visibleReferrals),
     "",
-    "Ações realizadas:",
+    "Ações cadastradas (realização não necessariamente confirmada):",
     ...report.actions.map((action) => `- ${formatDate(action.action_date)} | ${action.title} | ${getActionTypeLabel(action.action_type)} | ${action.neighborhoods?.name ?? "Território da ação não informado"}`),
     ...(mode === "internal" ? [
     "",
     "Pendências e próximos passos:",
     ...(report.pendingReviews.length > 0
       ? report.pendingReviews.map((record) => `- ${formatDate(record.date)} | ação em ${record.neighborhoods?.name ?? "Território da ação não informado"} | referência ${record.respondent_neighborhoods?.name ?? "Não informado"} | revisar cadastro antes de publicar.`)
-      : ["- Nenhuma pendência de revisão no mês."])
+      : ["- Nenhum registro sem confirmação de revisão humana no mês."])
     ] : [])
   ].join("\n");
 }
@@ -249,10 +261,10 @@ export function buildMonthlyReportMarkdown(report: MonthlyReportData, mode: Mont
     `**Cobertura territorial:** ${report.territorialQuality.coveragePercent}% (${report.territorialQuality.qualityStatus})`,
     "",
     "## 1. Capa / resumo do mês",
-    `Este relatório consolida, de forma interpretativa, as ações e escutas registradas em ${formatMonthLabel(report.month)}. A leitura é agregada, sem transcrição individual nem dado pessoal.`,
+    `Este relatório consolida, de forma interpretativa, as ações e escutas registradas em ${formatMonthLabel(report.month)}. Os resultados não representam estatisticamente a população; a versão para circulação exige revisão humana de conteúdo e privacidade.`,
     "",
     "## 2. Indicadores principais",
-    `- Ações realizadas: ${report.totalActions}`,
+    `- Ações cadastradas no período: ${report.totalActions} (o status automático não comprova realização)`,
     `- Registros cadastrados: ${report.totalRecords}`,
     `- Escutas individuais: ${report.individualListeningRecords}`,
     `- Relatos de roda de conversa: ${report.conversationCircleReports}`,
@@ -297,7 +309,7 @@ export function buildMonthlyReportMarkdown(report: MonthlyReportData, mode: Mont
     "## 12. Encaminhamentos recomendados",
     formatSentenceList(visibleReferrals),
     "",
-    "## 13. Ações realizadas",
+    "## 13. Ações cadastradas (realização não necessariamente confirmada)",
     report.actions.length > 0
       ? report.actions.map((action) => `- ${formatDate(action.action_date)} | ${action.title} | ${getActionTypeLabel(action.action_type)} | ${action.neighborhoods?.name ?? "Território da ação não informado"}`).join("\n")
       : "- Nenhuma ação cadastrada no mês.",
@@ -306,7 +318,7 @@ export function buildMonthlyReportMarkdown(report: MonthlyReportData, mode: Mont
     "## 14. Pendências e próximos passos",
     report.pendingReviews.length > 0
       ? report.pendingReviews.map((record) => `- ${formatDate(record.date)} | ação em ${record.neighborhoods?.name ?? "Território da ação não informado"} | referência ${record.respondent_neighborhoods?.name ?? "Não informado"} | revisar cadastro antes de publicação.`).join("\n")
-      : "- Nenhuma pendência de revisão no mês.",
+      : "- Nenhum registro sem confirmação de revisão humana no mês.",
     ] : []),
     "",
     "## 15. Anexo técnico",
@@ -338,6 +350,7 @@ export function buildMonthlyReportCsv(report: MonthlyReportData) {
     "tipo_acao",
     "origem_escuta",
     "status_revisao",
+    "revisao_humana_confirmada",
     "temas",
     "prioridade",
     "inesperado",
@@ -362,6 +375,7 @@ export function buildMonthlyReportCsv(report: MonthlyReportData) {
     record.actions?.action_type ? getActionTypeLabel(record.actions.action_type) : "",
     getSourceTypeLabel(record.source_type),
     getReviewStatusLabel(record.review_status),
+    record.human_reviewed_at ? "sim" : "não comprovada",
     record.listening_record_themes.map((item) => item.themes?.name).filter(Boolean).join(" | "),
     record.priority_mentioned ?? "",
     record.unexpected_notes ?? "",
@@ -401,12 +415,12 @@ function buildPedagogicalSummary(
   priorities: Array<{ name: string; count: number }>,
   unexpectedTopics: Array<{ name: string; count: number }>
 ) {
-  const reviewedCount = records.filter((item) => item.review_status === "reviewed").length;
+  const reviewedCount = records.filter((item) => Boolean(item.human_reviewed_at)).length;
   const recordsWithTeamSummary = records.filter((item) => item.team_summary?.trim()).length;
   const topThemeText = topThemes.length > 0 ? formatCountList(topThemes.slice(0, 3)) : "sem temas recorrentes marcados";
   const priorityText = priorities.length > 0 ? formatCountList(priorities.slice(0, 3)) : "sem prioridade recorrente preenchida";
   const unexpectedText = unexpectedTopics.length > 0 ? formatCountList(unexpectedTopics.slice(0, 3)) : "sem temas inesperados registrados";
-  return `Na leitura pedagógica de ${formatMonthLabel(month)}, foram identificadas ${formatPlural(reviewedCount, "escuta revisada", "escutas revisadas")} e ${formatPlural(recordsWithTeamSummary, "registro com síntese da equipe", "registros com síntese da equipe")} preenchida. Os temas mais recorrentes foram ${topThemeText}. Entre as prioridades apontadas, destacam-se ${priorityText}. Nos sinais qualitativos relevantes, apareceram ${unexpectedText}.`;
+  return `Na leitura pedagógica de ${formatMonthLabel(month)}, foram identificados ${formatPlural(reviewedCount, "registro com revisão humana confirmada", "registros com revisão humana confirmada")} e ${formatPlural(recordsWithTeamSummary, "registro com síntese da equipe", "registros com síntese da equipe")}. Os temas mais recorrentes foram ${topThemeText}. Entre as prioridades apontadas, destacam-se ${priorityText}. Nos sinais qualitativos relevantes, apareceram ${unexpectedText}.`;
 }
 
 function buildExecutiveSummary(
@@ -590,24 +604,27 @@ function buildWhatRequiresCaution(report: MonthlyReportData) {
 function countThemes(records: RecordWithRelations[]) {
   const map = new Map<string, number>();
   records.forEach((record) => {
-    record.listening_record_themes.forEach((item) => {
-      if (!item.themes?.name) return;
-      map.set(item.themes.name, (map.get(item.themes.name) ?? 0) + 1);
-    });
+    const names = new Set(record.listening_record_themes.map((item) => item.themes?.name).filter((name): name is string => Boolean(name)));
+    names.forEach((name) => map.set(name, (map.get(name) ?? 0) + 1));
   });
   return Array.from(map.entries()).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "pt-BR"));
 }
 
 function countTextValues<TItem>(items: TItem[], pickValue: (item: TItem) => string | null) {
-  const map = new Map<string, number>();
+  const map = new Map<string, { name: string; count: number }>();
   items.forEach((item) => {
-    pickValue(item)
+    const values = pickValue(item)
       ?.split(/[,;\n]+/)
       .map((value) => normalizeTextToken(value))
-      .filter(Boolean)
-      .forEach((value) => map.set(value, (map.get(value) ?? 0) + 1));
+      .filter(Boolean) ?? [];
+    const unique = new Map(values.map((value) => [value.toLocaleLowerCase("pt-BR"), value]));
+    unique.forEach((value, key) => {
+      const current = map.get(key) ?? { name: value, count: 0 };
+      current.count += 1;
+      map.set(key, current);
+    });
   });
-  return Array.from(map.entries()).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "pt-BR"));
+  return Array.from(map.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "pt-BR"));
 }
 
 function countBy<TItem>(items: TItem[], getValue: (item: TItem) => string) {
@@ -684,7 +701,8 @@ function sanitizeCsv(value: string) {
 }
 
 function escapeCsv(value: string) {
-  return `"${value.replace(/"/g, '""')}"`;
+  const safe = /^[\s\x00-\x1f]*[=+@-]/.test(value) ? `'${value}` : value;
+  return `"${safe.replace(/"/g, '""')}"`;
 }
 
 function truncate(value: string, maxLength: number) {
@@ -722,3 +740,4 @@ function buildRespondentTerritoryMarkdown(records: RecordWithRelations[]): strin
   if (withoutRef > 0) lines.push(`- Sem territorio de referencia: ${withoutRef} escuta${withoutRef !== 1 ? "s" : ""}`);
   return lines.join("\n");
 }
+

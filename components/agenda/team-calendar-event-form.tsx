@@ -200,7 +200,7 @@ export function TeamCalendarEventForm({ eventId }: EventFormProps) {
         starts_at: queryStartsAt || getSuggestedActionEventStart(action),
         ends_at: queryEndsAt || getSuggestedActionEventEnd(action),
         all_day: queryAllDay ? queryAllDay === "1" : action.all_day,
-        status: action.status === "cancelada" ? "cancelled" : action.status === "realizada" ? "done" : "planned",
+        status: action.status === "cancelada" ? "cancelled" : action.status === "realizada" && action.occurrence_confirmed_at ? "done" : "planned",
         action_id: action.id,
         neighborhood_id: queryNeighborhoodId || (action.neighborhood_id ?? ""),
       });
@@ -507,3 +507,4 @@ export function TeamCalendarEventForm({ eventId }: EventFormProps) {
 
 const inputClassName = "mt-2 min-h-12 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 text-xs font-bold text-stone-750 outline-none focus:border-semear-green shadow-premium-sm";
 const textareaClassName = "mt-2 min-h-28 w-full rounded-2xl border border-stone-200 bg-white/95 px-4 py-3 text-xs font-bold text-stone-750 outline-none focus:border-semear-green shadow-premium-sm";
+

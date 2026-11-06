@@ -92,7 +92,7 @@ export function buildInternalMapTerritories(input: {
   return input.neighborhoods.map((neighborhood) => {
     const records = input.records.filter((record) => record.neighborhood_id === neighborhood.id);
     const territoryQuality = quality.get(neighborhood.id);
-    const reviewedRecords = records.filter((record) => record.review_status === "reviewed").length;
+    const reviewedRecords = records.filter((record) => Boolean(record.human_reviewed_at)).length;
     const sensitivePlaceTypes = records.some((record) => record.places_mentioned.some(isSensitivePlace));
     const hasSensitivePlaces = records.some((record) => record.places_mentioned.some((place) => place.normalized_places?.visibility === "sensitive"));
 
@@ -235,3 +235,4 @@ function buildPlaceSummary(records: RecordForInternalMap[]): InternalMapPlaceSum
   });
   return Array.from(counts.values()).sort((a, b) => b.count - a.count || a.normalizedName.localeCompare(b.normalizedName, "pt-BR"));
 }
+

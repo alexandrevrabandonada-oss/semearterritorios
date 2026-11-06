@@ -281,6 +281,14 @@ export function ActionDebriefPage({ actionId }: Props) {
       setError("Apenas coordenação ou admin podem aprovar devolutivas.");
       return;
     }
+    if (status === "approved" && !loadedAction.occurrence_confirmed_at) {
+      setError("Confirme que a ação aconteceu antes de aprovar a devolutiva.");
+      return;
+    }
+    if (status === "approved" && metrics.reviewed === 0) {
+      setError("Confirme a revisão humana de pelo menos uma escuta antes de aprovar a devolutiva.");
+      return;
+    }
     if (status === "approved" && metrics.possibleSensitive > 0) {
       setError("Há registros com possível dado sensível. Revise antes de aprovar a devolutiva.");
       return;
@@ -660,3 +668,4 @@ function StateBox({ children, tone = "neutral" }: { children: ReactNode; tone?: 
     </div>
   );
 }
+

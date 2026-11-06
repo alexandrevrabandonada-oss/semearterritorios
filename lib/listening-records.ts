@@ -13,8 +13,13 @@ export const sourceTypeOptions: Array<{ value: SourceType; label: string }> = [
 
 export const reviewStatusOptions: Array<{ value: ReviewStatus; label: string }> = [
   { value: "draft", label: "Rascunho" },
-  { value: "reviewed", label: "Revisado" }
+  { value: "reviewed", label: "Pronta para uso" }
 ];
+
+/** Confirmação humana independente do status operacional antigo. */
+export function hasHumanReview(record: { human_reviewed_at?: string | null }) {
+  return Boolean(record.human_reviewed_at);
+}
 
 /** Opções de vínculo do entrevistado com o território de referência (Tijolo 039). */
 export const respondentTerritoryRelationOptions: Array<{ value: RespondentTerritoryRelation; label: string }> = [
@@ -37,3 +42,4 @@ export function getRespondentTerritoryRelationLabel(value: RespondentTerritoryRe
   if (!value) return "Não informado";
   return respondentTerritoryRelationOptions.find((option) => option.value === value)?.label ?? value;
 }
+

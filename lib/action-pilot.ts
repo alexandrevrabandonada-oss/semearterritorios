@@ -1,4 +1,5 @@
 import type { Action, ListeningRecord, Neighborhood, Theme } from "@/lib/database.types";
+import { hasHumanReview } from "@/lib/listening-records";
 
 export type ListeningRecordForPilot = ListeningRecord & {
   listening_record_themes: Array<{ themes: Pick<Theme, "id" | "name"> | null }>;
@@ -65,9 +66,12 @@ const stopWords = new Set([
 export function hasPossibleSensitiveData(
   record: Pick<ListeningRecord, "free_speech_text" | "team_summary" | "places_mentioned_text"> & {
     respondent_occupation?: string | null;
+    priority_mentioned?: string | null;
+    unexpected_notes?: string | null;
+    words_used?: string | null;
   }
 ) {
-  const text = [record.free_speech_text, record.team_summary, record.places_mentioned_text].filter(Boolean).join(" ");
+  const text = [record.free_speech_text, record.team_summary, record.places_mentioned_text, record.priority_mentioned, record.unexpected_notes, record.words_used].filter(Boolean).join(" ");
   return sensitivePatterns.some((pattern) => pattern.test(text)) || hasPossibleSensitiveOccupation(record.respondent_occupation);
 }
 
@@ -160,9 +164,7 @@ export function hasNoWordsUsed(record: Pick<ListeningRecord, "words_used">) {
 
 function countList(values: string[]) {
   return values
-    .flatMap((value) => value.split(/[,;\n]+/))
-    .map((value) => value.trim().toLowerCase())
-    .filter(Boolean)
+    .flatMap((value) => Array.from(new Set(value.split(/[,;\n]+/).map((item) => item.trim().toLowerCase()).filter(Boolean))))
     .reduce<Record<string, number>>((acc, value) => {
       acc[value] = (acc[value] ?? 0) + 1;
       return acc;
@@ -181,26 +183,23 @@ export function getActionPilotMetrics(records: ListeningRecordForPilot[]) {
   const recurringWords: Record<string, number> = {};
 
   records.forEach((record) => {
-    record.listening_record_themes.forEach((item) => {
-      if (item.themes?.name) {
-        themeCounts[item.themes.name] = (themeCounts[item.themes.name] ?? 0) + 1;
-      }
-    });
+    const themes = new Set(record.listening_record_themes.map((item) => item.themes?.name).filter((name): name is string => Boolean(name)));
+    themes.forEach((name) => { themeCounts[name] = (themeCounts[name] ?? 0) + 1; });
 
     const source = record.words_used?.trim() || record.free_speech_text;
-    source
+    const words = source
       .toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .split(/[^a-z0-9]+/)
-      .filter((word) => word.length > 3 && !stopWords.has(word))
-      .forEach((word) => {
+      .filter((word) => word.length > 3 && !stopWords.has(word));
+    new Set(words).forEach((word) => {
         recurringWords[word] = (recurringWords[word] ?? 0) + 1;
       });
   });
 
   const draft = records.filter((record) => record.review_status === "draft").length;
-  const reviewed = records.filter((record) => record.review_status === "reviewed").length;
+  const reviewed = records.filter(hasHumanReview).length;
 
   return {
     total: records.length,
@@ -219,7 +218,7 @@ export function getActionPilotMetrics(records: ListeningRecordForPilot[]) {
     unexpected: records.map((record) => record.unexpected_notes?.trim()).filter(Boolean).slice(0, 8) as string[],
     pending: records.filter(
       (record) =>
-        record.review_status === "draft" ||
+        !hasHumanReview(record) ||
         record.listening_record_themes.length === 0 ||
         !record.team_summary?.trim() ||
         !record.priority_mentioned?.trim() ||
@@ -228,12 +227,14 @@ export function getActionPilotMetrics(records: ListeningRecordForPilot[]) {
   };
 }
 
-export function getActionReadiness(records: ListeningRecordForPilot[], sufficientWithJustification = false): ReadinessStatus {
+export function getActionReadiness(records: ListeningRecordForPilot[], _sufficientWithJustification = false): ReadinessStatus {
   const metrics = getActionPilotMetrics(records);
   const reviewedRatio = metrics.total > 0 ? metrics.reviewed / metrics.total : 0;
   const hasSeriousPending = metrics.possibleSensitive > 0;
 
-  if (metrics.total > 0 && (metrics.reviewed === metrics.total || sufficientWithJustification)) {
+  if (hasSeriousPending) return "Em digitação";
+
+  if (metrics.total > 0 && metrics.reviewed === metrics.total) {
     return "Pronta para relatório";
   }
 
@@ -258,3 +259,4 @@ export function getOperationRecommendation(status: ReadinessStatus) {
   if (status === "Em revisão" || status === "Pronta para revisão") return "revisar pendências";
   return "continuar digitando";
 }
+

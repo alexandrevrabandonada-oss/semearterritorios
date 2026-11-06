@@ -2,7 +2,8 @@ import type { Action, ActionClosure, ActionDebrief, ListeningRecord, Neighborhoo
 import { getActionStatusLabel, getActionTypeLabel } from "@/lib/actions";
 import { createEmptyTransparencyChecklist, normalizeTransparencyChecklist } from "@/lib/transparency-privacy";
 import { buildTerritorialQualityMethodologyNote } from "@/lib/territorial-quality";
-import { calculateIndividualRespondentTerritoryQuality, getIndividualListeningRecords } from "@/lib/listening-record-methodology";
+import { calculateIndividualRespondentTerritoryQuality, getIndividualListeningRecords, isConversationCircleRecord } from "@/lib/listening-record-methodology";
+import { hasHumanReview } from "@/lib/listening-records";
 
 export const MIN_PUBLIC_TERRITORY_SAMPLE = 5;
 export const MIN_PUBLIC_OCCUPATION_SAMPLE = 3;
@@ -18,6 +19,7 @@ const stopWords = new Set([
 ]);
 
 export type SnapshotRecord = ListeningRecord & {
+  actions?: Pick<Action, "action_type"> | null;
   neighborhoods?: Pick<Neighborhood, "id" | "name"> | null;
   respondent_neighborhood?: Pick<Neighborhood, "id" | "name"> | null;
   listening_record_themes?: Array<{ themes: Pick<Theme, "id" | "name"> | null }>;
@@ -37,7 +39,7 @@ export type TransparencyDraftInput = {
 };
 
 export function buildTransparencySnapshotDraft(input: TransparencyDraftInput) {
-  const reviewedRecords = input.records.filter((record) => record.review_status === "reviewed");
+  const reviewedRecords = input.records.filter(hasHumanReview);
   const reviewedIndividualRecords = getIndividualListeningRecords(reviewedRecords);
   const periodDates = [
     ...input.actions.map((action) => action.action_date),
@@ -45,16 +47,24 @@ export function buildTransparencySnapshotDraft(input: TransparencyDraftInput) {
   ].filter(Boolean).sort();
   const periodStart = periodDates[0] ?? null;
   const periodEnd = periodDates[periodDates.length - 1] ?? null;
-  const actionTerritories = new Set(input.actions.map((action) => action.neighborhood_id).filter(Boolean));
+  const confirmedActions = input.actions.filter((action) => action.status === "realizada" && action.occurrence_confirmed_at);
+  const actionTerritories = new Set(confirmedActions.map((action) => action.neighborhood_id).filter(Boolean));
   const respondentTerritories = new Set(reviewedIndividualRecords.map((record) => record.respondent_neighborhood_id).filter(Boolean));
   const respondentWithoutTerritory = reviewedIndividualRecords.filter((record) => !record.respondent_neighborhood_id).length;
   const territorialQuality = calculateIndividualRespondentTerritoryQuality(reviewedRecords);
   const territorialMethodology = buildTerritorialQualityMethodologyNote(territorialQuality);
-  const approvedDebriefs = input.debriefs.filter((debrief) => debrief.status === "approved");
+  const approvedDebriefs = input.debriefs.filter((debrief) => {
+    const action = confirmedActions.find((item) => item.id === debrief.action_id);
+    if (debrief.status !== "approved" || !debrief.approved_at || !action?.occurrence_confirmed_at) return false;
+    const approvedAt = Date.parse(debrief.approved_at);
+    return approvedAt >= Date.parse(action.occurrence_confirmed_at)
+      && approvedAt >= Date.parse(action.updated_at)
+      && input.records.filter((record) => record.action_id === action.id).every((record) => approvedAt >= Date.parse(record.updated_at));
+  });
   const closedDossiers = input.closures.filter((closure) => closure.status === "closed");
 
   const totals = {
-    actions_realized: input.actions.filter((action) => action.status === "realizada").length,
+    actions_realized: confirmedActions.length,
     listening_records: input.records.length,
     listening_records_reviewed: reviewedRecords.length,
     territories_reached: new Set([...Array.from(actionTerritories), ...Array.from(respondentTerritories)]).size,
@@ -65,7 +75,7 @@ export function buildTransparencySnapshotDraft(input: TransparencyDraftInput) {
   const themeSummary = rankThemes(reviewedRecords);
   const wordSummary = rankWords(reviewedRecords);
   const territorySummary = {
-    action_territory_summary: summarizeActionTerritories(input.actions, reviewedRecords, approvedDebriefs),
+    action_territory_summary: summarizeActionTerritories(confirmedActions, reviewedRecords, approvedDebriefs),
     respondent_territory_summary: summarizeRespondentTerritories(reviewedRecords),
     respondent_without_territory: respondentWithoutTerritory,
     territorial_quality_summary: {
@@ -77,8 +87,7 @@ export function buildTransparencySnapshotDraft(input: TransparencyDraftInput) {
       operational_recommendation: territorialMethodology.operationalRecommendation
     }
   };
-  const actionTimeline = input.actions
-    .filter((action) => action.status === "realizada")
+  const actionTimeline = confirmedActions
     .sort((a, b) => a.action_date.localeCompare(b.action_date))
     .map((action) => {
       const debrief = approvedDebriefs.find((item) => item.action_id === action.id);
@@ -116,7 +125,7 @@ export function buildTransparencySnapshotDraft(input: TransparencyDraftInput) {
     word_summary: wordSummary,
     action_timeline: actionTimeline,
     debrief_links: debriefLinks,
-    methodology_notes: `Síntese pública produzida a partir de dados revisados, agregados e sanitizados pela equipe SEMEAR. ${territorialMethodology.fullText} Cobertura territorial: ${territorialQuality.coveragePercent}% (${territorialQuality.recordsWithRespondentTerritory}/${territorialQuality.totalRecords}).`,
+    methodology_notes: `Síntese pública produzida a partir de registros com revisão humana confirmada. Cada palavra é contada no máximo uma vez por registro; um registro não equivale necessariamente a uma pessoa única. Estes dados não representam estatisticamente a população. ${territorialMethodology.fullText} Cobertura territorial: ${territorialQuality.coveragePercent}% (${territorialQuality.recordsWithRespondentTerritory}/${territorialQuality.totalRecords}).`,
     opening_text: "Esta leitura pública apresenta apenas recortes agregados e aprovados pela coordenação.",
     listening_text: "O que estamos ouvindo aparece aqui em linguagem pública, sem fala original e sem identificar pessoas.",
     limits_text: territorialMethodology.status === "boa"
@@ -191,19 +200,21 @@ function buildDefaultTitle(periodStart: string | null, periodEnd: string | null)
 }
 
 function buildPublicSummary(totals: Record<string, number>) {
-  return `Síntese pública agregada com ${totals.actions_realized} ação(ões) realizada(s), ${totals.listening_records_reviewed} escuta(s) revisada(s), ${totals.territories_reached} território(s) de referência alcançado(s), ${totals.approved_debriefs} devolutiva(s) aprovada(s) e ${totals.closed_dossiers} dossiê(s) fechado(s).`;
+  return `Síntese pública agregada com ${totals.actions_realized} ação(ões) com realização confirmada, ${totals.listening_records_reviewed} registro(s) com revisão humana confirmada, ${totals.territories_reached} território(s) de ação ou referência informados, ${totals.approved_debriefs} devolutiva(s) aprovada(s) e ${totals.closed_dossiers} dossiê(s) fechado(s).`;
 }
 
 function rankThemes(records: SnapshotRecord[]) {
   const counts = new Map<string, { count: number; territories: Map<string, number> }>();
   for (const record of records) {
-    const territory = record.respondent_neighborhood?.name ?? record.neighborhoods?.name ?? "Território não informado";
+    const territory = isConversationCircleRecord(record) ? null : record.respondent_neighborhood?.name;
+    const seenThemes = new Set<string>();
     for (const item of record.listening_record_themes ?? []) {
       const name = item.themes?.name?.trim();
-      if (!name) continue;
+      if (!name || seenThemes.has(name)) continue;
+      seenThemes.add(name);
       const current = counts.get(name) ?? { count: 0, territories: new Map<string, number>() };
       current.count += 1;
-      current.territories.set(territory, (current.territories.get(territory) ?? 0) + 1);
+      if (territory) current.territories.set(territory, (current.territories.get(territory) ?? 0) + 1);
       counts.set(name, current);
     }
   }
@@ -221,7 +232,7 @@ function rankThemes(records: SnapshotRecord[]) {
 function rankWords(records: SnapshotRecord[]) {
   const counts = new Map<string, number>();
   for (const record of records) {
-    for (const word of tokenizeWords(record.words_used ?? "")) {
+    for (const word of Array.from(new Set(tokenizeWords(record.words_used ?? "")))) {
       counts.set(word, (counts.get(word) ?? 0) + 1);
     }
   }
@@ -311,3 +322,4 @@ function tokenizeWords(text: string) {
 function formatDate(value: string) {
   return new Date(`${value}T00:00:00`).toLocaleDateString("pt-BR");
 }
+

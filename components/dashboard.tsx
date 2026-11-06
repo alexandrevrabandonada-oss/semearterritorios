@@ -196,7 +196,7 @@ export function Dashboard() {
   const themeCounts = countThemes(filteredRecords);
   const themesByNeighborhood = countThemesByNeighborhood(filteredRecords);
   const wordCounts = countWords(filteredRecords);
-  const pendingRecords = filteredRecords.filter((record) => record.review_status === "draft");
+  const pendingRecords = filteredRecords.filter((record) => !record.human_reviewed_at);
   const latestRecords = filteredRecords.slice(0, 6);
   const actionsWithOpenDossier = filteredActions.filter((action) => closures.find((closure) => closure.action_id === action.id)?.status !== "closed");
   const actionsWithPendingDebrief = filteredActions.filter((action) => debriefs.find((debrief) => debrief.action_id === action.id)?.status !== "approved");
@@ -221,7 +221,7 @@ export function Dashboard() {
   const overdueEvents = buildOverdueEvents(calendarEvents);
   const debriefsWithoutAgenda = buildEventsWithoutAgendaForActions(actions, calendarEvents, { eventType: "devolutiva" });
   const dossiersWithoutAgenda = buildEventsWithoutAgendaForActions(actions, calendarEvents, { eventType: "dossie" });
-  const actionsWithoutClosure = actions.filter((action) => action.status === "realizada" && !closures.some((closure) => closure.action_id === action.id && closure.status === "closed"));
+  const actionsWithoutClosure = actions.filter((action) => action.status === "realizada" && action.occurrence_confirmed_at && !closures.some((closure) => closure.action_id === action.id && closure.status === "closed"));
   const topNeighborhoods = countBy(
     filteredRecords.filter((record) => Boolean(record.respondent_neighborhoods?.name)),
     (record) => record.respondent_neighborhoods?.name ?? ""
@@ -859,7 +859,7 @@ function buildTerritoryCards(actions: ActionWithNeighborhood[], records: RecordW
     const name = record.respondent_neighborhoods?.name ?? "Não informado";
     const current = map.get(name) ?? { name, records: 0, actions: 0, themes: new Set<string>(), latestDate: null, draftRecords: 0 };
     current.records += 1;
-    if (record.review_status === "draft") current.draftRecords += 1;
+    if (!record.human_reviewed_at) current.draftRecords += 1;
     if (!current.latestDate || record.date > current.latestDate) current.latestDate = record.date;
     record.listening_record_themes.forEach((item) => {
       if (item.themes?.name) current.themes.add(item.themes.name);
@@ -987,3 +987,4 @@ function buildInterviewerGuidance(records: RecordWithRelations[], teamMembers: T
     .filter((item) => item.recordsWithoutRespondentTerritory > 0)
     .sort((a, b) => b.recordsWithoutRespondentTerritory - a.recordsWithoutRespondentTerritory || a.coveragePercent - b.coveragePercent);
 }
+

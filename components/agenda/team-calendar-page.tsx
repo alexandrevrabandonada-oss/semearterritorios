@@ -228,7 +228,7 @@ export function TeamCalendarPage() {
   const overdueEvents = buildOverdueEvents(events) as EventWithRelations[];
   const nextSevenDaysEvents = buildUpcomingEvents(events, 7) as EventWithRelations[];
   const recentDoneEvents = buildRecentDoneEvents(events, 7) as EventWithRelations[];
-  const actionsDoneWithoutClosure = actions.filter((action) => action.status === "realizada" && !closures.some((closure) => closure.action_id === action.id && closure.status === "closed"));
+  const actionsDoneWithoutClosure = actions.filter((action) => action.status === "realizada" && action.occurrence_confirmed_at && !closures.some((closure) => closure.action_id === action.id && closure.status === "closed"));
   const debriefsWithoutAgenda = buildEventsWithoutAgendaForActions(actions, events, { eventType: "devolutiva" });
   const dossiersWithoutAgenda = buildEventsWithoutAgendaForActions(actions, events, { eventType: "dossie", requireStatus: ["planejada", "realizada", "reprogramada"] });
   const doneEvents = events.filter((event) => event.status === "done").length;
@@ -656,3 +656,4 @@ function EmptyCard({ text }: { text: string }) {
 function StateBox({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "error" }) {
   return <div className={`rounded-2xl p-6 text-sm font-semibold shadow-premium-sm border ${tone === "error" ? "border-red-200 bg-red-50 text-red-800" : "border-white/60 bg-white/80 text-stone-600"}`}>{children}</div>;
 }
+
