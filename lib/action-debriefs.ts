@@ -85,9 +85,7 @@ export function buildActionDebrief(action: ActionForPilot, records: ListeningRec
   const safeReviewedRecords = records.filter(
     (record) => record.review_status === "reviewed" && !hasPossibleSensitiveData(record)
   );
-  const sourceRecords = safeReviewedRecords.length > 0
-    ? safeReviewedRecords
-    : records.filter((record) => !hasPossibleSensitiveData(record));
+  const sourceRecords = safeReviewedRecords;
   const metrics = getActionPilotMetrics(sourceRecords);
   const occupationSummary = summarizeOccupations(sourceRecords);
   const individualRecords = getIndividualListeningRecords(records);
@@ -125,7 +123,7 @@ export function buildActionDebrief(action: ActionForPilot, records: ListeningRec
       ? `Na ação realizada em ${bairro}, foram registrados ${fullMetrics.total} registro(s): ${individualRecords.length} escuta(s) individual(is) e ${conversationCircleReports} relato(s) de roda.`
       : `Na ação realizada em ${bairro}, foram registrados ${fullMetrics.total} registro(s): ${individualRecords.length} escuta(s) individual(is) e ${conversationCircleReports} relato(s) de roda. Entre as escutas individuais com território de referência preenchido, observam-se os padrões territoriais descritos abaixo.`,
     "As pessoas escutadas podem se referir a diferentes territórios de referência; relatos de roda são consolidações por entrevistador e não entram como pessoa individual na cobertura territorial.",
-    `Para esta devolutiva, a síntese considera preferencialmente registros revisados e sem alerta de dado sensível. Até o momento, ${fullMetrics.reviewed} escuta(s) estão revisada(s) e ${fullMetrics.draft} permanecem em rascunho.`,
+    `A síntese considera ${sourceRecords.length} de ${fullMetrics.total} registro(s), com status revisado e sem alerta automático de dado sensível. Esse status não comprova revisão humana.`,
     `Os temas mais recorrentes foram: ${formatInline(metrics.topThemes.slice(0, 5))}. As palavras que mais apareceram foram: ${formatInline(metrics.topWords.slice(0, 8))}.`,
     occupationSummary.groups.length > 0
       ? `Entre as ocupações informadas, apareceram principalmente: ${occupationSummary.groups.slice(0, 5).map((item) => `${item.label} (${item.count})`).join(", ")}.`
@@ -273,3 +271,4 @@ ${input.methodologyNote}
 ${defaultPrivacyNote}
 `;
 }
+
