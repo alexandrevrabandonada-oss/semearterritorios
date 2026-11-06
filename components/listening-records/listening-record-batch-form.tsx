@@ -210,7 +210,7 @@ export function ListeningRecordBatchForm() {
       places_mentioned_text: placesMentionedText || null,
       priority_mentioned: values.priority_mentioned.trim() || null,
       unexpected_notes: values.unexpected_notes.trim() || null,
-      review_status: "draft" as const,
+      review_status: "reviewed" as const,
       created_by: user.id,
       respondent_city: isConversationCircle ? null : values.respondent_city.trim() || null,
       respondent_neighborhood_id: (!isConversationCircle && respondentCityIsVoltaRedonda && values.respondent_neighborhood_id) ? values.respondent_neighborhood_id : null,
@@ -253,7 +253,7 @@ export function ListeningRecordBatchForm() {
     if (submitMode === "draft") {
       setSaving(false);
       void window.scrollTo({ top: 0, behavior: "smooth" });
-      window.location.assign(`/escutas?actionId=${action.id}&status=draft`);
+      window.location.assign(`/escutas?actionId=${action.id}&status=reviewed`);
       return;
     }
     
@@ -311,7 +311,7 @@ export function ListeningRecordBatchForm() {
             <strong className="text-semear-green">Entrevistador:</strong> {values.interviewer_name || "Selecione acima"}
           </div>
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-950">
-                {isConversationCircle ? "Registre a roda como relato do entrevistador, sem identificar participantes." : "Não registre CPF, telefone ou endereço. Salve como rascunho e revise depois."}
+                {isConversationCircle ? "Registre a roda como relato do entrevistador, sem identificar participantes." : "Não registre CPF, telefone ou endereço. Confira e edite depois, se necessário."}
           </div>
         </div>
       </div>
@@ -527,7 +527,7 @@ export function ListeningRecordBatchForm() {
                       {saving && submitMode === "next" ? "Salvando..." : isConversationCircle ? "Salvar relato e digitar próximo" : "Salvar e digitar próxima"}
                     </button>
                     <button className="inline-flex min-h-14 w-full items-center justify-center rounded-xl border border-semear-green/20 bg-white px-5 text-base font-semibold text-semear-green disabled:opacity-60" disabled={saving || !lockedActionId} onClick={() => setSubmitMode("draft")} type="submit">
-                      {saving && submitMode === "draft" ? "Salvando..." : "Salvar rascunho"}
+                      {saving && submitMode === "draft" ? "Salvando..." : "Salvar e voltar"}
                     </button>
                   </div>
                   <p className="mt-3 text-center text-xs text-stone-500 uppercase tracking-widest font-semibold">{isConversationCircle ? "Cada entrevistador envia um relato da roda; a ação consolida todos depois." : "No celular, digite agora e revise depois com calma."}</p>
