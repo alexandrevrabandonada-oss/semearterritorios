@@ -52,7 +52,7 @@ const defaultValues: ActionFormValues = {
   team: "",
   estimated_public: "",
   summary: "",
-  status: "planejada",
+  status: "realizada",
   notes: ""
 };
 
