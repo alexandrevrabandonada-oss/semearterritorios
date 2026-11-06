@@ -77,7 +77,7 @@ export function ListeningRecordDetail({ recordId }: { recordId: string }) {
   async function markReviewed() {
     if (!supabase) return;
     setSaving(true);
-    const result = await supabase.from("listening_records").update({ review_status: "reviewed" }).eq("id", recordId);
+    const result = await supabase.rpc("confirm_listening_review", { p_record_id: recordId });
     setSaving(false);
     if (result.error) {
       setError(result.error.message);
@@ -100,8 +100,8 @@ export function ListeningRecordDetail({ recordId }: { recordId: string }) {
       <div className="mb-5 flex flex-wrap gap-3">
         <Link className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green/15 bg-white/70 px-4 text-sm font-semibold text-semear-green" href="/escutas"><ArrowLeft className="h-4 w-4" aria-hidden="true" />Voltar para escutas</Link>
         <button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-semear-green px-4 text-sm font-semibold text-white" onClick={() => setEditing(true)} type="button"><Edit3 className="h-4 w-4" aria-hidden="true" />Editar escuta</button>
-        {record.review_status !== "reviewed" ? (
-          <button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-semear-earth px-4 text-sm font-semibold text-white disabled:opacity-60" disabled={saving} onClick={markReviewed} type="button"><CheckCircle2 className="h-4 w-4" aria-hidden="true" />{saving ? "Marcando..." : "Marcar como revisada"}</button>
+        {!record.human_reviewed_at ? (
+          <button className="inline-flex min-h-11 items-center gap-2 rounded-full bg-semear-earth px-4 text-sm font-semibold text-white disabled:opacity-60" disabled={saving} onClick={markReviewed} type="button"><CheckCircle2 className="h-4 w-4" aria-hidden="true" />{saving ? "Confirmando..." : "Confirmar revisão humana"}</button>
         ) : null}
       </div>
 
@@ -109,6 +109,7 @@ export function ListeningRecordDetail({ recordId }: { recordId: string }) {
         <div className="flex flex-wrap gap-2">
           <span className="rounded-full bg-semear-green-soft px-3 py-1 text-xs font-semibold text-semear-green">{getSourceTypeLabel(record.source_type)}</span>
           <span className="rounded-full bg-semear-yellow/35 px-3 py-1 text-xs font-semibold text-semear-green">{getReviewStatusLabel(record.review_status)}</span>
+          <span className="rounded-full bg-semear-offwhite px-3 py-1 text-xs font-semibold text-stone-600">{record.human_reviewed_at ? "Revisão humana confirmada" : "Revisão humana não comprovada"}</span>
           <span className="rounded-full bg-semear-offwhite px-3 py-1 text-xs font-semibold text-stone-600">{new Date(`${record.date}T00:00:00`).toLocaleDateString("pt-BR")}</span>
         </div>
         <h2 className="mt-5 text-3xl font-semibold tracking-tight text-semear-green">{isConversationCircle ? "Relato de roda registrado" : "Escuta registrada"}</h2>
@@ -180,3 +181,4 @@ export function ListeningRecordDetail({ recordId }: { recordId: string }) {
 function Info({ title, value }: { title: string; value?: string | null }) {
   return <section className="rounded-2xl border border-semear-gray bg-white p-4"><h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{title}</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-stone-700">{value || "Não informado."}</p></section>;
 }
+

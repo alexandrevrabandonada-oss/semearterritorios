@@ -62,6 +62,7 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -216,6 +217,19 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
     window.location.assign("/acoes");
   }
 
+  async function confirmOccurrence() {
+    if (!supabase || !action) return;
+    setConfirming(true);
+    const result = await supabase.rpc("confirm_action_occurrence", { p_action_id: action.id });
+    if (result.error) setError(result.error.message);
+    else {
+      const refreshed = await supabase.from("actions").select("*, neighborhoods:neighborhood_id(id, name)").eq("id", action.id).single();
+      if (refreshed.error) setError(refreshed.error.message);
+      else setAction(refreshed.data as ActionWithNeighborhood);
+    }
+    setConfirming(false);
+  }
+
   return (
     <section className="pb-10">
       <div className="mb-5 flex flex-wrap gap-3">
@@ -234,6 +248,7 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
           <Edit3 className="h-4 w-4" aria-hidden="true" />
           Editar ação
         </button>
+        {action.status === "realizada" && !action.occurrence_confirmed_at ? <button className="inline-flex min-h-11 items-center gap-2 rounded-full border border-semear-green px-5 text-sm font-bold text-semear-green disabled:opacity-60" disabled={confirming} onClick={() => void confirmOccurrence()} type="button">{confirming ? "Confirmando..." : "Confirmar que a ação aconteceu"}</button> : null}
         <button
           className="inline-flex min-h-11 items-center gap-2 rounded-full border border-red-200 bg-red-50 px-5 text-sm font-bold text-red-800 shadow-premium-sm transition hover:bg-red-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 duration-200"
           disabled={deleting}
@@ -288,7 +303,7 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
           </div>
           <div className="rounded-2xl border border-semear-green-soft bg-semear-green-soft/30 px-4 py-3 text-xs font-bold text-semear-green max-w-sm shadow-premium-sm leading-relaxed">
             {action.status === "realizada"
-              ? "Banca realizada — digitalize as fichas em /escutas/lote"
+              ? action.occurrence_confirmed_at ? "Realização confirmada pela equipe" : "Status realizado automático; ocorrência ainda não confirmada"
               : "Ação planejada — fichas podem ser digitadas após a banca"}
           </div>
         </div>
@@ -573,3 +588,4 @@ function TextBlock({ title, value }: { title: string; value: string | null }) {
     </section>
   );
 }
+

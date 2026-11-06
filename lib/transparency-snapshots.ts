@@ -3,6 +3,7 @@ import { getActionStatusLabel, getActionTypeLabel } from "@/lib/actions";
 import { createEmptyTransparencyChecklist, normalizeTransparencyChecklist } from "@/lib/transparency-privacy";
 import { buildTerritorialQualityMethodologyNote } from "@/lib/territorial-quality";
 import { calculateIndividualRespondentTerritoryQuality, getIndividualListeningRecords } from "@/lib/listening-record-methodology";
+import { hasHumanReview } from "@/lib/listening-records";
 
 export const MIN_PUBLIC_TERRITORY_SAMPLE = 5;
 export const MIN_PUBLIC_OCCUPATION_SAMPLE = 3;
@@ -18,6 +19,7 @@ const stopWords = new Set([
 ]);
 
 export type SnapshotRecord = ListeningRecord & {
+  actions?: Pick<Action, "action_type"> | null;
   neighborhoods?: Pick<Neighborhood, "id" | "name"> | null;
   respondent_neighborhood?: Pick<Neighborhood, "id" | "name"> | null;
   listening_record_themes?: Array<{ themes: Pick<Theme, "id" | "name"> | null }>;
@@ -37,7 +39,7 @@ export type TransparencyDraftInput = {
 };
 
 export function buildTransparencySnapshotDraft(input: TransparencyDraftInput) {
-  const reviewedRecords = input.records.filter((record) => record.review_status === "reviewed");
+  const reviewedRecords = input.records.filter(hasHumanReview);
   const reviewedIndividualRecords = getIndividualListeningRecords(reviewedRecords);
   const periodDates = [
     ...input.actions.map((action) => action.action_date),
@@ -45,16 +47,24 @@ export function buildTransparencySnapshotDraft(input: TransparencyDraftInput) {
   ].filter(Boolean).sort();
   const periodStart = periodDates[0] ?? null;
   const periodEnd = periodDates[periodDates.length - 1] ?? null;
-  const actionTerritories = new Set(input.actions.map((action) => action.neighborhood_id).filter(Boolean));
+  const confirmedActions = input.actions.filter((action) => action.status === "realizada" && action.occurrence_confirmed_at);
+  const actionTerritories = new Set(confirmedActions.map((action) => action.neighborhood_id).filter(Boolean));
   const respondentTerritories = new Set(reviewedIndividualRecords.map((record) => record.respondent_neighborhood_id).filter(Boolean));
   const respondentWithoutTerritory = reviewedIndividualRecords.filter((record) => !record.respondent_neighborhood_id).length;
   const territorialQuality = calculateIndividualRespondentTerritoryQuality(reviewedRecords);
   const territorialMethodology = buildTerritorialQualityMethodologyNote(territorialQuality);
-  const approvedDebriefs = input.debriefs.filter((debrief) => debrief.status === "approved");
+  const approvedDebriefs = input.debriefs.filter((debrief) => {
+    const action = confirmedActions.find((item) => item.id === debrief.action_id);
+    if (debrief.status !== "approved" || !debrief.approved_at || !action?.occurrence_confirmed_at) return false;
+    const approvedAt = Date.parse(debrief.approved_at);
+    return approvedAt >= Date.parse(action.occurrence_confirmed_at)
+      && approvedAt >= Date.parse(action.updated_at)
+      && input.records.filter((record) => record.action_id === action.id).every((record) => approvedAt >= Date.parse(record.updated_at));
+  });
   const closedDossiers = input.closures.filter((closure) => closure.status === "closed");
 
   const totals = {
-    actions_realized: input.actions.filter((action) => action.status === "realizada").length,
+    actions_realized: confirmedActions.length,
     listening_records: input.records.length,
     listening_records_reviewed: reviewedRecords.length,
     territories_reached: new Set([...Array.from(actionTerritories), ...Array.from(respondentTerritories)]).size,
@@ -65,7 +75,7 @@ export function buildTransparencySnapshotDraft(input: TransparencyDraftInput) {
   const themeSummary = rankThemes(reviewedRecords);
   const wordSummary = rankWords(reviewedRecords);
   const territorySummary = {
-    action_territory_summary: summarizeActionTerritories(input.actions, reviewedRecords, approvedDebriefs),
+    action_territory_summary: summarizeActionTerritories(confirmedActions, reviewedRecords, approvedDebriefs),
     respondent_territory_summary: summarizeRespondentTerritories(reviewedRecords),
     respondent_without_territory: respondentWithoutTerritory,
     territorial_quality_summary: {
@@ -77,8 +87,7 @@ export function buildTransparencySnapshotDraft(input: TransparencyDraftInput) {
       operational_recommendation: territorialMethodology.operationalRecommendation
     }
   };
-  const actionTimeline = input.actions
-    .filter((action) => action.status === "realizada")
+  const actionTimeline = confirmedActions
     .sort((a, b) => a.action_date.localeCompare(b.action_date))
     .map((action) => {
       const debrief = approvedDebriefs.find((item) => item.action_id === action.id);
@@ -311,3 +320,4 @@ function tokenizeWords(text: string) {
 function formatDate(value: string) {
   return new Date(`${value}T00:00:00`).toLocaleDateString("pt-BR");
 }
+

@@ -122,7 +122,7 @@ export function MyListeningRecordsPage() {
   const digitizedCount = records.filter((record) => record.sourceMatches.includes("digitada")).length;
   const interviewerCount = records.filter((record) => record.sourceMatches.includes("entrevistador")).length;
   const draftCount = records.filter((record) => record.review_status === "draft").length;
-  const reviewedCount = records.filter((record) => record.review_status === "reviewed").length;
+  const reviewedCount = records.filter((record) => Boolean(record.human_reviewed_at)).length;
 
   return (
     <section className="pb-10">
@@ -233,3 +233,4 @@ function MetricCard({ label, value }: { label: string; value: number }) {
     </div>
   );
 }
+

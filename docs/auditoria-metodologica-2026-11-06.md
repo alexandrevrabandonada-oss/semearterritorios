@@ -4,10 +4,10 @@ Consulta somente de leitura à produção em 6 de novembro de 2026. Nenhum conte
 
 ## Evidências e riscos
 
-- **Crítico — revisão humana:** `listening_records.review_status` é usado como evidência de revisão e para selecionar dados em devolutivas, leituras coletivas e transparência, mas passou a ser atribuído automaticamente no cadastro. Os 296 registros consultados tinham `reviewed`; isso não comprova revisão humana. Separar prontidão de revisão humana exige registro próprio, trilha de auditoria, invalidação quando o conteúdo revisado muda e atualização de todos os consumidores. Ainda não implementado.
-- **Crítico — confirmação de ações:** 31 ações estavam com `status = realizada`, alterado em massa nesta sessão anterior. Esse valor não comprova que a ação ocorreu. Falta confirmação independente com responsável, data e revisão dos relatórios e eventos de agenda. Ainda não implementado.
+- **Crítico — revisão humana:** `listening_records.review_status` foi atribuído automaticamente no cadastro. Os 296 registros consultados tinham `reviewed`, sem comprovar revisão humana. A proposta adiciona confirmação separada, responsável e data, trilha de eventos, invalidação por alterações e seleção por revisão humana em sínteses e indicadores principais; o histórico sem evidência permanece não confirmado.
+- **Crítico — confirmação de ações:** 31 ações estavam com `status = realizada`, alterado em massa nesta sessão anterior. A proposta registra confirmação separada com responsável e data, mantém o histórico não confirmado e usa essa informação para devolutivas, transparência, agenda e indicadores pertinentes.
 - **Alto — devolutiva aprovada:** havia uma devolutiva aprovada, id `0d0850f6-476d-48c0-82df-71ed9918385d`, para ação de 18/04/2026. Preservada; precisa de revisão humana de suas fontes e indicadores antes de nova circulação. Não havia snapshots em `public_transparency_snapshots` na consulta. Isso não prova ausência de exportações ou materiais externos.
-- **Alto — seleção divergente:** `buildActionDebrief` usava rascunhos sem alerta quando não havia registros com status revisado. Esta alteração elimina esse fallback; a existência de status revisado continua sem comprovar revisão humana, até a migração pendente.
+- **Alto — seleção divergente:** `buildActionDebrief` usava rascunhos sem alerta quando não havia registros com status revisado. A proposta elimina esse fallback e utiliza apenas registros com confirmação humana e sem alerta automático.
 - **Alto — cobertura e unidade inconsistentes:** a devolutiva calculava temas com um subconjunto e cobertura territorial com todos os registros, além de ignorar que a ação vinculada podia ser uma roda. A versão proposta usa o mesmo subconjunto para a cobertura, classifica rodas pelo tipo da ação e retira uma seção que expunha identificadores de bairros sem resolver nomes ou avaliar grupos pequenos.
 - **Alto — circulação sem aprovação:** o componente de síntese oferecia copiar uma “devolutiva pública” gerada de todos os registros sem revisão e ainda afirmava não conter dados identificáveis. Esta alteração remove esse atalho; os botões restantes são apresentados como síntese interna.
 - **Alto — unidade de análise:** o atalho público contava registros como pessoas. Na consulta, 296 registros incluíam 31 relatos de roda (classificados por origem ou tipo da ação) e 265 registros individuais. Um registro não prova uma pessoa única. Outros painéis e exportações ainda precisam da mesma revisão.
@@ -24,7 +24,8 @@ Síntese por ação: `components/actions/action-synthesis.tsx` e `lib/action-pil
 
 ## Validação executada e pendências
 
-- 25 testes de relatórios, transparência e garantias metodológicas passaram; a verificação TypeScript foi executada nas alterações.
-- Não houve teste autenticado ponta a ponta, migração, alteração do banco nesta etapa, nem publicação dessas correções.
-- Antes de liberar: projetar e testar confirmação humana auditável, compatibilidade e backfill conservador; revisar políticas e todos os consumidores; comparar amostras controladas; avaliar versões aprovadas e exportadas; executar build e testes completos; validar privacidade e publicação.
+- Testes automatizados, TypeScript e lint foram executados; confirmação, invalidação e bloqueio de alteração indevida foram testados em transação revertida no banco, sem persistir dados de teste.
+- A migração e o código ainda dependem de publicação coordenada e teste autenticado ponta a ponta. Os campos novos não recebem backfill, portanto as confirmações históricas precisam ser registradas pela equipe.
+- A devolutiva aprovada anterior foi preservada; para ser considerada em novos snapshots deverá ser revisada e aprovada novamente após confirmação da ação e das fontes. Exportações anteriores e outros materiais externos precisam de conferência humana.
+- Os detectores automáticos não garantem privacidade, e os dados de escuta não são amostra representativa da população. Lugares na geração de snapshot a partir de Leituras ficam omitidos até haver seleção consistente por período e revisão.
 

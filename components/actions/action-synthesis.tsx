@@ -75,7 +75,7 @@ ${formatBullets(data.unexpected)}
 `;
 
   const synthesisText = `SÍNTESE DA AÇÃO
-Total de registros: ${data.total} (${data.reviewed} com status revisado, ${data.draft} em rascunho; ${data.pending} com pendências de qualidade)
+Total de registros: ${data.total} (${data.reviewed} com revisão humana confirmada, ${data.draft} em rascunho; ${data.pending} com pendências de qualidade)
 
 TEMAS MAIS CITADOS:
 ${data.topThemes.length > 0 ? data.topThemes.map((item) => `${item.label} (${item.count})`).join(", ") : "Nenhum tema marcado."}
@@ -114,7 +114,7 @@ ${formatBullets(data.unexpected, "Nenhuma.")}
         </div>
       </div>
 
-      <p className="mb-4 text-xs text-stone-600">Síntese interna: os totais representam registros, não necessariamente pessoas. O status revisado não comprova revisão humana. Para circulação, use o fluxo de devolutiva e aprovação.</p>
+      <p className="mb-4 text-xs text-stone-600">Síntese interna: os totais representam registros, não necessariamente pessoas. Para circulação, use o fluxo de devolutiva e aprovação.</p>
 
       <pre className="whitespace-pre-wrap text-sm text-stone-700 bg-semear-offwhite p-5 rounded-2xl border border-semear-gray font-sans leading-7">
         {synthesisText}

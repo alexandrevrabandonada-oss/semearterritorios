@@ -1,4 +1,5 @@
 import type { Action, ListeningRecord, Neighborhood, Theme } from "@/lib/database.types";
+import { hasHumanReview } from "@/lib/listening-records";
 
 export type ListeningRecordForPilot = ListeningRecord & {
   listening_record_themes: Array<{ themes: Pick<Theme, "id" | "name"> | null }>;
@@ -203,7 +204,7 @@ export function getActionPilotMetrics(records: ListeningRecordForPilot[]) {
   });
 
   const draft = records.filter((record) => record.review_status === "draft").length;
-  const reviewed = records.filter((record) => record.review_status === "reviewed").length;
+  const reviewed = records.filter(hasHumanReview).length;
 
   return {
     total: records.length,
@@ -222,7 +223,7 @@ export function getActionPilotMetrics(records: ListeningRecordForPilot[]) {
     unexpected: records.map((record) => record.unexpected_notes?.trim()).filter(Boolean).slice(0, 8) as string[],
     pending: records.filter(
       (record) =>
-        record.review_status === "draft" ||
+        !hasHumanReview(record) ||
         record.listening_record_themes.length === 0 ||
         !record.team_summary?.trim() ||
         !record.priority_mentioned?.trim() ||
@@ -231,14 +232,14 @@ export function getActionPilotMetrics(records: ListeningRecordForPilot[]) {
   };
 }
 
-export function getActionReadiness(records: ListeningRecordForPilot[], sufficientWithJustification = false): ReadinessStatus {
+export function getActionReadiness(records: ListeningRecordForPilot[], _sufficientWithJustification = false): ReadinessStatus {
   const metrics = getActionPilotMetrics(records);
   const reviewedRatio = metrics.total > 0 ? metrics.reviewed / metrics.total : 0;
   const hasSeriousPending = metrics.possibleSensitive > 0;
 
   if (hasSeriousPending) return "Em digitação";
 
-  if (metrics.total > 0 && (metrics.reviewed === metrics.total || sufficientWithJustification)) {
+  if (metrics.total > 0 && metrics.reviewed === metrics.total) {
     return "Pronta para relatório";
   }
 

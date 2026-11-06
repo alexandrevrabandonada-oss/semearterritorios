@@ -53,7 +53,7 @@ export function TransparencySnapshotsPage() {
     const [userResult, actionsResult, recordsResult, debriefsResult, closuresResult] = await Promise.all([
       supabase.auth.getUser(),
       supabase.from("actions").select("*, neighborhoods:neighborhood_id(id, name)").order("action_date", { ascending: false }),
-      supabase.from("listening_records").select("*, neighborhoods:neighborhood_id(id, name), respondent_neighborhood:respondent_neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name))"),
+      supabase.from("listening_records").select("*, actions:action_id(action_type), neighborhoods:neighborhood_id(id, name), respondent_neighborhood:respondent_neighborhood_id(id, name), listening_record_themes(themes:theme_id(id, name))"),
       supabase.from("action_debriefs").select("*"),
       supabase.from("action_closures").select("*")
     ]);
@@ -218,3 +218,4 @@ function Button({ disabled, icon, label, onClick }: { disabled: boolean; icon: R
 function StateBox({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "error" }) {
   return <div className={`mt-5 rounded-[1.5rem] p-5 text-sm shadow-soft ${tone === "error" ? "border border-red-200 bg-red-50 text-red-800" : "border border-white/80 bg-white/72 text-stone-600"}`}><ShieldCheck className="mr-2 inline h-4 w-4" />{children}</div>;
 }
+

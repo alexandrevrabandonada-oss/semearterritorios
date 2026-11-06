@@ -110,7 +110,11 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
     };
   }, [month, supabase]);
 
-  const report = useMemo<MonthlyReportData>(() => buildMonthlyReportData(month, actions, records), [actions, month, records]);
+  const report = useMemo<MonthlyReportData>(() => buildMonthlyReportData(
+    month,
+    reportMode === "public" ? actions.filter((action) => action.status === "realizada" && action.occurrence_confirmed_at) : actions,
+    reportMode === "public" ? records.filter((record) => record.human_reviewed_at) : records
+  ), [actions, month, records, reportMode]);
   const plainText = useMemo(() => buildMonthlyReportPlainText(report, reportMode), [report, reportMode]);
   const markdown = useMemo(() => buildMonthlyReportMarkdown(report, reportMode), [report, reportMode]);
   const actionsWithoutClosedDossier = actions.filter((action) => closures.find((closure) => closure.action_id === action.id)?.status !== "closed");
@@ -131,14 +135,14 @@ export function MonthlyReportDetail({ month }: MonthlyReportDetailProps) {
         team_analysis: report.executiveSummary,
         recurring_themes: null,
         territorial_notes: null,
-        review_status: "reviewed" as const,
+        review_status: "draft" as const,
         created_by: user.id
       };
 
-      const { error } = await supabase.from("monthly_reports").upsert(payload, { onConflict: "reference_month" });
+      const { error } = await supabase.from("monthly_reports").insert(payload);
 
       if (error) throw error;
-      setFeedback("Relatório salvo no banco de dados.");
+      setFeedback("Relatório salvo como rascunho no banco de dados.");
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -758,3 +762,4 @@ function ActionMonthlyStatus({ action, closure, debrief, records }: { action: Ac
     </div>
   );
 }
+

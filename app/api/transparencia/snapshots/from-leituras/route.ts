@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/database.types";
+import { getIndividualListeningRecords } from "@/lib/listening-record-methodology";
 import {
   buildTransparencySnapshotFromCollectiveReading,
   type CollectiveReadingInputData,
@@ -40,28 +41,23 @@ export async function POST(request: Request) {
     recordsResult,
     actionsResult,
     neighborhoodsResult,
-    recordThemesResult,
-    placesResult
+    recordThemesResult
   ] = await Promise.all([
     supabase
       .from("listening_records")
-      .select("id, action_id, date, review_status, words_used, respondent_occupation, neighborhood_id, respondent_neighborhood_id, neighborhoods:neighborhood_id(id,name), respondent_neighborhood:respondent_neighborhood_id(id,name)")
+      .select("id, action_id, date, source_type, review_status, human_reviewed_at, words_used, respondent_occupation, neighborhood_id, respondent_neighborhood_id, actions:action_id(action_type), neighborhoods:neighborhood_id(id,name), respondent_neighborhood:respondent_neighborhood_id(id,name)")
       .order("date", { ascending: true }),
     supabase
       .from("actions")
-      .select("id, title, action_date, action_type, status, neighborhood_id, neighborhoods:neighborhood_id(id,name)")
+      .select("id, title, action_date, action_type, status, occurrence_confirmed_at, neighborhood_id, neighborhoods:neighborhood_id(id,name)")
       .order("action_date", { ascending: true }),
     supabase.from("neighborhoods").select("id, name"),
     supabase
       .from("listening_record_themes")
-      .select("listening_record_id, themes:theme_id(id,name)"),
-    supabase
-      .from("place_mentioned")
-      .select("normalized_places!inner(id, normalized_name, visibility, neighborhoods(name))")
-      .eq("normalized_places.visibility", "public_safe")
+      .select("listening_record_id, themes:theme_id(id,name)")
   ]);
 
-  if (recordsResult.error || actionsResult.error || neighborhoodsResult.error || recordThemesResult.error || placesResult.error) {
+  if (recordsResult.error || actionsResult.error || neighborhoodsResult.error || recordThemesResult.error) {
     return NextResponse.json(
       {
         error:
@@ -69,7 +65,6 @@ export async function POST(request: Request) {
           actionsResult.error?.message ??
           neighborhoodsResult.error?.message ??
           recordThemesResult.error?.message ??
-          placesResult.error?.message ??
           "Falha ao carregar dados de Leituras Coletivas."
       },
       { status: 500 }
@@ -98,10 +93,11 @@ export async function POST(request: Request) {
     return true;
   });
 
-  const reviewedRecords = selectedRecords.filter((record) => record.review_status === "reviewed");
+  const reviewedRecords = selectedRecords.filter((record) => Boolean(record.human_reviewed_at));
+  const individualReviewedRecords = getIndividualListeningRecords(reviewedRecords);
 
   const territoryDistributionMap = new Map<string, { id: string; name: string; count: number }>();
-  for (const record of reviewedRecords) {
+  for (const record of individualReviewedRecords) {
     const neighborhood = (record as any).respondent_neighborhood;
     if (!neighborhood?.id) continue;
     const current = territoryDistributionMap.get(neighborhood.id) ?? { id: neighborhood.id, name: neighborhood.name, count: 0 };
@@ -112,7 +108,7 @@ export async function POST(request: Request) {
   const territoryDistribution = Array.from(territoryDistributionMap.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "pt-BR"));
 
   const reviewedByTerritory = new Map<string, number>();
-  for (const record of reviewedRecords) {
+  for (const record of individualReviewedRecords) {
     const territoryId = record.respondent_neighborhood_id;
     if (!territoryId) continue;
     reviewedByTerritory.set(territoryId, (reviewedByTerritory.get(territoryId) ?? 0) + 1);
@@ -163,7 +159,7 @@ export async function POST(request: Request) {
     .slice(0, 50);
 
   const occupationCounter = new Map<string, number>();
-  for (const record of reviewedRecords) {
+  for (const record of individualReviewedRecords) {
     const occupation = (record.respondent_occupation ?? "Não informada").trim() || "Não informada";
     occupationCounter.set(occupation, (occupationCounter.get(occupation) ?? 0) + 1);
   }
@@ -173,7 +169,7 @@ export async function POST(request: Request) {
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "pt-BR"));
 
   const actionTimeline = selectedActions
-    .filter((action) => action.status === "realizada")
+    .filter((action) => action.status === "realizada" && action.occurrence_confirmed_at)
     .map((action) => ({
       date: action.action_date,
       title: action.title,
@@ -182,29 +178,15 @@ export async function POST(request: Request) {
       action_status: action.status
     }));
 
-  const placeMap = new Map<string, { name: string; territory: string; count: number; visibility: string }>();
-  for (const row of placesResult.data ?? []) {
-    const normalizedPlace = (row as any).normalized_places;
-    if (!normalizedPlace?.id) continue;
-    const key = normalizedPlace.id;
-    const current = placeMap.get(key) ?? {
-      name: normalizedPlace.normalized_name,
-      territory: normalizedPlace.neighborhoods?.name ?? "Sem território",
-      count: 0,
-      visibility: normalizedPlace.visibility
-    };
-    current.count += 1;
-    placeMap.set(key, current);
-  }
-
-  const places = Array.from(placeMap.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "pt-BR"));
+  // Lugares ainda não possuem seleção comprovada pelo mesmo período e revisão.
+  const places: Array<{ name: string; territory: string; count: number; visibility: string }> = [];
 
   const data: CollectiveReadingInputData = {
     overview: {
       total_records: selectedRecords.length,
       reviewed_records: reviewedRecords.length,
-      territories_reached: new Set(reviewedRecords.map((item) => item.respondent_neighborhood_id).filter(Boolean)).size,
-      records_without_review: selectedRecords.filter((item) => item.review_status !== "reviewed").length
+      territories_reached: new Set(individualReviewedRecords.map((item) => item.respondent_neighborhood_id).filter(Boolean)).size,
+      records_without_review: selectedRecords.filter((item) => !item.human_reviewed_at).length
     },
     territoryDistribution,
     territoryGaps,
@@ -329,3 +311,4 @@ export async function POST(request: Request) {
     message: "Snapshot criado a partir de Leituras Coletivas. Revise texto, checklist e privacidade antes de aprovar."
   });
 }
+

@@ -136,7 +136,7 @@ export function buildMonthlyReportData(month: string, actions: ActionWithNeighbo
   const unexpectedTopics = countTextValues(records, (item) => item.unexpected_notes).slice(0, 8);
   const priorityGroups = groupPrioritiesByMacroAxis(allPriorities);
   const qualitativeSignals = groupQualitativeSignals(unexpectedTopics);
-  const pendingReviews = records.filter((item) => item.review_status === "draft");
+  const pendingReviews = records.filter((item) => !item.human_reviewed_at);
   const executiveSummary = buildExecutiveSummary(actions.length, records.length, topThemes, territorialMethodologyNote, priorityGroups);
   const monthlyLearnings = buildMonthlyLearnings(actions, records, topThemes, priorityGroups, qualitativeSignals, pendingReviews, territorialQuality);
   const recommendedReferrals = buildRecommendedReferrals(topThemes, priorityGroups, pendingReviews, territorialQuality, actions);
@@ -228,7 +228,7 @@ export function buildMonthlyReportPlainText(report: MonthlyReportData, mode: Mon
     "Pendências e próximos passos:",
     ...(report.pendingReviews.length > 0
       ? report.pendingReviews.map((record) => `- ${formatDate(record.date)} | ação em ${record.neighborhoods?.name ?? "Território da ação não informado"} | referência ${record.respondent_neighborhoods?.name ?? "Não informado"} | revisar cadastro antes de publicar.`)
-      : ["- Nenhum registro com status de rascunho no mês; esse status não comprova revisão humana."])
+      : ["- Nenhum registro sem confirmação de revisão humana no mês."])
     ] : [])
   ].join("\n");
 }
@@ -306,7 +306,7 @@ export function buildMonthlyReportMarkdown(report: MonthlyReportData, mode: Mont
     "## 14. Pendências e próximos passos",
     report.pendingReviews.length > 0
       ? report.pendingReviews.map((record) => `- ${formatDate(record.date)} | ação em ${record.neighborhoods?.name ?? "Território da ação não informado"} | referência ${record.respondent_neighborhoods?.name ?? "Não informado"} | revisar cadastro antes de publicação.`).join("\n")
-      : "- Nenhum registro com status de rascunho no mês; esse status não comprova revisão humana.",
+      : "- Nenhum registro sem confirmação de revisão humana no mês.",
     ] : []),
     "",
     "## 15. Anexo técnico",
@@ -338,6 +338,7 @@ export function buildMonthlyReportCsv(report: MonthlyReportData) {
     "tipo_acao",
     "origem_escuta",
     "status_revisao",
+    "revisao_humana_confirmada",
     "temas",
     "prioridade",
     "inesperado",
@@ -362,6 +363,7 @@ export function buildMonthlyReportCsv(report: MonthlyReportData) {
     record.actions?.action_type ? getActionTypeLabel(record.actions.action_type) : "",
     getSourceTypeLabel(record.source_type),
     getReviewStatusLabel(record.review_status),
+    record.human_reviewed_at ? "sim" : "não comprovada",
     record.listening_record_themes.map((item) => item.themes?.name).filter(Boolean).join(" | "),
     record.priority_mentioned ?? "",
     record.unexpected_notes ?? "",
@@ -401,7 +403,7 @@ function buildPedagogicalSummary(
   priorities: Array<{ name: string; count: number }>,
   unexpectedTopics: Array<{ name: string; count: number }>
 ) {
-  const reviewedCount = records.filter((item) => item.review_status === "reviewed").length;
+  const reviewedCount = records.filter((item) => Boolean(item.human_reviewed_at)).length;
   const recordsWithTeamSummary = records.filter((item) => item.team_summary?.trim()).length;
   const topThemeText = topThemes.length > 0 ? formatCountList(topThemes.slice(0, 3)) : "sem temas recorrentes marcados";
   const priorityText = priorities.length > 0 ? formatCountList(priorities.slice(0, 3)) : "sem prioridade recorrente preenchida";
@@ -684,7 +686,8 @@ function sanitizeCsv(value: string) {
 }
 
 function escapeCsv(value: string) {
-  return `"${value.replace(/"/g, '""')}"`;
+  const safe = /^[\s\x00-\x1f]*[=+@-]/.test(value) ? `'${value}` : value;
+  return `"${safe.replace(/"/g, '""')}"`;
 }
 
 function truncate(value: string, maxLength: number) {

@@ -36,7 +36,7 @@ export function ActionsList() {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const [actions, setActions] = useState<ActionWithNeighborhood[]>([]);
   const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
-  const [records, setRecords] = useState<Pick<ListeningRecord, "action_id" | "review_status">[]>([]);
+  const [records, setRecords] = useState<Pick<ListeningRecord, "action_id" | "review_status" | "human_reviewed_at">[]>([]);
   const [debriefs, setDebriefs] = useState<ActionDebrief[]>([]);
   const [closures, setClosures] = useState<ActionClosure[]>([]);
   const [filters, setFilters] = useState<ActionFilters>(initialFilters);
@@ -64,7 +64,7 @@ export function ActionsList() {
           )
           .order("action_date", { ascending: false }),
         supabase.from("neighborhoods").select("*").eq("status", "oficial").order("sector", { ascending: true }).order("name", { ascending: true }),
-        supabase.from("listening_records").select("action_id, review_status"),
+        supabase.from("listening_records").select("action_id, review_status, human_reviewed_at"),
         supabase.from("action_debriefs").select("*"),
         supabase.from("action_closures").select("*")
       ]);
@@ -93,7 +93,7 @@ export function ActionsList() {
 
       setActions((actionsResult.data ?? []) as ActionWithNeighborhood[]);
       setNeighborhoods(getOfficialNeighborhoodsForSelect(neighborhoodsResult.data ?? []));
-      setRecords((recordsResult.data ?? []) as Pick<ListeningRecord, "action_id" | "review_status">[]);
+      setRecords((recordsResult.data ?? []) as Pick<ListeningRecord, "action_id" | "review_status" | "human_reviewed_at">[]);
       setDebriefs((debriefsResult.data ?? []) as ActionDebrief[]);
       setClosures((closuresResult.data ?? []) as ActionClosure[]);
       setLoading(false);
@@ -129,7 +129,7 @@ export function ActionsList() {
   const actionMeta = new Map(
     filteredActions.map((action) => {
       const actionRecords = records.filter((record) => record.action_id === action.id);
-      const reviewedCount = actionRecords.filter((record) => record.review_status === "reviewed").length;
+      const reviewedCount = actionRecords.filter((record) => Boolean(record.human_reviewed_at)).length;
       const draftCount = actionRecords.filter((record) => record.review_status === "draft").length;
       const debrief = debriefs.find((item) => item.action_id === action.id) ?? null;
       const closure = closures.find((item) => item.action_id === action.id) ?? null;
@@ -396,3 +396,4 @@ function StatusStrip({ icon, label, value }: { icon: React.ReactNode; label: str
     </div>
   );
 }
+

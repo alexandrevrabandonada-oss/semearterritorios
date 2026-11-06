@@ -232,7 +232,7 @@ export function ListeningRecordsList() {
         </div>
         <div className="rounded-3xl border border-white/80 bg-white p-5 shadow-soft">
           <p className="text-sm font-medium text-stone-600">Revisadas</p>
-          <strong className="mt-2 block text-3xl font-semibold text-semear-green">{filteredRecords.filter(r => r.review_status === 'reviewed').length}</strong>
+          <strong className="mt-2 block text-3xl font-semibold text-semear-green">{filteredRecords.filter(r => Boolean(r.human_reviewed_at)).length}</strong>
         </div>
         <div className="rounded-3xl border border-red-100 bg-red-50 p-5 shadow-soft">
           <p className="text-sm font-medium text-red-800">Sem tema marcado</p>
@@ -288,7 +288,7 @@ export function ListeningRecordsList() {
               {hasNoWordsUsed(record) ? <QualityBadge label="Sem palavras usadas" /> : null}
               {hasPossibleSensitiveData(record) ? <QualityBadge label="Possível dado sensível" danger /> : null}
               {record.listening_record_themes.length === 0 ? <QualityBadge label="Sem tema" /> : null}
-              {record.review_status === "reviewed" && !record.team_summary?.trim() ? <QualityBadge label="Revisada sem resumo" danger /> : null}
+              {record.human_reviewed_at && !record.team_summary?.trim() ? <QualityBadge label="Revisada sem resumo" danger /> : null}
               {record.respondent_neighborhood_id ? (
                 <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800">
                   Ref.: {record.respondent_neighborhoods?.name ?? "…"}{record.respondent_territory_relation ? ` · ${getRespondentTerritoryRelationLabel(record.respondent_territory_relation)}` : ""}
@@ -329,3 +329,4 @@ function FilterInput({ label, value, onChange, type }: { label: string; value: s
 function FilterSelect({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: React.ReactNode }) {
   return <label><span className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{label}</span><select className="mt-2 min-h-11 w-full rounded-2xl border border-semear-gray bg-white px-3 text-sm outline-none focus:border-semear-green" onChange={(event) => onChange(event.target.value)} value={value}>{children}</select></label>;
 }
+

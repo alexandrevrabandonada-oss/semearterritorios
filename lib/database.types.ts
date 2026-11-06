@@ -127,6 +127,8 @@ export type Action = TimestampedRow &
     estimated_public: number | null;
     summary: string | null;
     status: ActionStatus;
+    occurrence_confirmed_at?: string | null;
+    occurrence_confirmed_by?: string | null;
     notes: string | null;
   };
 
@@ -175,6 +177,8 @@ export type ListeningRecord = TimestampedRow &
     priority_mentioned: string | null;
     unexpected_notes: string | null;
     review_status: ReviewStatus;
+    human_reviewed_at?: string | null;
+    human_reviewed_by?: string | null;
     territorial_review_status: TerritorialReviewStatus;
     territorial_review_notes: string | null;
     /** Município de referência do entrevistado (Tijolo 039). Não armazena endereço. */
@@ -1400,6 +1404,8 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      confirm_listening_review: { Args: { p_record_id: string }; Returns: undefined };
+      confirm_action_occurrence: { Args: { p_action_id: string }; Returns: undefined };
       create_public_transparency_snapshot_version: {
         Args: {
           p_snapshot_id: string;
@@ -1417,3 +1423,4 @@ export type Database = {
     CompositeTypes: Record<string, never>;
   };
 };
+

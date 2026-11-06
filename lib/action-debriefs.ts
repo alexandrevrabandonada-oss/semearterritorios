@@ -11,6 +11,7 @@ import {
   buildTerritorialQualityMethodologyNote,
 } from "@/lib/territorial-quality";
 import { calculateIndividualRespondentTerritoryQuality, getIndividualListeningRecords } from "@/lib/listening-record-methodology";
+import { hasHumanReview } from "@/lib/listening-records";
 
 export const defaultMethodologyNote =
   "Esta devolutiva reúne percepções registradas durante a ação. Ela não substitui pesquisa estatística nem representa a totalidade da população. Seu objetivo é devolver ao território uma síntese inicial da escuta realizada.";
@@ -49,7 +50,7 @@ function sanitizePublicPlace(value: string) {
 export function buildActionDebrief(action: ActionForPilot, records: ListeningRecordForPilot[]): GeneratedActionDebrief {
   const fullMetrics = getActionPilotMetrics(records);
   const safeReviewedRecords = records.filter(
-    (record) => record.review_status === "reviewed" && !hasPossibleSensitiveData(record)
+    (record) => hasHumanReview(record) && !hasPossibleSensitiveData(record)
   );
   const sourceRecords = safeReviewedRecords;
   const metrics = getActionPilotMetrics(sourceRecords);
@@ -65,8 +66,8 @@ export function buildActionDebrief(action: ActionForPilot, records: ListeningRec
   const title = isFair ? "O que ouvimos na feira" : "O que ouvimos nesta ação";
   const warnings: string[] = [];
 
-  if (fullMetrics.draft > 0) {
-    warnings.push("Há escutas ainda não revisadas. Recomenda-se revisar antes de aprovar a devolutiva.");
+  if (fullMetrics.reviewed < fullMetrics.total) {
+    warnings.push("Há registros sem revisão humana confirmada. Eles não integram a síntese.");
   }
 
   if (fullMetrics.possibleSensitive > 0) {
@@ -79,10 +80,10 @@ export function buildActionDebrief(action: ActionForPilot, records: ListeningRec
 
   const publicSummary = [
     territorialMethodology.status === "boa"
-      ? `Na ação realizada em ${bairro}, foram registrados ${fullMetrics.total} registro(s): ${individualRecords.length} escuta(s) individual(is) e ${conversationCircleReports} relato(s) de roda.`
-      : `Na ação realizada em ${bairro}, foram registrados ${fullMetrics.total} registro(s): ${individualRecords.length} escuta(s) individual(is) e ${conversationCircleReports} relato(s) de roda. Entre as escutas individuais com território de referência preenchido, observam-se os padrões territoriais descritos abaixo.`,
+      ? `Na ação ${action.occurrence_confirmed_at ? "com realização confirmada" : "cadastrada (realização não confirmada)"} em ${bairro}, foram registrados ${fullMetrics.total} registro(s): ${individualRecords.length} escuta(s) individual(is) e ${conversationCircleReports} relato(s) de roda.`
+      : `Na ação ${action.occurrence_confirmed_at ? "com realização confirmada" : "cadastrada (realização não confirmada)"} em ${bairro}, foram registrados ${fullMetrics.total} registro(s): ${individualRecords.length} escuta(s) individual(is) e ${conversationCircleReports} relato(s) de roda. Entre as escutas individuais com território de referência preenchido, observam-se os padrões territoriais descritos abaixo.`,
     "As pessoas escutadas podem se referir a diferentes territórios de referência; relatos de roda são consolidações por entrevistador e não entram como pessoa individual na cobertura territorial.",
-    `A síntese considera ${sourceRecords.length} de ${fullMetrics.total} registro(s), com status revisado e sem alerta automático de dado sensível. Esse status não comprova revisão humana.`,
+    `A síntese considera ${sourceRecords.length} de ${fullMetrics.total} registro(s), com revisão humana confirmada e sem alerta automático de dado sensível.`,
     `Os temas mais recorrentes foram: ${formatInline(metrics.topThemes.slice(0, 5))}. As palavras que mais apareceram foram: ${formatInline(metrics.topWords.slice(0, 8))}.`,
     occupationSummary.groups.length > 0
       ? `Entre as ocupações informadas, apareceram principalmente: ${occupationSummary.groups.slice(0, 5).map((item) => `${item.label} (${item.count})`).join(", ")}.`
