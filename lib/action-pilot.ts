@@ -65,9 +65,12 @@ const stopWords = new Set([
 export function hasPossibleSensitiveData(
   record: Pick<ListeningRecord, "free_speech_text" | "team_summary" | "places_mentioned_text"> & {
     respondent_occupation?: string | null;
+    priority_mentioned?: string | null;
+    unexpected_notes?: string | null;
+    words_used?: string | null;
   }
 ) {
-  const text = [record.free_speech_text, record.team_summary, record.places_mentioned_text].filter(Boolean).join(" ");
+  const text = [record.free_speech_text, record.team_summary, record.places_mentioned_text, record.priority_mentioned, record.unexpected_notes, record.words_used].filter(Boolean).join(" ");
   return sensitivePatterns.some((pattern) => pattern.test(text)) || hasPossibleSensitiveOccupation(record.respondent_occupation);
 }
 
