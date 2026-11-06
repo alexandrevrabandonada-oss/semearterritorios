@@ -175,7 +175,7 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
 
   const detailItems = [
     ["Tipo", getActionTypeLabel(action.action_type as ActionType)],
-    ["Status", getActionStatusLabel(action.status as ActionStatus)],
+    ["Status", `${getActionStatusLabel(action.status as ActionStatus)}${action.status === "realizada" ? action.occurrence_confirmed_at ? " · confirmada" : " · não confirmada" : ""}`],
     ["Horário", getActionScheduleLabel(action)],
     ["Local", action.location_reference ?? "Não informado"],
     ["Equipe", action.team ?? "Não informada"],

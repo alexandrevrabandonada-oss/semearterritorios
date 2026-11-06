@@ -330,7 +330,7 @@ export function ActionsList() {
                   {getActionTypeLabel(action.action_type as ActionType)}
                 </span>
                 <span className="inline-flex items-center rounded-full border border-semear-yellow bg-semear-yellow/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-semear-green">
-                  {getActionStatusLabel(action.status as ActionStatus)}
+                  {getActionStatusLabel(action.status as ActionStatus)}{action.status === "realizada" ? action.occurrence_confirmed_at ? " · confirmada" : " · não confirmada" : ""}
                 </span>
                 <span className="inline-flex items-center rounded-full border border-white/65 bg-white px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-stone-700 shadow-premium-sm">
                   {actionMeta.get(action.id)?.totalRecords ?? 0} escutas
