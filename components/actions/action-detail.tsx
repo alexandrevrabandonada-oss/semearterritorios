@@ -220,7 +220,7 @@ export function ActionDetail({ actionId }: ActionDetailProps) {
   async function confirmOccurrence() {
     if (!supabase || !action) return;
     setConfirming(true);
-    const result = await supabase.rpc("confirm_action_occurrence", { p_action_id: action.id });
+    const result = await supabase.rpc("confirm_action_occurrence", { p_action_id: action.id, p_expected_updated_at: action.updated_at });
     if (result.error) setError(result.error.message);
     else {
       const refreshed = await supabase.from("actions").select("*, neighborhoods:neighborhood_id(id, name)").eq("id", action.id).single();

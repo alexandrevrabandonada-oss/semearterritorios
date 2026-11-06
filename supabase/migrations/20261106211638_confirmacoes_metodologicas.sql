@@ -91,11 +91,11 @@ returns trigger language plpgsql security definer set search_path = '' as $$
 begin
   if tg_op <> 'INSERT' then
     update public.listening_records set human_reviewed_at = null, human_reviewed_by = null
-      where id = old.listening_record_id and human_reviewed_at is not null;
+      where id = old.listening_record_id;
   end if;
   if tg_op <> 'DELETE' then
     update public.listening_records set human_reviewed_at = null, human_reviewed_by = null
-      where id = new.listening_record_id and human_reviewed_at is not null;
+      where id = new.listening_record_id;
   end if;
   return null;
 end $$;
@@ -111,37 +111,37 @@ returns trigger language plpgsql security definer set search_path = '' as $$
 begin
   if new.action_type is distinct from old.action_type then
     update public.listening_records set human_reviewed_at = null, human_reviewed_by = null
-      where action_id = new.id and human_reviewed_at is not null;
+      where action_id = new.id;
   end if;
   return null;
 end $$;
 create trigger invalidate_reviews_when_action_type_changes after update on public.actions
 for each row execute function public.invalidate_reviews_after_action_type_change();
 
-create function public.confirm_listening_review(p_record_id uuid)
+create function public.confirm_listening_review(p_record_id uuid, p_expected_updated_at timestamptz)
 returns void language plpgsql security definer set search_path = '' as $$
 begin
   if auth.uid() is null or coalesce(public.get_user_role(), '') not in ('admin', 'coordenacao', 'equipe') then
     raise exception 'Usuário não autorizado';
   end if;
   update public.listening_records set human_reviewed_at = now(), human_reviewed_by = auth.uid()
-    where id = p_record_id and (public.get_user_role() in ('admin', 'coordenacao') or created_by = auth.uid());
-  if not found then raise exception 'Escuta não encontrada ou sem permissão'; end if;
+    where id = p_record_id and updated_at = p_expected_updated_at and (public.get_user_role() in ('admin', 'coordenacao') or created_by = auth.uid());
+  if not found then raise exception 'Escuta alterada, não encontrada ou sem permissão; atualize a página'; end if;
 end $$;
-create function public.confirm_action_occurrence(p_action_id uuid)
+create function public.confirm_action_occurrence(p_action_id uuid, p_expected_updated_at timestamptz)
 returns void language plpgsql security definer set search_path = '' as $$
 begin
   if auth.uid() is null or coalesce(public.get_user_role(), '') not in ('admin', 'coordenacao', 'equipe') then
     raise exception 'Usuário não autorizado';
   end if;
   update public.actions set occurrence_confirmed_at = now(), occurrence_confirmed_by = auth.uid()
-    where id = p_action_id and status = 'realizada' and (public.get_user_role() in ('admin', 'coordenacao') or created_by = auth.uid());
-  if not found then raise exception 'Ação não encontrada, não realizada ou sem permissão'; end if;
+    where id = p_action_id and updated_at = p_expected_updated_at and status = 'realizada' and (public.get_user_role() in ('admin', 'coordenacao') or created_by = auth.uid());
+  if not found then raise exception 'Ação alterada, não encontrada, não realizada ou sem permissão; atualize a página'; end if;
 end $$;
-revoke all on function public.confirm_listening_review(uuid) from public, anon;
-revoke all on function public.confirm_action_occurrence(uuid) from public, anon;
-grant execute on function public.confirm_listening_review(uuid) to authenticated;
-grant execute on function public.confirm_action_occurrence(uuid) to authenticated;
+revoke all on function public.confirm_listening_review(uuid, timestamptz) from public, anon;
+revoke all on function public.confirm_action_occurrence(uuid, timestamptz) from public, anon;
+grant execute on function public.confirm_listening_review(uuid, timestamptz) to authenticated;
+grant execute on function public.confirm_action_occurrence(uuid, timestamptz) to authenticated;
 revoke all on function public.protect_methodology_confirmation_fields() from public, anon, authenticated;
 revoke all on function public.invalidate_methodology_confirmation() from public, anon, authenticated;
 revoke all on function public.invalidate_linked_listening_confirmation() from public, anon, authenticated;

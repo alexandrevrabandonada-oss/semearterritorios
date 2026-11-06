@@ -1404,8 +1404,8 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
-      confirm_listening_review: { Args: { p_record_id: string }; Returns: undefined };
-      confirm_action_occurrence: { Args: { p_action_id: string }; Returns: undefined };
+      confirm_listening_review: { Args: { p_record_id: string; p_expected_updated_at: string }; Returns: undefined };
+      confirm_action_occurrence: { Args: { p_action_id: string; p_expected_updated_at: string }; Returns: undefined };
       create_public_transparency_snapshot_version: {
         Args: {
           p_snapshot_id: string;

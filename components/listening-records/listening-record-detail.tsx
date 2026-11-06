@@ -75,9 +75,9 @@ export function ListeningRecordDetail({ recordId }: { recordId: string }) {
   }, [recordId, supabase]);
 
   async function markReviewed() {
-    if (!supabase) return;
+    if (!supabase || !record) return;
     setSaving(true);
-    const result = await supabase.rpc("confirm_listening_review", { p_record_id: recordId });
+    const result = await supabase.rpc("confirm_listening_review", { p_record_id: recordId, p_expected_updated_at: record.updated_at });
     setSaving(false);
     if (result.error) {
       setError(result.error.message);
