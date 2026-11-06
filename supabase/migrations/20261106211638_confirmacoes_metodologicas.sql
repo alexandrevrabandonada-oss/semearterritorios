@@ -118,6 +118,27 @@ end $$;
 create trigger invalidate_reviews_when_action_type_changes after update on public.actions
 for each row execute function public.invalidate_reviews_after_action_type_change();
 
+create function public.invalidate_reviews_after_reference_change()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if tg_table_name = 'themes' then
+    if new.name is distinct from old.name then
+      update public.listening_records set human_reviewed_at = null, human_reviewed_by = null
+        where id in (select listening_record_id from public.listening_record_themes where theme_id = new.id);
+    end if;
+  elsif tg_table_name = 'normalized_places' then
+    if to_jsonb(new) is distinct from to_jsonb(old) then
+      update public.listening_records set human_reviewed_at = null, human_reviewed_by = null
+        where id in (select listening_record_id from public.places_mentioned where normalized_place_id = new.id);
+    end if;
+  end if;
+  return null;
+end $$;
+create trigger invalidate_reviews_when_theme_changes after update on public.themes
+for each row execute function public.invalidate_reviews_after_reference_change();
+create trigger invalidate_reviews_when_place_changes after update on public.normalized_places
+for each row execute function public.invalidate_reviews_after_reference_change();
+
 create function public.confirm_listening_review(p_record_id uuid, p_expected_updated_at timestamptz)
 returns void language plpgsql security definer set search_path = '' as $$
 begin
@@ -146,4 +167,5 @@ revoke all on function public.protect_methodology_confirmation_fields() from pub
 revoke all on function public.invalidate_methodology_confirmation() from public, anon, authenticated;
 revoke all on function public.invalidate_linked_listening_confirmation() from public, anon, authenticated;
 revoke all on function public.invalidate_reviews_after_action_type_change() from public, anon, authenticated;
+revoke all on function public.invalidate_reviews_after_reference_change() from public, anon, authenticated;
 
