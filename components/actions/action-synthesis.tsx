@@ -74,20 +74,8 @@ ${formatBullets(data.unexpected)}
 - Possível dado sensível: ${data.possibleSensitive}
 `;
 
-  const publicText = `# O que ouvimos na feira
-
-Foram escutadas ${data.total} pessoa(s) nesta ação.
-
-Temas mais mencionados: ${formatInline(data.topThemes.map((item) => item.label))}.
-
-Palavras que apareceram: ${formatInline(data.topWords.map((item) => item.label))}.
-
-O que será aprofundado depois: ${formatInline(data.priorities.map((item) => item.label))}.
-
-Esta devolutiva não expõe falas identificáveis nem dados pessoais.`;
-
   const synthesisText = `SÍNTESE DA AÇÃO
-Total de Escutas: ${data.total} (${data.reviewed} revisadas, ${data.pending} rascunhos pendentes)
+Total de registros: ${data.total} (${data.reviewed} com status revisado, ${data.draft} em rascunho; ${data.pending} com pendências de qualidade)
 
 TEMAS MAIS CITADOS:
 ${data.topThemes.length > 0 ? data.topThemes.map((item) => `${item.label} (${item.count})`).join(", ") : "Nenhum tema marcado."}
@@ -123,9 +111,10 @@ ${formatBullets(data.unexpected, "Nenhuma.")}
         <div className="flex flex-wrap gap-2">
           <CopyButton copied={copied === "curto"} label="Texto curto" onClick={() => handleCopy("curto", shortText)} />
           <CopyButton copied={copied === "markdown"} label="Markdown" onClick={() => handleCopy("markdown", markdownText)} />
-          <CopyButton copied={copied === "publica"} label="Devolutiva pública" onClick={() => handleCopy("publica", publicText)} />
         </div>
       </div>
+
+      <p className="mb-4 text-xs text-stone-600">Síntese interna: os totais representam registros, não necessariamente pessoas. O status revisado não comprova revisão humana. Para circulação, use o fluxo de devolutiva e aprovação.</p>
 
       <pre className="whitespace-pre-wrap text-sm text-stone-700 bg-semear-offwhite p-5 rounded-2xl border border-semear-gray font-sans leading-7">
         {synthesisText}
@@ -154,3 +143,4 @@ function formatBullets(items: string[], emptyText = "Não registrado.") {
 function formatInline(items: string[]) {
   return items.length > 0 ? items.slice(0, 5).join(", ") : "não registrado";
 }
+
