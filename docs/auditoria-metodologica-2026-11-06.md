@@ -8,6 +8,7 @@ Consulta somente de leitura à produção em 6 de novembro de 2026. Nenhum conte
 - **Crítico — confirmação de ações:** 31 ações estavam com `status = realizada`, alterado em massa nesta sessão anterior. Esse valor não comprova que a ação ocorreu. Falta confirmação independente com responsável, data e revisão dos relatórios e eventos de agenda. Ainda não implementado.
 - **Alto — devolutiva aprovada:** havia uma devolutiva aprovada, id `0d0850f6-476d-48c0-82df-71ed9918385d`, para ação de 18/04/2026. Preservada; precisa de revisão humana de suas fontes e indicadores antes de nova circulação. Não havia snapshots em `public_transparency_snapshots` na consulta. Isso não prova ausência de exportações ou materiais externos.
 - **Alto — seleção divergente:** `buildActionDebrief` usava rascunhos sem alerta quando não havia registros com status revisado. Esta alteração elimina esse fallback; a existência de status revisado continua sem comprovar revisão humana, até a migração pendente.
+- **Alto — cobertura e unidade inconsistentes:** a devolutiva calculava temas com um subconjunto e cobertura territorial com todos os registros, além de ignorar que a ação vinculada podia ser uma roda. A versão proposta usa o mesmo subconjunto para a cobertura, classifica rodas pelo tipo da ação e retira uma seção que expunha identificadores de bairros sem resolver nomes ou avaliar grupos pequenos.
 - **Alto — circulação sem aprovação:** o componente de síntese oferecia copiar uma “devolutiva pública” gerada de todos os registros sem revisão e ainda afirmava não conter dados identificáveis. Esta alteração remove esse atalho; os botões restantes são apresentados como síntese interna.
 - **Alto — unidade de análise:** o atalho público contava registros como pessoas. Na consulta, 296 registros incluíam 31 relatos de roda (classificados por origem ou tipo da ação) e 265 registros individuais. Um registro não prova uma pessoa única. Outros painéis e exportações ainda precisam da mesma revisão.
 - **Alto — denominador territorial:** 102 dos 265 registros individuais estavam sem bairro de referência (38,5%); 163 o informavam (61,5%). É cobertura de preenchimento, não representatividade populacional. Há 142 registros sem resumo da equipe e 10 sem prioridade informada, considerando todos os tipos.
@@ -23,7 +24,7 @@ Síntese por ação: `components/actions/action-synthesis.tsx` e `lib/action-pil
 
 ## Validação executada e pendências
 
-- 22 testes de relatórios, transparência e garantias metodológicas passaram; verificação TypeScript sem erros antes do último ajuste textual.
+- 25 testes de relatórios, transparência e garantias metodológicas passaram; a verificação TypeScript foi executada nas alterações.
 - Não houve teste autenticado ponta a ponta, migração, alteração do banco nesta etapa, nem publicação dessas correções.
 - Antes de liberar: projetar e testar confirmação humana auditável, compatibilidade e backfill conservador; revisar políticas e todos os consumidores; comparar amostras controladas; avaliar versões aprovadas e exportadas; executar build e testes completos; validar privacidade e publicação.
 
