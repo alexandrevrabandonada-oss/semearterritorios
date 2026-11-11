@@ -1,0 +1,17 @@
+.git
+.vercel
+.next
+node_modules
+out
+.env*
+*.log
+*.tsbuildinfo
+.codex-remote-attachments
+supabase/.temp
+/tmp_pdf_images/
+/tests/
+/.fec-vitest-tmp/
+/scratch/
+/scripts/
+/reports/
+/docs/

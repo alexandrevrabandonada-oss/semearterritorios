@@ -11,6 +11,9 @@
     "start": "next start",
     "lint": "next lint",
     "test:reports": "vitest run tests/monthly-reports.test.ts",
+    "test:fec:unit": "node --test tests/fec-document-import.test.mjs tests/fec-import-persistence.test.mjs tests/fec-import-reconcile.test.mjs tests/fec-import-review.test.mjs tests/fec-intake-http.test.mjs tests/fec-import-sql-safety.test.mjs tests/fec-pdf-worker-synthetic.test.mjs",
+    "test:fec:rls": "node tests/fec-import-rls.mjs && node tests/fec-evidence-rls.mjs && node tests/fec-integrity-rls.mjs",
+    "test:fec": "npm run test:fec:unit && npm run test:fec:rls",
     "test:transparencia": "vitest run tests/transparencia",
     "smoke:transparencia": "node scripts/test_transparencia_remote_048.mjs",
     "verify": "npm run lint && npm run build && npm run test:reports && npm run test:transparencia"
@@ -30,6 +33,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.10",
     "@types/node": "^20.17.6",
     "@types/pdf-parse": "^1.1.5",
     "@types/react": "^18.3.12",
