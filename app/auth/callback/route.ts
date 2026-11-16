@@ -19,12 +19,13 @@ export async function GET(request: NextRequest) {
   const code = requestUrl.searchParams.get("code");
   const nextPath = getSafeNextPath(requestUrl.searchParams.get("next"));
   const googleCalendarConnect = requestUrl.searchParams.get("google_calendar") === "connect";
+  const redirectOrigin = process.env.RENDER_EXTERNAL_URL ?? requestUrl.origin;
 
   if (!code) {
-    return NextResponse.redirect(new URL("/login?error=oauth", requestUrl.origin));
+    return NextResponse.redirect(new URL("/login?error=oauth", redirectOrigin));
   }
 
-  const response = NextResponse.redirect(new URL(nextPath, requestUrl.origin));
+  const response = NextResponse.redirect(new URL(nextPath, redirectOrigin));
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
-    return NextResponse.redirect(new URL("/login?error=oauth", requestUrl.origin));
+    return NextResponse.redirect(new URL("/login?error=oauth", redirectOrigin));
   }
 
   if (googleCalendarConnect && data.session?.provider_token) {
