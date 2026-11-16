@@ -24,7 +24,6 @@ export async function GET(request: NextRequest) {
   const code = requestUrl.searchParams.get("code");
   const nextPath = getSafeNextPath(requestUrl.searchParams.get("next"));
   const googleCalendarConnect = requestUrl.searchParams.get("google_calendar") === "connect";
-  const redirectOrigin = process.env.RENDER_EXTERNAL_URL ?? requestUrl.origin;
 
   if (!code) {
     return NextResponse.redirect(new URL("/login?error=oauth", redirectOrigin));
