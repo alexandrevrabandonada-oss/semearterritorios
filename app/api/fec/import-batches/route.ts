@@ -5,6 +5,7 @@ import { fecResponse, fecSession } from "@/lib/fec-server";
 import {withFecCapacity} from "@/lib/fec-intake-capacity";
 import {verifyFecStoredFile} from "@/lib/fec-integrity-server";
 import { extractFecPdf } from "@/lib/fec-pdf-isolated";
+import { extractFecDocx } from "@/lib/fec-docx-isolated";
 import { FEC_IMPORT_BUCKET, FEC_MAX_UPLOAD, FEC_MAX_TOTAL_BYTES, uuidRx, validFecMonth, validateFecIntake, type IntakeInput } from "@/lib/fec-import-persistence";
 import { isSameOriginRequest, readBoundedFormData, validFecFileType } from "@/lib/fec-intake-http";
 import { intakeKey, makeManifest, reconcileIntake, type ManifestEntry, type ReconcileStore } from "@/lib/fec-import-reconcile";
@@ -24,19 +25,29 @@ export async function POST(req: NextRequest) {
   const db = session.db as unknown as SupabaseClient;
   return withFecCapacity(db,async()=>{
   let form:FormData;
-  try{form=await readBoundedFormData(req,FEC_MAX_TOTAL_BYTES+262144);}catch{return privateResponse({error:"Envie um PDF de até 4 MB por este formulário."},413);}
+  try{form=await readBoundedFormData(req,FEC_MAX_TOTAL_BYTES+262144);}catch{return privateResponse({error:"Envie PDF/DOCX com até 4 MB no total por este formulário."},413);}
   const cycleId=form.get("cycleId");const month=form.get("month");
   const descriptionValue=form.get("description");
   if(descriptionValue!==null&&(typeof descriptionValue!=="string"||descriptionValue.length>2000))return privateResponse({error:"Resumo inválido."},400);
   const description=typeof descriptionValue==="string"?descriptionValue.trim():"";
   if(typeof cycleId!=="string"||!uuidRx.test(cycleId)||!validFecMonth(month))
     return privateResponse({error:"Selecione ciclo FEC e mês de referência válidos."},400);
-  const picked=form.getAll("files");
-  if(picked.length<1||picked.length>2||picked.some(item=>!(item instanceof File)))
-    return privateResponse({error:"Selecione um ou dois arquivos PDF."},400);
-  if((picked as File[]).some(file=>file.size<1||file.size>FEC_MAX_UPLOAD)||
-     (picked as File[]).reduce((sum,file)=>sum+file.size,0)>FEC_MAX_TOTAL_BYTES)
-    return privateResponse({error:"O PDF precisa ter até 4 MB."},413);
+  const reportPart=form.get("report");
+  const questionnairesPart=form.get("questionnaires");
+  const attachmentParts=form.getAll("attachments");
+  if(!(reportPart instanceof File)||
+     (questionnairesPart!==null&&!(questionnairesPart instanceof File))||
+     attachmentParts.length>4||attachmentParts.some(item=>!(item instanceof File)))
+    return privateResponse({error:"Selecione o relatório e confira os arquivos anexados."},400);
+  const picked=[
+    {file:reportPart,kind:"monthly_report" as const},
+    ...(questionnairesPart instanceof File?[{file:questionnairesPart,kind:"questionnaires" as const}]:[]),
+    ...attachmentParts.map(file=>({file:file as File,kind:"supporting" as const})),
+  ];
+  if(picked.length>6)return privateResponse({error:"Envie até quatro anexos além do relatório e das fichas."},400);
+  if(picked.some(({file})=>file.size<1||file.size>FEC_MAX_UPLOAD)||
+     picked.reduce((sum,{file})=>sum+file.size,0)>FEC_MAX_TOTAL_BYTES)
+    return privateResponse({error:"O total de PDFs/DOCX precisa ter até 4 MB."},413);
   const {data:cycle,error:cycleError}=await db.from("fec_cycles")
     .select("id,owner_id,engagement_id,status").eq("id",cycleId).maybeSingle();
   if(cycleError||!cycle||cycle.owner_id!==session.userId||!(["draft","needs_changes"] as string[]).includes(cycle.status))
@@ -46,12 +57,15 @@ export async function POST(req: NextRequest) {
     .eq("role","executor").eq("active",true).limit(1);
   if(grantError||!grants?.length)return privateResponse({error:"Atribuição contratual FEC não autorizada."},403);
   const inputs:IntakeInput[]=[];
-  for(const part of picked){
-    const file=part as File;const buffer=Buffer.from(await file.arrayBuffer());
+  for(const {file,kind} of picked){
+    const buffer=Buffer.from(await file.arrayBuffer());
     const ext=file.name.split(".").at(-1)?.toLowerCase();
-    if(ext!=="pdf")return privateResponse({error:"No momento, aceite apenas PDF; DOCX aguarda proteção de descompactação."},415);
+    if(ext!=="pdf"&&ext!=="docx")return privateResponse({error:"Aceitamos somente PDF e DOCX neste fluxo."},415);
     if(!validFecFileType(file.name,file.type,buffer))return privateResponse({error:"Extensão, tipo ou assinatura do arquivo inválidos."},415);
-    try{inputs.push({fileName:file.name,buffer,text:await extractFecPdf(buffer)});}
+    try{
+      const text=kind==="supporting"?"":ext==="pdf"?await extractFecPdf(buffer):await extractFecDocx(buffer);
+      inputs.push({fileName:file.name,buffer,text,kind});
+    }
     catch{return privateResponse({error:"Falha de extração. Nenhum lote foi criado."},422);}
   }
   let intake;
@@ -164,7 +178,7 @@ export async function GET(req:NextRequest){
   if(error||!batch)return privateResponse({error:"Lote não encontrado ou acesso negado."},404);
   const {data:documents,error:documentsError}=await db.from("fec_import_documents")
     .select("id,kind,source_name,sha256,byte_size,upload_state,created_at")
-    .eq("batch_id",batchId).limit(3);
+    .eq("batch_id",batchId).limit(6);
   if(documentsError||!documents)return privateResponse({error:"Documentos inacessíveis."},503);
   const docIds=documents.map(d=>d.id);
   const forms=docIds.length?await db.from("fec_import_forms")
@@ -185,6 +199,3 @@ export async function GET(req:NextRequest){
   return privateResponse({batch,documents,forms:forms.data??[],reviews:reviews.data??[],responses:responses.data??[],reportReviews:reportReviews.data??[],activities:(activities.data??[]).slice(0,100),activitiesTruncated:(activities.data?.length??0)>100,
     source:"private_documentary_intake",countsAreOfficial:false,uniquePeopleCount:null});
 }
-
-
-\n

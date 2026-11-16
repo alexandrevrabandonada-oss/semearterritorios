@@ -3,7 +3,7 @@
  * Nenhuma entrevista é atestada, nenhum registro é escrito, nenhuma conclusão é pública.
  * Sem dependências externas: adequado para testar com Node 22.
  */
-export type FecDocumentKind = "monthly_report" | "questionnaires" | "unrecognized";
+export type FecDocumentKind = "monthly_report" | "questionnaires" | "supporting" | "unrecognized";
 export type FecQuestion = { number: number; question: string; answer: string };
 export type FecQuestionnairePreview = {
   code: string;
@@ -112,9 +112,27 @@ function extractQuestionnaires(text: string): {records:FecQuestionnairePreview[]
 function extractSimulatedNames(text:string):string[]{
   return Array.from(text.matchAll(/Exemplo de ficha ilustrativa\s*[–-]\s*Participante\s*\d+\s*\n\s*Identifica[cç][aã]o:\s*([^\n]+)/gi)).map(m=>normalize(m[1]));
 }
-export function parseFecDocument(text: string, sourceFile: string, digestSha256: string): FecDocumentPreview {
-  const monthly=/RELAT[ÓO]RIO DE TRABALHO DE CAMPO/i.test(text);
-  const questionnaires=/FICHA DE ENTREVISTA\s*\d+/i.test(text);
+export function parseFecDocument(
+  text: string,
+  sourceFile: string,
+  digestSha256: string,
+  declaredKind?: "monthly_report" | "questionnaires" | "supporting",
+): FecDocumentPreview {
+  if (declaredKind === "supporting") {
+    return {
+      kind: "supporting",
+      sourceFile,
+      digestSha256,
+      territory: null,
+      referenceMonth: null,
+      questionnaires: [],
+      illustrativeParticipantKeys: [],
+      activities: [],
+      warnings: ["Anexo recebido para consulta privada; nenhum conteúdo foi extraído automaticamente."],
+    };
+  }
+  const monthly=declaredKind ? declaredKind === "monthly_report" : /RELAT[ÓO]RIO DE TRABALHO DE CAMPO/i.test(text);
+  const questionnaires=declaredKind ? declaredKind === "questionnaires" : /FICHA DE ENTREVISTA\s*\d+/i.test(text);
   const {records}=extractQuestionnaires(text);
   const warnings:string[]=[];
   if(monthly && /respostas simuladas/i.test(text)) warnings.push("Há exemplos explicitamente declarados SIMULADOS no relatório.");
@@ -122,7 +140,7 @@ export function parseFecDocument(text: string, sourceFile: string, digestSha256:
   if(monthly && />?80\s*%/i.test(text)) warnings.push("Percentual sobre campanhas citado sem denominador demonstrado; não contabilizar automaticamente.");
   if(monthly && /QUESTION[ÁA]RIO DE PERCEP[ÇC][ÃA]O SOCIOAMBIENTAL/i.test(text)) warnings.push("Conferir se o roteiro metodológico de dez perguntas corresponde às seis perguntas das fichas.");
   return {
-    kind:monthly?"monthly_report":questionnaires?"questionnaires":"unrecognized",
+    kind:declaredKind ?? (monthly?"monthly_report":questionnaires?"questionnaires":"unrecognized"),
     sourceFile,digestSha256,territory:findTerritory(text),referenceMonth:findMonth(text),
     questionnaires:records,illustrativeParticipantKeys:extractSimulatedNames(text),activities:monthly?extractActivities(text):[],warnings,
   };

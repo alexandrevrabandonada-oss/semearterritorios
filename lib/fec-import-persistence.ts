@@ -15,8 +15,10 @@ export const FEC_IMPORT_BUCKET = "fec-import-private";
 // Uploads pass through a Vercel Function: leave headroom for multipart fields
 // beneath the platform's 4.5 MB request-body limit.
 export { FEC_MAX_UPLOAD, FEC_MAX_TOTAL_BYTES };
-export type IntakeInput = { fileName: string; buffer: Buffer; text: string };
+export type FecIntakeKind = "monthly_report" | "questionnaires" | "supporting";
+export type IntakeInput = { fileName: string; buffer: Buffer; text: string; kind?: FecIntakeKind };
 export type StagedFile = IntakeInput & {
+  kind: FecIntakeKind;
   extension: "pdf" | "docx";
   mimeType: string;
   sha256: string;
@@ -50,8 +52,8 @@ export function validFecMonth(month: unknown): month is string {
 }
 export function validateFecIntake(month: string, inputs: IntakeInput[]): ValidatedIntake {
   if (!validFecMonth(month)) throw new Error("Mês inválido. Use AAAA-MM.");
-  if (!Array.isArray(inputs) || inputs.length < 1 || inputs.length > 2)
-    throw new Error("Envie um ou dois PDFs/DOCX: relatório e/ou fichas.");
+  if (!Array.isArray(inputs) || inputs.length < 1 || inputs.length > 6)
+    throw new Error("Envie o relatório, fichas opcionais e até quatro anexos PDF/DOCX.");
   const files: StagedFile[] = [];
   const kinds = new Set<string>();
   const digests = new Set<string>();
@@ -68,19 +70,23 @@ export function validateFecIntake(month: string, inputs: IntakeInput[]): Validat
       throw new Error("Assinatura de PDF inválida.");
     if (ext === "docx" && input.buffer.subarray(0, 2).toString("ascii") !== "PK")
       throw new Error("Assinatura de DOCX inválida.");
-    if (!input.text || input.text.trim().length < 25 || input.text.length > 500_000)
+    if (input.kind !== "supporting" && (!input.text || input.text.trim().length < 25 || input.text.length > 500_000))
       throw new Error("Texto do documento ilegível ou excessivo; revisão manual necessária.");
     const sha256 = createHash("sha256").update(input.buffer).digest("hex");
     if (digests.has(sha256)) throw new Error("Os arquivos recebidos são idênticos.");
     digests.add(sha256);
-    const parsed = parseFecDocument(input.text, filename, sha256);
+    const parsed = parseFecDocument(input.text, filename, sha256, input.kind);
+    if (input.kind) parsed.kind = input.kind;
     if (parsed.kind === "unrecognized") { parsed.kind="monthly_report"; parsed.warnings.push("Documento recebido para conferência; a extração é sugestão e não comprova atividades ou entrevistas."); }
-    if (parsed.kind === "questionnaires" && !parsed.questionnaires.length) { parsed.kind="monthly_report"; parsed.warnings.push("Fichas não identificadas com segurança; conferir o documento original."); }
-    if (kinds.has(parsed.kind)) throw new Error("Inclua no máximo um relatório e um arquivo de fichas por lote.");
-    if (parsed.referenceMonth && parsed.referenceMonth !== month)
+    if (parsed.kind === "questionnaires" && !parsed.questionnaires.length) {
+      if (!input.kind) parsed.kind = "monthly_report";
+      parsed.warnings.push("Fichas não identificadas com segurança; conferir o documento original.");
+    }
+    if (parsed.kind !== "supporting" && kinds.has(parsed.kind)) throw new Error("Inclua no máximo um relatório e um arquivo de fichas por lote.");
+    if (parsed.kind !== "supporting" && parsed.referenceMonth && parsed.referenceMonth !== month)
       throw new Error("Mês do documento diverge do mês informado.");
-    kinds.add(parsed.kind);
-    files.push({ ...input, fileName: filename, extension: ext,
+    if (parsed.kind !== "supporting") kinds.add(parsed.kind);
+    files.push({ ...input, kind: parsed.kind, fileName: filename, extension: ext,
       mimeType: ext === "pdf" ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       sha256, parsed });
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { FecDatabase } from "@/lib/fec-persistence.types";
 
 export const fecResponse = (body: object, status = 200) =>
   NextResponse.json(body, {
@@ -15,7 +16,8 @@ export async function fecSession() {
         503,
       ),
     } as const;
-  const db = (await createSupabaseServerClient()) as unknown as SupabaseClient;
+  const db =
+    (await createSupabaseServerClient()) as unknown as SupabaseClient<FecDatabase>;
   const { data, error } = await db.auth.getUser();
   if (error || !data.user)
     return {

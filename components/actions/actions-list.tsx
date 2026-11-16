@@ -273,6 +273,29 @@ export function ActionsList() {
         </Link>
       </div>
 
+      <section
+        aria-labelledby="fec-scope-title"
+        className="mt-5 flex flex-col gap-4 rounded-3xl border border-semear-earth/20 bg-semear-earth/5 p-5 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-semear-earth">
+            Frente contratual independente
+          </p>
+          <h3 id="fec-scope-title" className="mt-2 text-lg font-bold text-semear-green">
+            Escopo complementar FEC
+          </h3>
+          <p className="mt-1 max-w-2xl text-sm text-stone-600">
+            Registre atividades e envie documentos para revisão em uma trilha separada das escutas da APS.
+          </p>
+        </div>
+        <Link
+          href="/fec/cartografia"
+          className="inline-flex min-h-11 items-center justify-center rounded-full border border-semear-green/20 bg-white px-5 text-sm font-bold text-semear-green shadow-premium-sm transition hover:bg-stone-50"
+        >
+          Abrir escopo complementar FEC
+        </Link>
+      </section>
+
       <details className="mt-5 rounded-3xl border border-white/60 bg-white/60 p-5 shadow-premium-sm backdrop-blur-sm md:hidden">
         <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-bold text-semear-green">
           <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />

@@ -89,6 +89,7 @@ for(let i=1;i<=9;i++)await exec(`insert into fec_import_batches(cycle_id,owner_i
 await denied('limite persistente de lotes por hora',`insert into fec_import_batches(cycle_id,owner_id,reference_month,intake_key,manifest) values('${cycle}','${owner}','2026-10-01','${'f'.repeat(64)}','[{}]')`);
 console.log(`Matriz FEC privada: ${passed} verificações passaram.`);
 await as(null,'postgres');await exec(readFileSync('supabase/migrations/20261109234909_fec_resposta_evidencia_privada.sql','utf8'));
+await exec(readFileSync('supabase/migrations/20261116204308_fec_supporting_documents.sql','utf8'));
 const request=id(70),response=id(71),object2=`${response}/${id(72)}.pdf`;
 await as(supervisor);await ok('supervisão solicita evidência v7',`insert into fec_import_reviews(id,form_id,revision,reviewer_id,decision,reason) values('${request}','${form}',2,'${supervisor}','proof_requested','Pedido sintético de evidência independente')`);
 await as(owner);
@@ -106,5 +107,3 @@ await denied('decisão concorrente não sobrescreve',`insert into fec_import_rev
 await as(null,'anon');await count('anônimo não acessa evidências',`select * from storage.objects where bucket_id='fec-evidence-private'`,0);
 console.log(`Matriz v7 privada: ${passed} verificações passaram.`);
 await db.close();
-
-\n

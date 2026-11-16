@@ -5,7 +5,7 @@ import {intakeKey,makeManifest,matchManifest,reconcileIntake} from '../lib/fec-i
 
 const bytes=Buffer.from('%PDF-1.4 sintético');
 const sha=createHash('sha256').update(bytes).digest('hex');
-const intake={month:'2026-10',files:[{fileName:'sintetico.pdf',buffer:bytes,text:'sintético',extension:'pdf',mimeType:'application/pdf',sha256:sha,parsed:{kind:'questionnaires'}}],forms:[{code:'FEC-2026-10-F01'}]};
+const intake={month:'2026-10',files:[{fileName:'sintetico.pdf',buffer:bytes,text:'sintético',kind:'questionnaires',extension:'pdf',mimeType:'application/pdf',sha256:sha,parsed:{kind:'questionnaires'}}],forms:[{code:'FEC-2026-10-F01'}]};
 
 test('reconciliação retoma falhas sem apagar ou duplicar original e fichas',async()=>{
  const manifest=makeManifest(intake.files);const reserved=new Map(),objects=new Map(),forms=new Map();let fail=true;

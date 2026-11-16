@@ -49,6 +49,3 @@ export function validFecFileType(name: string, mime: string, bytes: Uint8Array, 
   if (allowText && (ext === 'txt' || ext === 'md')) return (type === 'text/plain' || (ext === 'md' && type === 'text/markdown')) && !bytes.includes(0);
   return false;
 }
-
-
-\n

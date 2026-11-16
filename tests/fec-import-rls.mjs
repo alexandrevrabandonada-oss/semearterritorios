@@ -27,7 +27,7 @@ await exec(`create role anon;create role authenticated;create role service_role 
  grant select on public.neighborhoods,public.actions to authenticated;
  insert into auth.users values('${owner}'),('${other}'),('${supervisor}'),('${outsider}'),('${unassigned}');
  insert into public.neighborhoods values('${territory}','Território sintético');`);
-for(const file of ['20261019190000_fec_technical_cycles_staged.sql','20261109182913_fec_import_documental_privado.sql'])
+for(const file of ['20261019190000_fec_technical_cycles_staged.sql','20261109182913_fec_import_documental_privado.sql','20261116204308_fec_supporting_documents.sql'])
  await exec(readFileSync(`supabase/migrations/${file}`,'utf8'));
 await exec(`insert into fec_engagements(id,contract_reference,title,status) values('${contract}','FEC-TEST-1','Contrato 1','active'),('${contract2}','FEC-TEST-2','Contrato 2','active');
  insert into fec_access_grants(engagement_id,user_id,role,active) values('${contract}','${owner}','executor',true),('${contract}','${other}','executor',true),('${contract}','${supervisor}','supervisor',true),('${contract2}','${outsider}','executor',true);
@@ -40,6 +40,16 @@ await as(owner);
 await ok('executor cria lote próprio',`insert into fec_import_batches(id,cycle_id,owner_id,reference_month,intake_key,manifest) values('${batch}','${cycle}','${owner}','2026-10-01','${'c'.repeat(64)}','[{}]')`);
 await denied('executor não cria lote em outro ciclo',`insert into fec_import_batches(cycle_id,owner_id,reference_month,intake_key,manifest) values('${cycle2}','${owner}','2026-10-01','${'d'.repeat(64)}','[{}]')`);
 await ok('reserva documental',`insert into fec_import_documents(id,batch_id,cycle_id,owner_id,kind,source_name,sha256,mime_type,byte_size,object_name) values('${doc}','${batch}','${cycle}','${owner}','questionnaires','ficcao.pdf','${sha}','application/pdf',100,'${object}')`);
+await ok('relatório primário aceito',`insert into fec_import_documents(id,batch_id,cycle_id,owner_id,kind,source_name,sha256,mime_type,byte_size,object_name) values('${id(59)}','${batch}','${cycle}','${owner}','monthly_report','relatorio.pdf','${'e'.repeat(64)}','application/pdf',100,'${id(59)}/${id(60)}.pdf')`);
+await ok('quatro anexos de apoio aceitos',`insert into fec_import_documents(id,batch_id,cycle_id,owner_id,kind,source_name,sha256,mime_type,byte_size,object_name) values
+ ('${id(61)}','${batch}','${cycle}','${owner}','supporting','anexo-1.pdf','${'1'.repeat(64)}','application/pdf',100,'${id(61)}/${id(62)}.pdf'),
+ ('${id(63)}','${batch}','${cycle}','${owner}','supporting','anexo-2.docx','${'2'.repeat(64)}','application/vnd.openxmlformats-officedocument.wordprocessingml.document',100,'${id(63)}/${id(64)}.docx'),
+ ('${id(65)}','${batch}','${cycle}','${owner}','supporting','anexo-3.pdf','${'3'.repeat(64)}','application/pdf',100,'${id(65)}/${id(66)}.pdf'),
+ ('${id(67)}','${batch}','${cycle}','${owner}','supporting','anexo-4.pdf','${'4'.repeat(64)}','application/pdf',100,'${id(67)}/${id(68)}.pdf')`);
+await denied('sétimo documento é bloqueado no banco',`insert into fec_import_documents(id,batch_id,cycle_id,owner_id,kind,source_name,sha256,mime_type,byte_size,object_name) values('${id(69)}','${batch}','${cycle}','${owner}','supporting','anexo-extra.pdf','${'5'.repeat(64)}','application/pdf',100,'${id(69)}/${id(70)}.pdf')`);
+await as(null,'postgres');
+assert.equal((await db.query("select file_size_limit from storage.buckets where id='fec-import-private'")).rows[0].file_size_limit,4194304);passed++;console.log('PASS bucket privado limitado a 4 MiB');
+await as(owner);
 await denied('reserva não vira upload sem objeto',`update fec_import_documents set upload_state='uploaded' where id='${doc}'`);
 await denied('hash duplicado no ciclo',`insert into fec_import_documents(id,batch_id,cycle_id,owner_id,kind,source_name,sha256,mime_type,byte_size,object_name) values('${id(30)}','${batch}','${cycle}','${owner}','monthly_report','ficcao.pdf','${sha}','application/pdf',100,'${id(30)}/${id(31)}.pdf')`);
 await ok('original privado e confirmação do envio',`insert into storage.objects(bucket_id,name) values('fec-import-private','${object}');update fec_import_documents set upload_state='uploaded' where id='${doc}';`);

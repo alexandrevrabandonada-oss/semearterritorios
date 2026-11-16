@@ -106,6 +106,7 @@ await denied('decisão concorrente não sobrescreve',`insert into fec_import_rev
 await as(null,'anon');await count('anônimo não acessa evidências',`select * from storage.objects where bucket_id='fec-evidence-private'`,0);
 console.log(`Matriz v7 privada: ${passed} verificações passaram.`);
 await as(null,'postgres');await exec(readFileSync('supabase/migrations/20261110001929_fec_integridade_documental.sql','utf8'));
+await exec(readFileSync('supabase/migrations/20261116204308_fec_supporting_documents.sql','utf8'));
 const verification=id(80),evidenceVerification=id(81);
 await as(owner);await denied('usuário não insere hash verificado',`insert into fec_file_integrity(id,document_id,sha256,byte_size) values('${verification}','${doc}','${sha}',100)`);
 await as(null,'service_role');await ok('somente serviço registra integridade',`insert into fec_file_integrity(id,document_id,sha256,byte_size) values('${verification}','${doc}','${sha}',100)`);
@@ -116,5 +117,3 @@ await as(other);await count('outro executor não lê integridade',`select * from
 await as(supervisor);await count('supervisão lê integridade do documento autorizado',`select * from fec_file_integrity where document_id='${doc}'`,1);
 await as(null,'anon');await denied('anônimo não lê hashes de integridade','select * from fec_file_integrity');
 console.log(`Matriz de integridade: ${passed} verificações passaram.`);await db.close();
-
-\n

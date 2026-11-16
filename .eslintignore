@@ -1,0 +1,2 @@
+# TypeScript declaration for the adjacent .mjs module; checked by tsc, not ESLint.
+lib/fec-upload-limits.d.mts

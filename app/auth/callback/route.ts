@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import type { Database } from "@/lib/database.types";
+import { getPublicRedirectOrigin } from "@/lib/auth/redirect-origin";
 
 function getSafeNextPath(nextParam: string | null) {
   if (!nextParam) {
@@ -16,6 +17,10 @@ function getSafeNextPath(nextParam: string | null) {
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
+  const redirectOrigin = getPublicRedirectOrigin(
+    requestUrl,
+    process.env.RENDER_EXTERNAL_URL,
+  );
   const code = requestUrl.searchParams.get("code");
   const nextPath = getSafeNextPath(requestUrl.searchParams.get("next"));
   const googleCalendarConnect = requestUrl.searchParams.get("google_calendar") === "connect";

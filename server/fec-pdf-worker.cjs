@@ -8,5 +8,3 @@ process.stdin.on('end',async()=>{if(failed)return;try{
  if(!Number.isInteger(result.numpages)||result.numpages<1||result.numpages>40||result.text.length>1000000)throw Error('limit');
  process.stdout.write(JSON.stringify({text:result.text,pages:result.numpages}));
 }catch{process.exitCode=2}});
-
-\n

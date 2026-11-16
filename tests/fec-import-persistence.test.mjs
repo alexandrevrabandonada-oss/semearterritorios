@@ -58,6 +58,16 @@ test('recebe relatório genérico sem exigir cadastro de fichas',()=>{
  const batch=validateFecIntake('2026-10',[pdf('relatorio.pdf','Descrição sintética de trabalho territorial sem modelo fixo.','generic')]);
  assert.equal(batch.files[0].parsed.kind,'monthly_report');assert.equal(batch.forms.length,0);assert.ok(batch.preview.warnings.some(w=>w.includes('conferência')));
 });
+test('recebe anexos complementares sem extração automática',()=>{
+ const batch=validateFecIntake('2026-10',[
+  {fileName:'relatorio.docx',buffer:Buffer.from('PK-synthetic-docx-report'),text:'Descrição sintética do relatório FEC sem dados pessoais.',kind:'monthly_report'},
+  {...pdf('fichas.pdf',questionnaire,'forms'),kind:'questionnaires'},
+  {fileName:'mapa.pdf',buffer:Buffer.from('%PDF-1.4-map'),text:'',kind:'supporting'},
+  {fileName:'ata.docx',buffer:Buffer.from('PK-synthetic-docx'),text:'',kind:'supporting'},
+ ]);
+ assert.deepEqual(batch.files.map(file=>file.parsed.kind),['monthly_report','questionnaires','supporting','supporting']);
+ assert.equal(batch.files[2].parsed.warnings.some(w=>w.includes('nenhum conteúdo foi extraído automaticamente')),true);
+});
 test('ficha incompleta não impede entrega e permanece para conferência manual',()=>{
  const broken=questionnaire.replace('6. Pergunta sobre campanhas?\nNunca ouviu.','');
  const batch=validateFecIntake('2026-10',[pdf('fichas.pdf',broken,'incomplete')]);

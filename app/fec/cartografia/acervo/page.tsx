@@ -26,7 +26,9 @@ export default function FecAcervoPage(){
  const [summary,setSummary]=useState("");
  const [reportDecision,setReportDecision]=useState("document_checked");
  const [reportReason,setReportReason]=useState("");
- const [picked,setPicked]=useState<FileList|null>(null);
+ const [reportFile,setReportFile]=useState<File|null>(null);
+ const [questionnairesFile,setQuestionnairesFile]=useState<File|null>(null);
+ const [attachmentFiles,setAttachmentFiles]=useState<File[]>([]);
  const [batches,setBatches]=useState<Batch[]>([]);
  const [detail,setDetail]=useState<Detail|null>(null);
  const [selectedForm,setSelectedForm]=useState("");
@@ -45,6 +47,14 @@ export default function FecAcervoPage(){
  const [busy,setBusy]=useState(false);
  const [info,setInfo]=useState("");
  const [error,setError]=useState("");
+ function validateSelectedFiles(files:(File|null)[]){
+  const selected=files.filter((file):file is File=>file!==null);
+  if(selected.length>6){setError("Envie até quatro anexos além do relatório e das fichas.");return false;}
+  if(selected.some(file=>file.size<1||file.size>4*1024*1024)||selected.reduce((sum,file)=>sum+file.size,0)>4*1024*1024){
+   setError("O total de PDFs/DOCX precisa ter até 4 MB.");return false;
+  }
+  setError("");return true;
+ }
  useEffect(()=>{requestJson<Catalog>("/api/fec/catalog").then(setCatalog).catch(e=>setError(String(e)));},[]);
  const activeCycle=useMemo(()=>catalog?.cycles.find(c=>c.id===cycleId),[catalog,cycleId]);
  const current=detail?.forms.find(f=>f.id===selectedForm);
@@ -62,9 +72,12 @@ export default function FecAcervoPage(){
   setDetail(data);setSelectedForm(data.forms[0]?.id??"");setReason("");setDecision("proof_requested");
  }catch(e){setError(e instanceof Error?e.message:String(e));}finally{setBusy(false);}}
  async function upload(event:FormEvent){event.preventDefault();setError("");setInfo("");
-  if(!picked?.length||!cycleId){setError("Escolha um ciclo e os documentos.");return;}
+  if(!reportFile||!cycleId){setError("Escolha um ciclo e o relatório principal.");return;}
+  if(!validateSelectedFiles([reportFile,questionnairesFile,...attachmentFiles]))return;
   const data=new FormData();data.set("cycleId",cycleId);data.set("month",month);data.set("description",summary);
-  for(const file of Array.from(picked))data.append("files",file);
+  data.set("report",reportFile);
+  if(questionnairesFile)data.set("questionnaires",questionnairesFile);
+  for(const file of attachmentFiles)data.append("attachments",file);
   setBusy(true);try{
    const result=await requestJson<{batchId:string;documentaryForms:number;simulatedExampleOverlaps:number}>("/api/fec/import-batches",{method:"POST",body:data});
    await listBatches(cycleId);await openBatch(result.batchId);
@@ -110,11 +123,18 @@ export default function FecAcervoPage(){
      <input className={field} type="month" value={month} onChange={e=>setMonth(e.target.value)} required/></label>
     <label className="block text-sm font-semibold">Resumo do trabalho
      <textarea className={field} required maxLength={2000} value={summary} onChange={e=>setSummary(e.target.value)}/></label>
-    <label className="block text-sm font-semibold">Relatório em PDF
-     <input className={field} type="file" accept=".pdf" onChange={e=>{const file=e.target.files?.[0];if(file&&file.size>4*1024*1024){setError("O PDF precisa ter até 4 MB.");e.currentTarget.value="";setPicked(null);return;}setError("");setPicked(e.target.files);}}/></label>
-    <p className="text-xs text-stone-600">Limite de envio: 4 MB por PDF.</p>
+    <label className="block text-sm font-semibold">Relatório principal (PDF ou DOCX)
+     <input className={field} type="file" accept=".pdf,.docx" required onChange={e=>{const file=e.target.files?.[0]??null;if(validateSelectedFiles([file,questionnairesFile,...attachmentFiles]))setReportFile(file);else{setReportFile(null);e.currentTarget.value="";}}}/></label>
+    {reportFile&&<p className="text-xs text-stone-600">Selecionado: {reportFile.name}</p>}
+    <label className="block text-sm font-semibold">Fichas (opcional, PDF ou DOCX)
+     <input className={field} type="file" accept=".pdf,.docx" onChange={e=>{const file=e.target.files?.[0]??null;if(validateSelectedFiles([reportFile,file,...attachmentFiles]))setQuestionnairesFile(file);else{setQuestionnairesFile(null);e.currentTarget.value="";}}}/></label>
+    {questionnairesFile&&<p className="text-xs text-stone-600">Fichas selecionadas: {questionnairesFile.name}</p>}
+    <label className="block text-sm font-semibold">Outros anexos autorizados (até 4 arquivos PDF/DOCX)
+     <input className={field} type="file" accept=".pdf,.docx" multiple onChange={e=>{const files=Array.from(e.target.files??[]);if(files.length>4){setError("Envie até quatro anexos complementares.");setAttachmentFiles([]);e.currentTarget.value="";return;}if(validateSelectedFiles([reportFile,questionnairesFile,...files]))setAttachmentFiles(files);else{setAttachmentFiles([]);e.currentTarget.value="";}}}/></label>
+    {attachmentFiles.length>0&&<p className="text-xs text-stone-600">Anexos selecionados: {attachmentFiles.map(file=>file.name).join(", ")}</p>}
+    <p className="text-xs text-stone-600">Limite total: 4 MB por envio. Anexos complementares ficam privados e não são extraídos automaticamente.</p>
     <div className="flex gap-3 flex-wrap">
-     <button type="submit" disabled={busy||!activeCycle||!picked?.length||picked.length>2} className="rounded-lg bg-semear-green px-4 py-2 text-white font-semibold disabled:opacity-50">{busy?"Enviando…":"Enviar relatório"}</button>
+     <button type="submit" disabled={busy||!activeCycle||!reportFile} className="rounded-lg bg-semear-green px-4 py-2 text-white font-semibold disabled:opacity-50">{busy?"Enviando…":"Enviar relatório"}</button>
 
     </div>
    </form>
@@ -136,7 +156,7 @@ export default function FecAcervoPage(){
   {detail&&<details className="rounded-xl border bg-white p-4"><summary className="cursor-pointer font-semibold">Ver fichas e evidências quando necessário</summary><section className="p-1 pt-4 space-y-4">
    <h2 className="font-bold text-lg">Detalhes do relatório {detail.batch.reference_month.slice(0,7)} · {detail.forms.length} fichas identificadas</h2>
    <p className="text-sm font-semibold">Entrevistas oficialmente verificadas: não determinadas. Pessoas únicas: não determinadas.</p>
-   <div className="space-y-2">{detail.documents.map(d=><div key={d.id} className="flex gap-3 flex-wrap items-center rounded-lg border p-3 text-sm"><strong>{d.kind==="questionnaires"?"Fichas":"Relatório"}</strong><span>{d.source_name}</span><span>{d.upload_state==="uploaded"?"Armazenado":"Pendente de reconciliação"}</span><button type="button" onClick={()=>openOriginal(d.id)} disabled={d.upload_state!=="uploaded"} className="underline disabled:opacity-50">Ver original privado</button></div>)}</div>
+   <div className="space-y-2">{detail.documents.map(d=><div key={d.id} className="flex gap-3 flex-wrap items-center rounded-lg border p-3 text-sm"><strong>{d.kind==="questionnaires"?"Fichas":d.kind==="supporting"?"Anexo":"Relatório"}</strong><span>{d.source_name}</span><span>{d.upload_state==="uploaded"?"Armazenado":"Pendente de reconciliação"}</span><button type="button" onClick={()=>openOriginal(d.id)} disabled={d.upload_state!=="uploaded"} className="underline disabled:opacity-50">Ver original privado</button></div>)}</div>
    {detail.forms.length>0&&<div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
     <nav aria-label="Fichas documentais" className="space-y-2 max-h-[600px] overflow-y-auto">{detail.forms.map(f=>{const r=detail.reviews.find(x=>x.form_id===f.id);return <button type="button" key={f.id} onClick={()=>{setSelectedForm(f.id);setReason("");setDecision("proof_requested");}} className={`w-full rounded-lg border p-3 text-left text-sm ${current?.id===f.id?"bg-stone-100":""}`}><strong>{f.code}</strong><span className="block">{f.locality}</span><span className="block text-xs">{f.simulated_overlap===true?"Coincide com simulação":f.simulated_overlap===null?"Comparação indisponível":"Pendente de prova"}</span><span className="block text-xs">{r?.decision??"Sem revisão"}</span></button>})}</nav>
     {current&&<div className="space-y-4"><h3 className="font-bold">{current.code} · {current.locality}</h3>
@@ -178,4 +198,3 @@ export default function FecAcervoPage(){
   </section></details>}
  </div></FecShell>;
 }
-\n
