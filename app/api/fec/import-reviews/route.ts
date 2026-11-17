@@ -18,11 +18,11 @@ export async function POST(req:NextRequest){
   if(Object.keys(p).some(k=>!keys.includes(k))||typeof p.reportId!=="string"||!uuidRx.test(p.reportId)||!Number.isInteger(p.expectedRevision)||Number(p.expectedRevision)<0||Number(p.expectedRevision)>2147483646||!["document_checked","needs_changes"].includes(String(p.decision))||typeof p.reason!=="string"||p.reason.length>3000||(p.decision==="needs_changes"&&p.reason.trim().length<20))return fecResponse({error:"Conferência inválida; justifique pedidos de ajuste."},400);
   const db=session.db as unknown as SupabaseClient;
   const batch=await db.from("fec_import_batches").select("id,owner_id,cycle_id").eq("id",p.reportId).maybeSingle();
-  if(batch.error||!batch.data||batch.data.owner_id===session.userId)return fecResponse({error:"Relatório indisponível para conferência."},403);
+  if(batch.error||!batch.data||batch.data.owner_id===session.userId)return fecResponse({error:"Relatório indisponível para conferência por outra pessoa."},403);
   const cycle=await db.from("fec_cycles").select("engagement_id").eq("id",batch.data.cycle_id).maybeSingle();
   if(cycle.error||!cycle.data)return fecResponse({error:"Relatório indisponível."},403);
-  const grant=await db.from("fec_access_grants").select("id").eq("engagement_id",cycle.data.engagement_id).eq("user_id",session.userId).eq("role","supervisor").eq("active",true).limit(1);
-  if(grant.error||!grant.data?.length)return fecResponse({error:"Conferência disponível à coordenação designada."},403);
+  const permission=await db.rpc("fec_can_review",{p_engagement_id:cycle.data.engagement_id,p_owner_id:batch.data.owner_id});
+  if(permission.error||permission.data!==true)return fecResponse({error:"A revisão exige outro membro ativo da equipe."},403);
   const docs=await db.from("fec_import_documents").select("id,upload_state").eq("batch_id",p.reportId);
   if(docs.error||!docs.data?.length||docs.data.some(d=>d.upload_state!=="uploaded"))return fecResponse({error:"Arquivos ainda não estão disponíveis."},409);
   try{for(const d of docs.data)await verifyFecStoredFile(db,"document",d.id);}catch{return fecResponse({error:"Não foi possível conferir os arquivos. Tente novamente."},409);}
@@ -48,14 +48,12 @@ export async function POST(req:NextRequest){
  const {data:batch,error:batchError}=await db.from("fec_import_batches")
   .select("id,owner_id,cycle_id").eq("id",document.batch_id).maybeSingle();
  if(batchError||!batch)return fecResponse({error:"Lote não disponível."},404);
- if(batch.owner_id===session.userId)return fecResponse({error:"O executor não pode revisar a própria fonte."},403);
+ if(batch.owner_id===session.userId)return fecResponse({error:"O autor não pode revisar a própria fonte."},403);
  const {data:cycle,error:cycleError}=await db.from("fec_cycles")
    .select("id,engagement_id").eq("id",batch.cycle_id).maybeSingle();
  if(cycleError||!cycle)return fecResponse({error:"Ciclo de origem indisponível."},403);
- const {data:grants,error:grantError}=await db.from("fec_access_grants")
-  .select("id").eq("engagement_id",cycle.engagement_id).eq("user_id",session.userId)
-  .eq("role","supervisor").eq("active",true).limit(1);
- if(grantError||!grants?.length)return fecResponse({error:"Somente supervisor formalmente designado pode revisar."},403);
+ const permission=await db.rpc("fec_can_review",{p_engagement_id:cycle.engagement_id,p_owner_id:batch.owner_id});
+ if(permission.error||permission.data!==true)return fecResponse({error:"A revisão exige outro membro ativo da equipe."},403);
  if(payload.decision==="inconclusive"||payload.decision==="evidence_reviewed"){
   const evidence=await db.from("fec_evidence_responses").select("id,form_id,upload_state").eq("id",payload.responseId).maybeSingle();
   if(evidence.error||!evidence.data||evidence.data.form_id!==payload.formId||evidence.data.upload_state!=="uploaded")return fecResponse({error:"Resposta ou evidência indisponível."},409);

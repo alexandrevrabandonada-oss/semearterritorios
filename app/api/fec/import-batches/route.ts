@@ -3,7 +3,7 @@ import { type NextRequest } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fecResponse, fecSession } from "@/lib/fec-server";
 import {withFecCapacity} from "@/lib/fec-intake-capacity";
-import {verifyFecStoredFile} from "@/lib/fec-integrity-server";
+import {readFecPrivateObject,verifyFecStoredFile} from "@/lib/fec-integrity-server";
 import { extractFecPdf } from "@/lib/fec-pdf-isolated";
 import { extractFecDocx } from "@/lib/fec-docx-isolated";
 import { FEC_IMPORT_BUCKET, FEC_MAX_UPLOAD, FEC_MAX_TOTAL_BYTES, uuidRx, validFecMonth, validateFecIntake, type IntakeInput } from "@/lib/fec-import-persistence";
@@ -51,11 +51,7 @@ export async function POST(req: NextRequest) {
   const {data:cycle,error:cycleError}=await db.from("fec_cycles")
     .select("id,owner_id,engagement_id,status").eq("id",cycleId).maybeSingle();
   if(cycleError||!cycle||cycle.owner_id!==session.userId||!(["draft","needs_changes"] as string[]).includes(cycle.status))
-    return privateResponse({error:"O ciclo FEC não está disponível para inclusão pelo executor."},403);
-  const {data:grants,error:grantError}=await db.from("fec_access_grants")
-    .select("id").eq("engagement_id",cycle.engagement_id).eq("user_id",session.userId)
-    .eq("role","executor").eq("active",true).limit(1);
-  if(grantError||!grants?.length)return privateResponse({error:"Atribuição contratual FEC não autorizada."},403);
+    return privateResponse({error:"O ciclo FEC não está disponível para inclusão por este autor."},403);
   const inputs:IntakeInput[]=[];
   for(const {file,kind} of picked){
     const buffer=Buffer.from(await file.arrayBuffer());
@@ -112,20 +108,20 @@ export async function POST(req: NextRequest) {
       state.set(entry.id,doc.upload_state);
     },
     async ensureOriginal(entry,bytes){
-      let result=await storage.download(entry.object_name);
-      if(!result.data){
-        if((result.error?.status!==404 && String(result.error?.statusCode)!=="404") || state.get(entry.id)!=="reserved")throw new Error("Original indisponível; não foi sobrescrito.");
+      let result=await readFecPrivateObject(FEC_IMPORT_BUCKET,entry.object_name);
+      if(!result.bytes){
+        if(!result.missing || state.get(entry.id)!=="reserved")throw new Error("Original indisponível; não foi sobrescrito.");
         const upload=await storage.upload(entry.object_name,bytes,{contentType:entry.mime_type,upsert:false,cacheControl:"0"});
         // Uma concorrência pode ter concluído o upload; sempre verificar os bytes guardados.
         for(let attempt=0;attempt<5;attempt++) {
-          result=await storage.download(entry.object_name);
-          if(result.data)break;
-          if(result.error?.status!==404 && String(result.error?.statusCode)!=="404")break;
+          result=await readFecPrivateObject(FEC_IMPORT_BUCKET,entry.object_name);
+          if(result.bytes)break;
+          if(!result.missing)break;
           if(attempt<4)await new Promise(resolve=>setTimeout(resolve,150*(attempt+1)));
         }
-        if(!result.data)throw new Error(upload.error?"Upload privado não concluído; tente reconciliar novamente.":"Não foi possível verificar o original.");
+        if(!result.bytes)throw new Error(upload.error?"Upload privado não concluído; tente reconciliar novamente.":"Não foi possível verificar o original.");
       }
-      if(result.data.size!==entry.byte_size||createHash("sha256").update(Buffer.from(await result.data.arrayBuffer())).digest("hex")!==entry.sha256)
+      if(result.bytes.length!==entry.byte_size||createHash("sha256").update(result.bytes).digest("hex")!==entry.sha256)
         throw new Error("Original armazenado difere do SHA-256; não foi sobrescrito.");
     },
     async markUploaded(entry){

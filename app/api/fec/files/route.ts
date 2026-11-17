@@ -1,5 +1,15 @@
 import { fecBody, fecResponse, fecSession } from "@/lib/fec-server";
 import { fecUuid } from "@/lib/fec-knowledge";
+import { downloadFecPrivateObject, fecPrivateDownloadResponse } from "@/lib/fec-integrity-server";
+
+function contentTypeForObject(name:string){
+  const ext=name.split(".").at(-1)?.toLowerCase();
+  if(ext==="pdf")return "application/pdf";
+  if(ext==="docx")return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  if(ext==="png")return "image/png";
+  if(ext==="jpg"||ext==="jpeg")return "image/jpeg";
+  return "application/octet-stream";
+}
 
 export async function GET(request: Request) {
   const session = await fecSession();
@@ -8,17 +18,18 @@ export async function GET(request: Request) {
   if (!fecUuid(id)) return fecResponse({ error: "Arquivo inválido." }, 400);
   const { data: file, error } = await session.db
     .from("fec_knowledge_files")
-    .select("object_name")
+    .select("object_name,title")
     .eq("id", id)
     .maybeSingle();
   if (error || !file)
     return fecResponse({ error: "Arquivo indisponível." }, 404);
-  const signed = await session.db.storage
-    .from("fec-technical-private")
-    .createSignedUrl(file.object_name, 60);
-  if (signed.error)
-    return fecResponse({ error: "Acesso temporário indisponível." }, 403);
-  return fecResponse({ url: signed.data.signedUrl, expiresIn: 60 });
+  try {
+    const bytes=await downloadFecPrivateObject({db:session.db,bucket:"fec-technical-private",objectName:file.object_name,
+      actorId:session.userId,resourceKind:"technical_file",resourceId:id});
+    return fecPrivateDownloadResponse(bytes,file.title,contentTypeForObject(file.object_name));
+  } catch {
+    return fecResponse({ error: "Acesso ao arquivo indisponível ou não registrado." }, 403);
+  }
 }
 export async function POST(request: Request) {
   const session = await fecSession();

@@ -1,8 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { parseFecActivityCreate } from "@/lib/fec-api-input";
-import type { FecDatabase } from "@/lib/fec-persistence.types";
+import { fecSession } from "@/lib/fec-server";
 
 const enabled = () => process.env.SEMEAR_FEC_PERSISTENCE_ENABLED === "true";
 const respond = (body: object, status: number) =>
@@ -19,10 +17,9 @@ export async function GET(request: NextRequest) {
       { error: "Persistência FEC não habilitada neste ambiente." },
       503,
     );
-  const supabase =
-    (await createSupabaseServerClient()) as unknown as SupabaseClient<FecDatabase>;
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return respond({ error: "Autenticação necessária." }, 401);
+  const session=await fecSession();
+  if(session.response)return session.response;
+  const supabase=session.db;
   const cycleId = request.nextUrl.searchParams.get("cycleId") ?? "";
   if (!uuid(cycleId))
     return respond({ error: "Informe um ciclo válido." }, 400);
@@ -52,10 +49,9 @@ export async function PATCH(request: NextRequest) {
       { error: "Persistência FEC não habilitada neste ambiente." },
       503,
     );
-  const db =
-    (await createSupabaseServerClient()) as unknown as SupabaseClient<FecDatabase>;
-  const { data: auth } = await db.auth.getUser();
-  if (!auth.user) return respond({ error: "Autenticação necessária." }, 401);
+  const session=await fecSession();
+  if(session.response)return session.response;
+  const db=session.db;
   let body: unknown;
   try {
     body = await request.json();
@@ -67,13 +63,13 @@ export async function PATCH(request: NextRequest) {
   const { id, ...input } = body as Record<string, unknown>;
   if (typeof id !== "string" || !uuid(id))
     return respond({ error: "Atividade inválida." }, 400);
-  const parsed = parseFecActivityCreate(input, auth.user.id);
+  const parsed = parseFecActivityCreate(input, session.userId);
   if (!parsed.ok) return respond({ error: parsed.reason }, 400);
   const { data, error } = await db
     .from("fec_activities")
     .update(parsed.value)
     .eq("id", id)
-    .eq("owner_id", auth.user.id)
+    .eq("owner_id", session.userId)
     .select("*")
     .maybeSingle();
   if (error || !data)
@@ -87,19 +83,18 @@ export async function POST(request: NextRequest) {
       { error: "Persistência FEC não habilitada neste ambiente." },
       503,
     );
-  const supabase =
-    (await createSupabaseServerClient()) as unknown as SupabaseClient<FecDatabase>;
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return respond({ error: "Autenticação necessária." }, 401);
+  const session=await fecSession();
+  if(session.response)return session.response;
+  const supabase=session.db;
   let payload: unknown;
   try {
     payload = await request.json();
   } catch {
     return respond({ error: "Corpo JSON inválido." }, 400);
   }
-  const parsed = parseFecActivityCreate(payload, auth.user.id);
+  const parsed = parseFecActivityCreate(payload, session.userId);
   if (!parsed.ok) return respond({ error: parsed.reason }, 400);
-  // O banco exige owner do ciclo, grant executor ativo e status draft.
+  // RLS exige autor do ciclo, vínculo institucional ativo e status draft.
   const { data, error } = await supabase
     .from("fec_activities")
     .insert(parsed.value)
@@ -110,7 +105,7 @@ export async function POST(request: NextRequest) {
   if (error)
     return respond(
       {
-        error: "Atividade não criada. Confira ciclo, vínculo FEC e permissões.",
+        error: "Atividade não criada. Confira o ciclo, seu vínculo ativo e a frente FEC.",
       },
       403,
     );

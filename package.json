@@ -14,7 +14,7 @@
     "test:reports": "vitest run tests/monthly-reports.test.ts",
     "test:fec:core": "vitest run tests/fec-api-gate.test.ts tests/fec-api-input.test.ts tests/fec-field-protocol.test.ts tests/fec-files.test.ts tests/fec-knowledge.test.ts tests/fec-monthly-activity-extract.test.ts tests/fec-monthly-metrics.test.ts tests/fec-monthly-versions.test.ts tests/fec-schema-contract.test.ts tests/fec-technical-cycles.test.ts tests/fec-technical-report.test.ts",
     "test:fec:unit": "node --test tests/fec-document-import.test.mjs tests/fec-import-persistence.test.mjs tests/fec-import-reconcile.test.mjs tests/fec-import-review.test.mjs tests/fec-intake-http.test.mjs tests/fec-import-sql-safety.test.mjs tests/fec-pdf-worker-synthetic.test.mjs tests/fec-docx-isolated.test.mjs tests/render-oauth-origin.test.mjs",
-    "test:fec:rls": "node tests/fec-rls.mjs && node tests/fec-monthly-rls.mjs && node tests/fec-import-rls.mjs && node tests/fec-evidence-rls.mjs && node tests/fec-integrity-rls.mjs",
+    "test:fec:rls": "node tests/fec-rls.mjs && node tests/fec-monthly-rls.mjs && node tests/fec-import-rls.mjs && node tests/fec-evidence-rls.mjs && node tests/fec-integrity-rls.mjs && node tests/fec-active-team-access.mjs",
     "test:fec": "npm run test:fec:core && npm run test:fec:unit && npm run test:fec:rls",
     "test:transparencia": "vitest run tests/transparencia",
     "smoke:transparencia": "node scripts/test_transparencia_remote_048.mjs",

@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       return fecResponse(
         {
           error:
-            "Revisão recusada. Exige supervisor designado, distinto do executor, situação compatível e fontes aprovadas.",
+            "Revisão recusada. Exige outro membro ativo da equipe e situação compatível.",
         },
         403,
       );

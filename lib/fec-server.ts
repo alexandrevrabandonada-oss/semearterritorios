@@ -24,15 +24,14 @@ export async function fecSession() {
       response: fecResponse({ error: "Autenticação necessária." }, 401),
     } as const;
   // O servidor repete a verificação institucional; o banco aplica a regra em cada operação.
-  const [{ data: profile, error: profileError }, { data: members, error: membersError }, { data: grants, error: grantsError }] = await Promise.all([
+  const [{ data: profile, error: profileError }, { data: members, error: membersError }] = await Promise.all([
     db.from("profiles").select("role").eq("id", data.user.id).maybeSingle(),
     db.from("team_members").select("id").eq("profile_id", data.user.id).eq("active", true).limit(1),
-    db.from("fec_access_grants").select("id").eq("user_id", data.user.id).eq("active", true).limit(1),
   ]);
-  if (profileError || membersError || grantsError || !profile ||
+  if (profileError || membersError || !profile ||
       !["equipe", "coordenacao", "admin"].includes(profile.role ?? "") ||
-      !members?.length || !grants?.length)
-    return { response: fecResponse({ error: "Acesso FEC não autorizado ou vínculo ativo não confirmado." }, 403) } as const;
+      !members?.length)
+    return { response: fecResponse({ error: "A FEC exige perfil institucional permitido e vínculo ativo na equipe." }, 403) } as const;
   return { db, userId: data.user.id } as const;
 }
 export async function fecBody(request: Request): Promise<unknown> {

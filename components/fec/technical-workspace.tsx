@@ -28,7 +28,7 @@ type Catalog = {
     contract_reference_confirmed: boolean;
     status: string;
   }[];
-  grants: { engagement_id: string; role: string; active: boolean }[];
+  permissions: { canSubmit: boolean; canReview: boolean };
   neighborhoods: { id: string; name: string }[];
   cycles: FecCycleRow[];
   actions: {
@@ -169,12 +169,7 @@ export function FecTechnicalWorkspace({ enabled }: { enabled: boolean }) {
   const own = cycle?.owner_id === catalog?.userId;
   const supervisor =
     !!cycle &&
-    !!catalog?.grants.some(
-      (g) =>
-        g.engagement_id === cycle.engagement_id &&
-        g.role === "supervisor" &&
-        g.active,
-    ) &&
+    Boolean(catalog?.permissions.canReview) &&
     !own;
   async function refreshCatalog() {
     const d = await api<Catalog>("catalog");
@@ -203,9 +198,9 @@ export function FecTechnicalWorkspace({ enabled }: { enabled: boolean }) {
         if (alive) {
           setCatalog(d);
           setMessage(
-            d.grants.length
+            d.permissions.canSubmit
               ? ""
-              : "Nenhuma atribuição FEC ativa para esta sessão.",
+              : "A FEC não está disponível para esta sessão.",
           );
         }
       })
@@ -605,15 +600,7 @@ export function FecTechnicalWorkspace({ enabled }: { enabled: boolean }) {
                       >
                         <option value="">Escolha o aditivo</option>
                         {catalog.scopes
-                          .filter(
-                            (s) =>
-                              s.status === "active" &&
-                              catalog.grants.some(
-                                (g) =>
-                                  g.engagement_id === s.id &&
-                                  g.role === "executor",
-                              ),
-                          )
+                          .filter((s) => s.status === "active")
                           .map((s) => (
                             <option key={s.id} value={s.id}>
                               {s.contract_reference ?? "Referência contratual pendente"} — {s.title}{!s.contract_reference_confirmed ? " (não confirmada)" : ""}
@@ -998,16 +985,11 @@ export function FecTechnicalWorkspace({ enabled }: { enabled: boolean }) {
                             key={f.id}
                             className="mt-2 block text-left text-sm text-semear-green underline"
                             onClick={() =>
-                              void run(async () => {
-                                const signed = await api<{ url: string }>(
-                                  "files?id=" + f.id,
-                                );
-                                window.open(
-                                  signed.url,
-                                  "_blank",
-                                  "noopener,noreferrer",
-                                );
-                              })
+                              window.open(
+                                "/api/fec/files?id=" + encodeURIComponent(f.id),
+                                "_blank",
+                                "noopener,noreferrer",
+                              )
                             }
                           >
                             {f.title} · abrir anexo privado

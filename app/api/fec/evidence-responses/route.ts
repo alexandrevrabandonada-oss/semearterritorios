@@ -3,14 +3,13 @@ import {type NextRequest} from "next/server";
 import type {SupabaseClient} from "@supabase/supabase-js";
 import {fecResponse,fecSession} from "@/lib/fec-server";
 import {withFecCapacity} from "@/lib/fec-intake-capacity";
-import {verifyFecStoredFile} from "@/lib/fec-integrity-server";
+import {downloadFecPrivateObject,fecPrivateDownloadResponse,readFecPrivateObject,verifyFecStoredFile} from "@/lib/fec-integrity-server";
 import {isSameOriginRequest,readBoundedFormData,validFecFileType} from "@/lib/fec-intake-http";
 import {extractFecPdf} from "@/lib/fec-pdf-isolated";
 import {FEC_MAX_UPLOAD,uuidRx} from "@/lib/fec-import-persistence";
 export const runtime="nodejs";
 export const maxDuration=60;
 const bucket="fec-evidence-private";
-const missing=(error:{status?:number;statusCode?:string|number}|null)=>error?.status===404||String(error?.statusCode)==="404";
 export async function POST(request:NextRequest){
  if(!isSameOriginRequest(request))return fecResponse({error:"Origem não permitida."},403);
  const session=await fecSession();if(session.response)return session.response;
@@ -34,11 +33,12 @@ export async function POST(request:NextRequest){
    if(inserted.error){found=await find();if(found.error||!found.data)return fecResponse({error:"Resposta não autorizada, evidência reutilizada ou solicitação encerrada."},409);}else found=await find();}
   const row=found.data;
   if(!row||row.form_id!==formId||row.owner_id!==session.userId||row.field_date!==date||row.method!==method.trim()||row.responsible_ref!==responsible.trim()||row.source_ref!==source.trim()||row.explanation!==explanation.trim()||row.evidence_sha256!==sha||row.evidence_size!==bytes.length)return fecResponse({error:"A tentativa diverge da resposta já registrada; nada foi substituído."},409);
-  const storage=db.storage.from(bucket);let downloaded=await storage.download(row.object_name);
-  if(!downloaded.data){if(!missing(downloaded.error)||row.upload_state!=="reserved")return fecResponse({error:"Evidência indisponível; nenhuma substituição foi feita."},409);
+  const storage=db.storage.from(bucket);let downloaded:Awaited<ReturnType<typeof readFecPrivateObject>>;
+  try{downloaded=await readFecPrivateObject(bucket,row.object_name);}catch{return fecResponse({error:"Evidência indisponível; nenhuma substituição foi feita."},409);}
+  if(!downloaded.bytes){if(!downloaded.missing||row.upload_state!=="reserved")return fecResponse({error:"Evidência indisponível; nenhuma substituição foi feita."},409);
    await storage.upload(row.object_name,bytes,{contentType:"application/pdf",upsert:false,cacheControl:"0"});
-   for(let attempt=0;attempt<5;attempt++){downloaded=await storage.download(row.object_name);if(downloaded.data||!missing(downloaded.error))break;if(attempt<4)await new Promise(resolve=>setTimeout(resolve,150*(attempt+1)));}}
-  if(!downloaded.data||downloaded.data.size!==bytes.length||createHash("sha256").update(Buffer.from(await downloaded.data.arrayBuffer())).digest("hex")!==sha)return fecResponse({error:"Conferência de integridade pendente; tente novamente com o mesmo arquivo.",responseId:row.id},409);
+   for(let attempt=0;attempt<5;attempt++){try{downloaded=await readFecPrivateObject(bucket,row.object_name);}catch{break;}if(downloaded.bytes||!downloaded.missing)break;if(attempt<4)await new Promise(resolve=>setTimeout(resolve,150*(attempt+1)));}}
+  if(!downloaded.bytes||downloaded.bytes.length!==bytes.length||createHash("sha256").update(downloaded.bytes).digest("hex")!==sha)return fecResponse({error:"Conferência de integridade pendente; tente novamente com o mesmo arquivo.",responseId:row.id},409);
   if(row.upload_state==="reserved"){const updated=await db.from("fec_evidence_responses").update({upload_state:"uploaded"}).eq("id",row.id).eq("upload_state","reserved").select("id").maybeSingle();if(updated.error||!updated.data){const current=await find();if(current.data?.upload_state!=="uploaded")return fecResponse({error:"Confirmação de armazenamento pendente.",responseId:row.id},409);}}
   try{await verifyFecStoredFile(db,"evidence",row.id);}catch{return fecResponse({error:"Não foi possível comprovar a integridade ou a independência do arquivo.",responseId:row.id},409);}
   return fecResponse({responseId:row.id,status:"response_and_evidence_received",interviewProven:false,requiresHumanReview:true},201);
@@ -48,8 +48,12 @@ export async function GET(request:NextRequest){
  const session=await fecSession();if(session.response)return session.response;
  if(process.env.SEMEAR_FEC_DOCUMENT_INTAKE_ENABLED!=="true")return fecResponse({error:"Acervo indisponível."},503);
  const id=request.nextUrl.searchParams.get("id");if(!id||!uuidRx.test(id))return fecResponse({error:"Resposta inválida."},400);
- const db=session.db as unknown as SupabaseClient;const result=await db.from("fec_evidence_responses").select("object_name,upload_state").eq("id",id).maybeSingle();
+ const db=session.db as unknown as SupabaseClient;const result=await db.from("fec_evidence_responses").select("id,object_name,upload_state,evidence_sha256,evidence_size").eq("id",id).maybeSingle();
  if(result.error||!result.data||result.data.upload_state!=="uploaded")return fecResponse({error:"Evidência indisponível."},404);
- const signed=await db.storage.from(bucket).createSignedUrl(result.data.object_name,60);if(signed.error||!signed.data)return fecResponse({error:"Acesso recusado."},403);
- return fecResponse({url:signed.data.signedUrl,expiresInSeconds:60});
+ try{
+  await verifyFecStoredFile(db,"evidence",id);
+  const bytes=await downloadFecPrivateObject({db,bucket,objectName:result.data.object_name,actorId:session.userId,
+   resourceKind:"evidence_response",resourceId:id,expectedSha256:result.data.evidence_sha256,expectedByteSize:result.data.evidence_size});
+  return fecPrivateDownloadResponse(bytes,`${id}.pdf`,`application/pdf`);
+ }catch{return fecResponse({error:"Evidência sem integridade confirmada ou acesso não pôde ser registrado."},403);}
 }

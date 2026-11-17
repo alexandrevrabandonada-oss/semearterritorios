@@ -4,7 +4,7 @@ import {useEffect,useMemo,useState,type FormEvent} from "react";
 import {FecShell} from "@/components/fec/fec-shell";
 
 type Cycle={id:string;title:string;engagement_id:string;owner_id:string;status:string;neighborhood_id:string};
-type Catalog={userId:string;cycles:Cycle[];neighborhoods:{id:string;name:string}[];grants:{engagement_id:string;role:string;active:boolean}[]};
+type Catalog={userId:string;permissions:{canSubmit:boolean;canReview:boolean};cycles:Cycle[];neighborhoods:{id:string;name:string}[]};
 type Batch={id:string;cycle_id:string;reference_month:string;created_at:string;owner_id:string;description:string;suggestions?:{warnings?:string[];activities?:{date:string;description:string}[]}};
 type ReportReview={id:string;revision:number;decision:string;reason:string;created_at:string};
 type Document={id:string;source_name:string;kind:string;sha256:string;upload_state:string};
@@ -61,8 +61,7 @@ export default function FecAcervoPage(){
  const currentReview=detail?.reviews.find(r=>r.form_id===selectedForm);
  const currentEvidence=detail?.responses.find(r=>r.form_id===selectedForm&&r.request_review_id===currentReview?.id&&r.upload_state==="uploaded");
  const isOwner=Boolean(catalog&&detail&&catalog.userId===detail.batch.owner_id);
- const isSupervisor=Boolean(catalog&&detail&&detail.batch.owner_id!==catalog.userId&&
-   catalog.grants.some(g=>g.active&&g.role==="supervisor"&&g.engagement_id===catalog.cycles.find(c=>c.id===detail.batch.cycle_id)?.engagement_id));
+ const isSupervisor=Boolean(catalog?.permissions.canReview&&detail&&detail.batch.owner_id!==catalog.userId);
  async function listBatches(id=cycleId){setError("");setInfo("");try{
   const data=await requestJson<{batches:Batch[]}>(`/api/fec/import-batches?cycleId=${encodeURIComponent(id)}`);
   setBatches(data.batches);setDetail(null);
@@ -98,15 +97,12 @@ export default function FecAcervoPage(){
   try{const data=new FormData();data.set("requestReviewId",currentReview.id);data.set("formId",current.id);data.set("fieldDate",fieldDate);data.set("method",evidenceMethod);data.set("responsibleRef",interviewerRef);data.set("sourceRef",evidenceOrigin);data.set("explanation",explanation);data.set("file",evidenceFile);
    await requestJson("/api/fec/evidence-responses",{method:"POST",body:data});setInfo("Resposta e PDF recebidos; a entrevista continua não comprovada e depende de conferência.");setEvidenceFile(null);setExplanation("");if(detail)await openBatch(detail.batch.id);
   }catch(e){setError(e instanceof Error?e.message:String(e));}finally{setBusy(false);}}
- async function openEvidence(id:string){setError("");try{const data=await requestJson<{url:string}>(`/api/fec/evidence-responses?id=${encodeURIComponent(id)}`);window.open(data.url,"_blank","noopener,noreferrer");}catch(e){setError(e instanceof Error?e.message:String(e));}}
+ function openEvidence(id:string){setError("");window.open(`/api/fec/evidence-responses?id=${encodeURIComponent(id)}`,"_blank","noopener,noreferrer");}
  async function finishReport(event:FormEvent){event.preventDefault();if(!detail)return;setBusy(true);setError("");setInfo("");try{
   await requestJson("/api/fec/import-reviews",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({reportId:detail.batch.id,expectedRevision:detail.reportReviews[0]?.revision??0,decision:reportDecision,reason:reportReason})});
   const id=detail.batch.id;await openBatch(id);setReportReason("");setInfo(reportDecision==="document_checked"?"Relatório conferido. Isso não comprova entrevistas individuais.":"Pedido de ajustes registrado.");
  }catch(e){setError(e instanceof Error?e.message:String(e));}finally{setBusy(false);}}
- async function openOriginal(id:string){setError("");try{
-  const data=await requestJson<{url:string}>(`/api/fec/import-documents?id=${encodeURIComponent(id)}`);
-  window.open(data.url,"_blank","noopener,noreferrer");
- }catch(e){setError(e instanceof Error?e.message:String(e));}}
+ function openOriginal(id:string){setError("");window.open(`/api/fec/import-documents?id=${encodeURIComponent(id)}`,"_blank","noopener,noreferrer");}
  return <FecShell><div className="space-y-6">
   <header><h1 className="text-2xl font-bold text-semear-green">Relatórios FEC</h1>
    <p className="mt-2 text-sm text-stone-700">Envie seu relatório, confira o conteúdo e registre a análise. Os arquivos ficam privados.</p></header>

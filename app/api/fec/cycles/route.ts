@@ -1,12 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { parseFecCycleCreate } from "@/lib/fec-api-input";
-import type { FecDatabase } from "@/lib/fec-persistence.types";
+import { fecSession } from "@/lib/fec-server";
 
 /**
  * DESLIGADO POR PADRAO, inclusive em Preview e Production.
- * Exige migração aplicada em banco homologado e grants institucionais revisados.
+ * Exige sessão interna ativa e frente FEC institucional ativa no banco.
  * Auth JWT + RLS no banco: NUNCA aceitar owner_id informado pelo cliente.
  */
 const enabled = () => process.env.SEMEAR_FEC_PERSISTENCE_ENABLED === "true";
@@ -22,11 +20,9 @@ export async function GET() {
       { error: "Persistência FEC não habilitada neste ambiente." },
       503,
     );
-  const supabase =
-    (await createSupabaseServerClient()) as unknown as SupabaseClient<FecDatabase>;
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return respond({ error: "Autenticação necessária." }, 401);
-  const { data, error } = await supabase
+  const session=await fecSession();
+  if(session.response)return session.response;
+  const { data, error } = await session.db
     .from("fec_cycles")
     .select("*")
     .order("created_at", { ascending: false })
@@ -50,10 +46,9 @@ export async function PATCH(request: NextRequest) {
       { error: "Persistência FEC não habilitada neste ambiente." },
       503,
     );
-  const db =
-    (await createSupabaseServerClient()) as unknown as SupabaseClient<FecDatabase>;
-  const { data: auth } = await db.auth.getUser();
-  if (!auth.user) return respond({ error: "Autenticação necessária." }, 401);
+  const session=await fecSession();
+  if(session.response)return session.response;
+  const db=session.db;
   let body: unknown;
   try {
     body = await request.json();
@@ -75,7 +70,7 @@ export async function PATCH(request: NextRequest) {
     ].includes(String(stage))
   )
     return respond({ error: "Identificador ou etapa inválidos." }, 400);
-  const parsed = parseFecCycleCreate(input, auth.user.id);
+  const parsed = parseFecCycleCreate(input, session.userId);
   if (!parsed.ok) return respond({ error: parsed.reason }, 400);
   const { data, error } = await db
     .from("fec_cycles")
@@ -89,7 +84,7 @@ export async function PATCH(request: NextRequest) {
         | "closed",
     })
     .eq("id", id)
-    .eq("owner_id", auth.user.id)
+    .eq("owner_id", session.userId)
     .select("*")
     .maybeSingle();
   if (error || !data)
@@ -103,19 +98,18 @@ export async function POST(request: NextRequest) {
       { error: "Persistência FEC não habilitada neste ambiente." },
       503,
     );
-  const supabase =
-    (await createSupabaseServerClient()) as unknown as SupabaseClient<FecDatabase>;
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return respond({ error: "Autenticação necessária." }, 401);
+  const session=await fecSession();
+  if(session.response)return session.response;
+  const supabase=session.db;
   let payload: unknown;
   try {
     payload = await request.json();
   } catch {
     return respond({ error: "Corpo JSON inválido." }, 400);
   }
-  const parsed = parseFecCycleCreate(payload, auth.user.id);
+  const parsed = parseFecCycleCreate(payload, session.userId);
   if (!parsed.ok) return respond({ error: parsed.reason }, 400);
-  // Política INSERT no Supabase exige grant executor ativo, proprietário JWT e status draft.
+  // RLS exige perfil institucional permitido, vínculo ativo, autoria JWT e status draft.
   const { data, error } = await supabase
     .from("fec_cycles")
     .insert(parsed.value)
@@ -127,7 +121,7 @@ export async function POST(request: NextRequest) {
     return respond(
       {
         error:
-          "Ciclo não criado. Verifique vínculo FEC e permissões autorizadas.",
+          "Ciclo não criado. Verifique o vínculo ativo da equipe e a frente FEC.",
       },
       403,
     );

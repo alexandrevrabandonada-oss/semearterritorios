@@ -291,7 +291,7 @@ export function FecMonthlyWorkspace({
               As fontes atuais mudaram.{" "}
               {view.record.status === "approved"
                 ? "Esta versão histórica permanece preservada. Uma atualização deve usar nova versão."
-                : "Envio e aprovação ficam bloqueados até o executor recompor e conferir o fechamento."}
+                : "Envio e aprovação ficam bloqueados até o autor recompor e conferir o fechamento."}
             </p>
           )}
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">

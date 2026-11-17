@@ -144,6 +144,24 @@ export type FecDatabase = Omit<Database, "public"> & {
           created_by: string;
         }
       >;
+      fec_file_access_events: NewTable<
+        {
+          id: string;
+          resource_kind: "technical_file" | "import_document" | "evidence_response";
+          resource_id: string;
+          actor_id: string;
+          action: "download_authorized";
+          byte_size: number;
+          occurred_at: string;
+        },
+        {
+          resource_kind: "technical_file" | "import_document" | "evidence_response";
+          resource_id: string;
+          actor_id: string;
+          action?: "download_authorized";
+          byte_size: number;
+        }
+      >;
       fec_engagements: NewTable<
         {
           id: string;
@@ -242,6 +260,18 @@ export type FecDatabase = Omit<Database, "public"> & {
           p_reason?: string | null;
         };
         Returns: undefined;
+      };
+      fec_is_active_member: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      fec_can_submit: {
+        Args: { p_engagement_id: string };
+        Returns: boolean;
+      };
+      fec_can_review: {
+        Args: { p_engagement_id: string; p_owner_id: string };
+        Returns: boolean;
       };
     };
   };

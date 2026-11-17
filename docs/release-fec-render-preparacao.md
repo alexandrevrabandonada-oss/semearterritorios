@@ -6,7 +6,7 @@ Base de aplicação: main 58b1d0d138f7a3b1b93104e16b2c62afe0f1e452; branch local
 
 O histórico da conversa registra pedido e confirmação para promover as 13 contas a admin. A origem técnica de cada alteração não foi comprovada por auditoria individual. O cadastro Auth atual cria perfil com role NULL; a política existente permite que admin ou coordenação alterem perfis, inclusive role. A migration 20261117000613 remove INSERT e UPDATE amplos e TRUNCATE, TRIGGER e REFERENCES de anon/authenticated em profiles, permite UPDATE apenas de full_name e updated_at e preserva o cadastro criado por função privilegiada. Atribuições de role passam a exigir operação administrativa controlada. Não reclassifica os perfis existentes. Confirmar antes da aplicação eventuais integrações que atualizem profiles diretamente, e revisar acessos das 13 contas em processo institucional separado. O mesmo problema de TRUNCATE em outras tabelas não foi investigado nesta tarefa.
 
-A autorização FEC depende de perfil SEMEAR habilitado, membro ativo da equipe vinculado por profile_id, fec_access_grants ativo e frente ativa. O papel geral, isoladamente, não concede acesso FEC. Não criar contratos, ciclos ou grants até confirmação institucional do aditivo e das pessoas; ativar flags sem atribuições mantém acesso FEC negado. Supervisor deve ser pessoa diferente do executor.
+A migration local `20261117140527_fec_active_team_review_access.sql` substitui grants individuais: o acesso depende de perfil institucional permitido e vínculo ativo em `team_members`, e qualquer membro ativo pode revisar registros de outra pessoa. O papel geral, isoladamente, não concede acesso. Grants legados deixam de autorizar a FEC. A migration ainda não foi aplicada em produção. A API valida a sessão e as políticas do banco repetem a autorização; autoaprovação permanece bloqueada. Downloads privados são servidos por rotas autenticadas do servidor e registrados em `fec_file_access_events`; o cliente não recebe URLs assinadas do Storage.
 
 ## Ordem exata proposta (aplicar somente após autorização)
 
@@ -31,7 +31,7 @@ Em falha, desativar as duas flags e retornar ao deployment anterior do Render, s
 
 ## Política institucional pendente
 
-Originais e anexos ficam em buckets privados, sem publicação e sem exclusão automática; RLS depende de atribuição contratual. Não há prazo de retenção institucional aprovado. Confirmar responsável, finalidade, prazo, gestão de acesso, atendimento a exclusão e revisão de documentos, e identificação do aditivo. Outubro de 2026 é pré-importação documental sujeita a revisão, não evidência automática de entrevistas ou atividades comprovadas.
+Originais e anexos ficam em buckets privados, sem publicação e sem exclusão automática; a leitura exige autorização FEC por vínculo ativo e passa pelo servidor com registro de acesso. Não há prazo de retenção institucional aprovado. Confirmar responsável, finalidade, prazo, gestão de acesso, atendimento a exclusão e revisão de documentos, e identificação do aditivo. Outubro de 2026 é pré-importação documental sujeita a revisão, não evidência automática de entrevistas ou atividades comprovadas.
 
 ## Validação
 
