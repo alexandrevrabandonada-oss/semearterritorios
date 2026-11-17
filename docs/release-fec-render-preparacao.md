@@ -12,7 +12,7 @@ A autorização FEC depende de perfil SEMEAR habilitado, membro ativo da equipe 
 
 Produção possui 56 migrations e não registra os identificadores abaixo; não rodar db push indiscriminado, porque existem migrations locais anteriores à última versão de produção. Conferir novamente banco, políticas, ownership, permissões de storage.objects e existência dos nomes antes de executar cada SQL individualmente e registrar versão correspondente, garantindo backup/recuperação e janela de manutenção.
 
-1. 20261117000613_restrict_profile_role_changes.sql.
+A migration de restrição de perfis é uma alteração separada da APS e não integra esta publicação FEC.
 2. 20261019190000_fec_technical_cycles_staged.sql.
 3. 20261019190720_fec_monthly_report_versions.sql.
 4. 20261109182913_fec_import_documental_privado.sql.
@@ -21,7 +21,7 @@ Produção possui 56 migrations e não registra os identificadores abaixo; não 
 7. 20261116204308_fec_supporting_documents.sql.
 8. 20261117003944_fec_vinculo_ativo_referencia_pendente.sql.
 
-A primeira é segurança de perfis; as demais são ordenadas por dependências FEC. A última endurece a autorização e permite referência jurídica pendente, separada do identificador interno. O banco produtivo já chegou à versão 20261106215725, posterior às duas primeiras FEC: não presumir aplicação cronológica automática; revisar o mecanismo de registro de migrations fora de ordem. Sem reset, drop de dados ou alteração de tabelas APS. O patch altera somente constraints FEC recém-criadas e limites de bucket FEC; revisar as operações concretas antes de autorizar.
+As migrations FEC são ordenadas por dependências. A última endurece a autorização e permite referência jurídica pendente, separada do identificador interno. O banco produtivo já chegou à versão 20261106215725, posterior às duas primeiras FEC: não presumir aplicação cronológica automática; revisar o mecanismo de registro de migrations fora de ordem. Sem reset, drop de dados ou alteração de tabelas APS. O patch altera somente constraints FEC recém-criadas e limites de bucket FEC; revisar as operações concretas antes de autorizar.
 
 ## Publicação e recuperação
 
