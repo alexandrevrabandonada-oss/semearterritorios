@@ -6,7 +6,7 @@ Base de aplicação: main 58b1d0d138f7a3b1b93104e16b2c62afe0f1e452; branch local
 
 O histórico da conversa registra pedido e confirmação para promover as 13 contas a admin. A origem técnica de cada alteração não foi comprovada por auditoria individual. O cadastro Auth atual cria perfil com role NULL; a política existente permite que admin ou coordenação alterem perfis, inclusive role. A migration 20261117000613 remove INSERT e UPDATE amplos e TRUNCATE, TRIGGER e REFERENCES de anon/authenticated em profiles, permite UPDATE apenas de full_name e updated_at e preserva o cadastro criado por função privilegiada. Atribuições de role passam a exigir operação administrativa controlada. Não reclassifica os perfis existentes. Confirmar antes da aplicação eventuais integrações que atualizem profiles diretamente, e revisar acessos das 13 contas em processo institucional separado. O mesmo problema de TRUNCATE em outras tabelas não foi investigado nesta tarefa.
 
-A autorização FEC depende de fec_access_grants ativo e contrato ativo, não de profiles.role. Não criar contratos, ciclos ou grants até confirmação institucional do aditivo e das pessoas; ativar flags sem atribuições mantém acesso FEC negado. Supervisor deve ser pessoa diferente do executor.
+A autorização FEC depende de perfil SEMEAR habilitado, membro ativo da equipe vinculado por profile_id, fec_access_grants ativo e frente ativa. O papel geral, isoladamente, não concede acesso FEC. Não criar contratos, ciclos ou grants até confirmação institucional do aditivo e das pessoas; ativar flags sem atribuições mantém acesso FEC negado. Supervisor deve ser pessoa diferente do executor.
 
 ## Ordem exata proposta (aplicar somente após autorização)
 
@@ -19,8 +19,9 @@ Produção possui 56 migrations e não registra os identificadores abaixo; não 
 5. 20261109234909_fec_resposta_evidencia_privada.sql.
 6. 20261110001929_fec_integridade_documental.sql.
 7. 20261116204308_fec_supporting_documents.sql.
+8. 20261117003944_fec_vinculo_ativo_referencia_pendente.sql.
 
-A primeira é segurança de perfis; as demais são ordenadas por dependências FEC. O banco produtivo já chegou à versão 20261106215725, posterior às duas primeiras FEC: não presumir aplicação cronológica automática; revisar o mecanismo de registro de migrations fora de ordem. Sem reset, drop de dados ou alteração de tabelas APS. O patch altera somente constraints FEC recém-criadas e limites de bucket FEC; revisar as operações concretas antes de autorizar.
+A primeira é segurança de perfis; as demais são ordenadas por dependências FEC. A última endurece a autorização e permite referência jurídica pendente, separada do identificador interno. O banco produtivo já chegou à versão 20261106215725, posterior às duas primeiras FEC: não presumir aplicação cronológica automática; revisar o mecanismo de registro de migrations fora de ordem. Sem reset, drop de dados ou alteração de tabelas APS. O patch altera somente constraints FEC recém-criadas e limites de bucket FEC; revisar as operações concretas antes de autorizar.
 
 ## Publicação e recuperação
 
@@ -34,4 +35,4 @@ Originais e anexos ficam em buckets privados, sem publicação e sem exclusão a
 
 ## Validação
 
-As seis migrations FEC foram aplicadas no Supabase local isolado em ensaio anterior. RLS, arquivos privados, SHA-256 de bytes armazenados, supervisor independente e ajustes foram testados com dados sintéticos. Build Node 22 e TypeScript passaram após reconciliação; teste sintético da migration de perfis verifica bloqueio de elevação e TRUNCATE, atualização permitida de nome e alteração controlada pelo DBA. O banco de produção não foi modificado.
+As sete migrations FEC foram aplicadas no Supabase local isolado, incluindo vínculo ativo e referência pendente. RLS, arquivos privados, SHA-256 de bytes armazenados, supervisor independente e ajustes foram testados com dados sintéticos. Build Node 22 e TypeScript passaram após reconciliação; teste sintético da migration de perfis verifica bloqueio de elevação e TRUNCATE, atualização permitida de nome e alteração controlada pelo DBA. O banco de produção não foi modificado.

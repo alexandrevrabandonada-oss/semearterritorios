@@ -24,7 +24,8 @@ type Catalog = {
   scopes: {
     id: string;
     title: string;
-    contract_reference: string;
+    contract_reference: string | null;
+    contract_reference_confirmed: boolean;
     status: string;
   }[];
   grants: { engagement_id: string; role: string; active: boolean }[];
@@ -554,7 +555,7 @@ export function FecTechnicalWorkspace({ enabled }: { enabled: boolean }) {
                         {
                           catalog.scopes.find(
                             (s) => s.id === cycle.engagement_id,
-                          )?.contract_reference
+                          )?.contract_reference ?? "Referência contratual pendente (não confirmada)"
                         }
                         <br />
                         Etapa: {cycle.stage} · Revisão: {cycle.status}
@@ -615,7 +616,7 @@ export function FecTechnicalWorkspace({ enabled }: { enabled: boolean }) {
                           )
                           .map((s) => (
                             <option key={s.id} value={s.id}>
-                              {s.contract_reference} — {s.title}
+                              {s.contract_reference ?? "Referência contratual pendente"} — {s.title}{!s.contract_reference_confirmed ? " (não confirmada)" : ""}
                             </option>
                           ))}
                       </select>

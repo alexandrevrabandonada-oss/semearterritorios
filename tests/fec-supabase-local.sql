@@ -1,0 +1,28 @@
+\set ON_ERROR_STOP on
+begin;
+insert into auth.users(id) values ('00000000-0000-4000-8000-000000000001'),('00000000-0000-4000-8000-000000000002'),('00000000-0000-4000-8000-000000000003'),('00000000-0000-4000-8000-000000000004'),('00000000-0000-4000-8000-000000000005');
+insert into public.profiles(id,role) select id,'admin' from auth.users where id::text like '00000000-%';
+insert into public.team_members(profile_id,active) values ('00000000-0000-4000-8000-000000000001',true),('00000000-0000-4000-8000-000000000002',true),('00000000-0000-4000-8000-000000000003',true),('00000000-0000-4000-8000-000000000004',false);
+insert into public.neighborhoods values ('00000000-0000-4000-8000-000000000010','Sintético');
+insert into public.fec_engagements(id,contract_reference,title,status) values ('00000000-0000-4000-8000-000000000011',null,'FEC sintético','active');
+insert into public.fec_access_grants(engagement_id,user_id,role,active) values ('00000000-0000-4000-8000-000000000011','00000000-0000-4000-8000-000000000001','executor',true),('00000000-0000-4000-8000-000000000011','00000000-0000-4000-8000-000000000002','supervisor',true),('00000000-0000-4000-8000-000000000011','00000000-0000-4000-8000-000000000004','executor',true),('00000000-0000-4000-8000-000000000011','00000000-0000-4000-8000-000000000005','executor',true);
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',true);
+insert into fec_cycles(id,engagement_id,owner_id,neighborhood_id,title,guiding_question) values ('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000011','00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000010','Ciclo sintético','Pergunta');
+insert into fec_activities(id,cycle_id,owner_id,activity_date,activity_type,objective,methodology) values ('00000000-0000-4000-8000-000000000013','00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000001','2026-10-01','training','Objetivo','Método');
+update fec_activities set status='submitted' where id='00000000-0000-4000-8000-000000000013';
+do $$ begin begin perform fec_review_record('activity','00000000-0000-4000-8000-000000000013','approved','Autorrevisão'); raise exception 'Autoaprovação aceita'; exception when raise_exception then if sqlerrm = 'Autoaprovação aceita' then raise; end if; end; end $$;
+insert into fec_import_batches(id,cycle_id,owner_id,reference_month,intake_key,manifest) values('00000000-0000-4000-8000-000000000014','00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000001','2026-10-01',repeat('a',64),'[{}]');
+insert into fec_import_documents(id,batch_id,cycle_id,owner_id,kind,source_name,sha256,mime_type,byte_size,object_name) values('00000000-0000-4000-8000-000000000015','00000000-0000-4000-8000-000000000014','00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000001','monthly_report','synthetic.pdf',repeat('b',64),'application/pdf',20,'00000000-0000-4000-8000-000000000015/00000000-0000-4000-8000-000000000016.pdf');
+insert into storage.objects(bucket_id,name) values('fec-import-private','00000000-0000-4000-8000-000000000015/00000000-0000-4000-8000-000000000016.pdf');
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000002',true);
+do $$begin if (select count(*) from fec_cycles)<>1 or (select count(*) from storage.objects where bucket_id='fec-import-private')<>1 then raise exception 'Supervisor sem acesso'; end if;end$$;
+select fec_review_record('activity','00000000-0000-4000-8000-000000000013','approved','Revisão sintética');
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000003',true);
+do $$begin if (select count(*) from fec_cycles)<>0 or (select count(*) from storage.objects where bucket_id='fec-import-private')<>0 then raise exception 'Terceiro sem atribuição obteve acesso'; end if;end$$;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000004',true);
+do $$begin if (select count(*) from fec_cycles)<>0 or (select count(*) from storage.objects where bucket_id='fec-import-private')<>0 then raise exception 'Membro inativo obteve acesso'; end if;end$$;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000005',true);
+do $$begin if public.fec_has_assignment('00000000-0000-4000-8000-000000000011','executor') then raise exception 'Pessoa sem vínculo obteve acesso'; end if;end$$;
+reset role;
+rollback;

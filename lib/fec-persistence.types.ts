@@ -147,14 +147,16 @@ export type FecDatabase = Omit<Database, "public"> & {
       fec_engagements: NewTable<
         {
           id: string;
-          contract_reference: string;
+          contract_reference: string | null;
+          contract_reference_confirmed: boolean;
           title: string;
           status: "planned" | "active" | "closed";
           created_at: string;
         },
         {
           id?: string;
-          contract_reference: string;
+          contract_reference: string | null;
+          contract_reference_confirmed: boolean;
           title: string;
           status?: "planned" | "active" | "closed";
         }
