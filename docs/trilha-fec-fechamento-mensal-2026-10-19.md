@@ -61,7 +61,7 @@ A próxima camada é a seleção explícita pela coordenação de contribuiçõe
 
 ### Principais arquivos
 
-- `supabase/migrations/20261019190720_fec_monthly_report_versions.sql`: tabelas próprias, RLS, RPCs autorizadas, locks de fontes, cálculo SQL, histórico e imutabilidade.
+- `supabase/migrations/20261117011834_fec_monthly_report_versions.sql`: tabelas próprias, RLS, RPCs autorizadas, locks de fontes, cálculo SQL, histórico e imutabilidade.
 - `app/api/fec/monthly/reports/route.ts`: abertura, consulta, edição, recomposição e revisão, sempre com sessão e flag.
 - `components/fec/monthly-workspace.tsx`: formulário, versões, conferências, histórico e exportação.
 - `components/fec/technical-workspace.tsx`: integração na navegação FEC, sem alterar o formulário APS.
@@ -120,4 +120,4 @@ node scripts/test-weekly-synthesis-db.mjs CAMINHO_ABSOLUTO_PGLITE/dist/index.js
 node scripts/test-professional-monthly-db.mjs CAMINHO_ABSOLUTO_PGLITE/dist/index.js
 ```
 
-Não usar credenciais produtivas nos testes. Não reaplicar as migrações semanais/mensais legadas já existentes no banco interno. As propostas FEC devem ser avaliadas na ordem `20261019190000` e `20261019190720`, somente em base autorizada.
+Não usar credenciais produtivas nos testes. Não reaplicar as migrações semanais/mensais legadas já existentes no banco interno. As propostas FEC devem ser avaliadas na ordem `20261117011729` e `20261117011834`, somente em base autorizada.

@@ -13,7 +13,7 @@ beforeAll(async () => {
   await db.exec("create schema private");
   const sql = fs
     .readFileSync(
-      "supabase/migrations/20261019190720_fec_monthly_report_versions.sql",
+      "supabase/migrations/20261117011834_fec_monthly_report_versions.sql",
       "utf8",
     )
     .match(/create function private\.fec_monthly_metrics\([\s\S]*?\$\$;/)?.[0];

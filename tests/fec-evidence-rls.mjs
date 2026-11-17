@@ -27,7 +27,7 @@ await exec(`create role anon;create role authenticated;create role service_role 
  grant select on public.neighborhoods,public.actions to authenticated;
  insert into auth.users values('${owner}'),('${other}'),('${supervisor}'),('${outsider}'),('${unassigned}');
  insert into public.neighborhoods values('${territory}','Território sintético');`);
-for(const file of ['20261019190000_fec_technical_cycles_staged.sql','20261109182913_fec_import_documental_privado.sql'])
+for(const file of ['20261117011729_fec_technical_cycles_staged.sql','20261117011958_fec_import_documental_privado.sql'])
  await exec(readFileSync(`supabase/migrations/${file}`,'utf8'));
 await exec(`insert into fec_engagements(id,contract_reference,title,status) values('${contract}','FEC-TEST-1','Contrato 1','active'),('${contract2}','FEC-TEST-2','Contrato 2','active');
  insert into fec_access_grants(engagement_id,user_id,role,active) values('${contract}','${owner}','executor',true),('${contract}','${other}','executor',true),('${contract}','${supervisor}','supervisor',true),('${contract2}','${outsider}','executor',true);
@@ -88,8 +88,8 @@ await as(owner);await count('outra policy de Storage permanece funcional',`selec
 for(let i=1;i<=9;i++)await exec(`insert into fec_import_batches(cycle_id,owner_id,reference_month,intake_key,manifest) values('${cycle}','${owner}','2026-10-01','${i.toString(16).padStart(64,'0')}','[{}]')`);
 await denied('limite persistente de lotes por hora',`insert into fec_import_batches(cycle_id,owner_id,reference_month,intake_key,manifest) values('${cycle}','${owner}','2026-10-01','${'f'.repeat(64)}','[{}]')`);
 console.log(`Matriz FEC privada: ${passed} verificações passaram.`);
-await as(null,'postgres');await exec(readFileSync('supabase/migrations/20261109234909_fec_resposta_evidencia_privada.sql','utf8'));
-await exec(readFileSync('supabase/migrations/20261116204308_fec_supporting_documents.sql','utf8'));
+await as(null,'postgres');await exec(readFileSync('supabase/migrations/20261117012052_fec_resposta_evidencia_privada.sql','utf8'));
+await exec(readFileSync('supabase/migrations/20261117012218_fec_supporting_documents.sql','utf8'));
 const request=id(70),response=id(71),object2=`${response}/${id(72)}.pdf`;
 await as(supervisor);await ok('supervisão solicita evidência v7',`insert into fec_import_reviews(id,form_id,revision,reviewer_id,decision,reason) values('${request}','${form}',2,'${supervisor}','proof_requested','Pedido sintético de evidência independente')`);
 await as(owner);

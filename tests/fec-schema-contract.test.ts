@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const sql = readFileSync(join(process.cwd(),
-  "supabase/migrations/20261019190000_fec_technical_cycles_staged.sql"), "utf8");
+  "supabase/migrations/20261117011729_fec_technical_cycles_staged.sql"), "utf8");
 
 describe("contrato estatico da migração FEC — NAO substitui RLS em banco", () => {
   it("mantem tabelas exclusivas e transacao explicita", () => {

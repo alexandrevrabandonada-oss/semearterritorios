@@ -13,13 +13,13 @@ A autorização FEC depende de perfil SEMEAR habilitado, membro ativo da equipe 
 Produção possui 56 migrations e não registra os identificadores abaixo; não rodar db push indiscriminado, porque existem migrations locais anteriores à última versão de produção. Conferir novamente banco, políticas, ownership, permissões de storage.objects e existência dos nomes antes de executar cada SQL individualmente e registrar versão correspondente, garantindo backup/recuperação e janela de manutenção.
 
 A migration de restrição de perfis é uma alteração separada da APS e não integra esta publicação FEC.
-2. 20261019190000_fec_technical_cycles_staged.sql.
-3. 20261019190720_fec_monthly_report_versions.sql.
-4. 20261109182913_fec_import_documental_privado.sql.
-5. 20261109234909_fec_resposta_evidencia_privada.sql.
-6. 20261110001929_fec_integridade_documental.sql.
-7. 20261116204308_fec_supporting_documents.sql.
-8. 20261117003944_fec_vinculo_ativo_referencia_pendente.sql.
+2. 20261117011729_fec_technical_cycles_staged.sql.
+3. 20261117011834_fec_monthly_report_versions.sql.
+4. 20261117011958_fec_import_documental_privado.sql.
+5. 20261117012052_fec_resposta_evidencia_privada.sql.
+6. 20261117012135_fec_integridade_documental.sql.
+7. 20261117012218_fec_supporting_documents.sql.
+8. 20261117012344_fec_vinculo_ativo_referencia_pendente.sql.
 
 As migrations FEC são ordenadas por dependências. A última endurece a autorização e permite referência jurídica pendente, separada do identificador interno. O banco produtivo já chegou à versão 20261106215725, posterior às duas primeiras FEC: não presumir aplicação cronológica automática; revisar o mecanismo de registro de migrations fora de ordem. Sem reset, drop de dados ou alteração de tabelas APS. O patch altera somente constraints FEC recém-criadas e limites de bucket FEC; revisar as operações concretas antes de autorizar.
 
@@ -35,4 +35,10 @@ Originais e anexos ficam em buckets privados, sem publicação e sem exclusão a
 
 ## Validação
 
-As sete migrations FEC foram aplicadas no Supabase local isolado, incluindo vínculo ativo e referência pendente. RLS, arquivos privados, SHA-256 de bytes armazenados, supervisor independente e ajustes foram testados com dados sintéticos. Build Node 22 e TypeScript passaram após reconciliação; teste sintético da migration de perfis verifica bloqueio de elevação e TRUNCATE, atualização permitida de nome e alteração controlada pelo DBA. O banco de produção não foi modificado.
+As sete migrations FEC foram aplicadas no Supabase local isolado, incluindo vínculo ativo e referência pendente. RLS, arquivos privados, SHA-256 de bytes armazenados, supervisor independente e ajustes foram testados com dados sintéticos. Build Node 22 e TypeScript passaram após reconciliação; teste sintético da migration de perfis verifica bloqueio de elevação e TRUNCATE, atualização permitida de nome e alteração controlada pelo DBA. As sete migrations FEC foram aplicadas em produção e validadas individualmente em 16/11/2026 (horário de Brasília); não houve alterações em perfis ou permissões gerais.
+
+## Registro da aplicação em produção
+
+O mecanismo oficial registrou as versões 20261117011729, 20261117011834, 20261117011958, 20261117012052, 20261117012135, 20261117012218 e 20261117012344, respectivamente. Seus arquivos locais foram renomeados para corresponder aos registros; o conteúdo foi comparado com o registrado no banco, normalizando espaço em branco. As dez migrations históricas ausentes da main foram recuperadas de checkout local e comparadas com os comandos registrados, sem reaplicação.
+
+Depois da aplicação: todas as tabelas FEC com RLS; três buckets FEC privados; zero atribuições e zero ciclos FEC; 13 perfis, 31 ações e 302 escutas, iguais às contagens do preflight. As flags do serviço Render não estavam configuradas e, portanto, permanecem desativadas por padrão. A publicação da aplicação deve manter as flags assim até liberação institucional.

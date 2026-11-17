@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-const sql=(await readFile(new URL('../supabase/migrations/20261109182913_fec_import_documental_privado.sql',import.meta.url),'utf8')).toLowerCase();
-const supportingSql=(await readFile(new URL('../supabase/migrations/20261116204308_fec_supporting_documents.sql',import.meta.url),'utf8')).toLowerCase();
+const sql=(await readFile(new URL('../supabase/migrations/20261117011958_fec_import_documental_privado.sql',import.meta.url),'utf8')).toLowerCase();
+const supportingSql=(await readFile(new URL('../supabase/migrations/20261117012218_fec_supporting_documents.sql',import.meta.url),'utf8')).toLowerCase();
 test('schema privado com RLS, retenção sem delete e comparação confiável separada',()=>{
  for(const t of ['fec_import_batches','fec_import_documents','fec_import_forms','fec_import_reviews']){
   assert.ok(sql.includes(`create table public.${t}`));assert.ok(sql.includes(`alter table public.${t} enable row level security`));

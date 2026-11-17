@@ -34,13 +34,13 @@ create table storage.buckets(id text primary key,name text,public boolean,file_s
 grant select on neighborhoods,actions to authenticated;insert into auth.users values('${owner}'),('${other}'),('${supervisor}'),('${aps}');insert into neighborhoods values('${territory}','Território de homologação');`);
 await exec(
   fs.readFileSync(
-    "supabase/migrations/20261019190000_fec_technical_cycles_staged.sql",
+    "supabase/migrations/20261117011729_fec_technical_cycles_staged.sql",
     "utf8",
   ),
 );
 await exec(
   fs.readFileSync(
-    "supabase/migrations/20261019190720_fec_monthly_report_versions.sql",
+    "supabase/migrations/20261117011834_fec_monthly_report_versions.sql",
     "utf8",
   ),
 );

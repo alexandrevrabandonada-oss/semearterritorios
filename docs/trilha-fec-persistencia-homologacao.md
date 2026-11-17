@@ -16,7 +16,7 @@ Preparar gravação isolada para o profissional contratado diretamente pela FEC 
 - `fec_activities`: oficina/visita/preparação com data, participação e metodologias; relatos comunitários separados de observações e fontes externas.
 - `fec_review_log`: decisões de revisão com supervisor diferente do executor.
 
-A migration está em `supabase/migrations/20261019190000_fec_technical_cycles_staged.sql`. Os endpoints `/api/fec/cycles` e `/api/fec/activities` exigem login, RLS e `SEMEAR_FEC_PERSISTENCE_ENABLED=true`. Sem a flag, respondem 503 e não tentam acessar a base. Mesmo habilitada, a gravação depende de aditivo ATIVO e grant explícito. O formulário atual `/fec/cartografia` continua apenas como prévia local e não chama a API.
+A migration está em `supabase/migrations/20261117011729_fec_technical_cycles_staged.sql`. Os endpoints `/api/fec/cycles` e `/api/fec/activities` exigem login, RLS e `SEMEAR_FEC_PERSISTENCE_ENABLED=true`. Sem a flag, respondem 503 e não tentam acessar a base. Mesmo habilitada, a gravação depende de aditivo ATIVO e grant explícito. O formulário atual `/fec/cartografia` continua apenas como prévia local e não chama a API.
 
 ## Regras de qualidade
 

@@ -59,7 +59,7 @@ await execute(`create role anon;create role authenticated;create role service_ro
 `);
 await execute(
   fs.readFileSync(
-    "supabase/migrations/20261019190000_fec_technical_cycles_staged.sql",
+    "supabase/migrations/20261117011729_fec_technical_cycles_staged.sql",
     "utf8",
   ),
 );

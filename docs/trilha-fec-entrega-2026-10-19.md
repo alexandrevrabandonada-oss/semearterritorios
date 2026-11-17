@@ -91,4 +91,4 @@ node scripts/test-weekly-synthesis-db.mjs CAMINHO_ABSOLUTO_PGLITE/dist/index.js
 node scripts/test-professional-monthly-db.mjs CAMINHO_ABSOLUTO_PGLITE/dist/index.js
 ```
 
-PGlite está fixado em `0.5.10` no lockfile. Testes não recebem credenciais produtivas. As migrações de outubro recuperadas já existem no banco interno e não devem ser reaplicadas por este guia. A proposta FEC `20261019190000_fec_technical_cycles_staged.sql` continua não aplicada.
+PGlite está fixado em `0.5.10` no lockfile. Testes não recebem credenciais produtivas. As migrações de outubro recuperadas já existem no banco interno e não devem ser reaplicadas por este guia. A proposta FEC `20261117011729_fec_technical_cycles_staged.sql` continua não aplicada.

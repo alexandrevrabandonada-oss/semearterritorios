@@ -27,7 +27,7 @@ await exec(`create role anon;create role authenticated;create role service_role 
  grant select on public.neighborhoods,public.actions to authenticated;
  insert into auth.users values('${owner}'),('${other}'),('${supervisor}'),('${outsider}'),('${unassigned}');
  insert into public.neighborhoods values('${territory}','Território sintético');`);
-for(const file of ['20261019190000_fec_technical_cycles_staged.sql','20261109182913_fec_import_documental_privado.sql','20261116204308_fec_supporting_documents.sql'])
+for(const file of ['20261117011729_fec_technical_cycles_staged.sql','20261117011958_fec_import_documental_privado.sql','20261117012218_fec_supporting_documents.sql'])
  await exec(readFileSync(`supabase/migrations/${file}`,'utf8'));
 await exec(`insert into fec_engagements(id,contract_reference,title,status) values('${contract}','FEC-TEST-1','Contrato 1','active'),('${contract2}','FEC-TEST-2','Contrato 2','active');
  insert into fec_access_grants(engagement_id,user_id,role,active) values('${contract}','${owner}','executor',true),('${contract}','${other}','executor',true),('${contract}','${supervisor}','supervisor',true),('${contract2}','${outsider}','executor',true);

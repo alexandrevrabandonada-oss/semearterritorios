@@ -29,7 +29,7 @@ insert into profiles values ${[owner,supervisor,outsider,inactive,otherScope].ma
 insert into team_members values ('${owner}',true),('${supervisor}',true),('${outsider}',true),('${inactive}',false),('${otherScope}',true);
 insert into neighborhoods values('${territory}','Território sintético');
 insert into listening_records values('${id(90)}','${outsider}','synthetic');`);
-for(const f of ["20261019190000_fec_technical_cycles_staged.sql","20261019190720_fec_monthly_report_versions.sql","20261109182913_fec_import_documental_privado.sql","20261109234909_fec_resposta_evidencia_privada.sql","20261110001929_fec_integridade_documental.sql","20261116204308_fec_supporting_documents.sql","20261117003944_fec_vinculo_ativo_referencia_pendente.sql"]) await sql(fs.readFileSync(`supabase/migrations/${f}`,"utf8"));
+for(const f of ["20261117011729_fec_technical_cycles_staged.sql","20261117011834_fec_monthly_report_versions.sql","20261117011958_fec_import_documental_privado.sql","20261117012052_fec_resposta_evidencia_privada.sql","20261117012135_fec_integridade_documental.sql","20261117012218_fec_supporting_documents.sql","20261117012344_fec_vinculo_ativo_referencia_pendente.sql"]) await sql(fs.readFileSync(`supabase/migrations/${f}`,"utf8"));
 await sql(`insert into fec_engagements(id,contract_reference,title,status) values('${scope}',null,'FEC sintético','active');
 insert into fec_access_grants(engagement_id,user_id,role,active) values('${scope}','${owner}','executor',true),('${scope}','${supervisor}','supervisor',true),('${scope}','${inactive}','executor',true),('${scope}','${otherScope}','executor',true);`);
 await as(owner);
