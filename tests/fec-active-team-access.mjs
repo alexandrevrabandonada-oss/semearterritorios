@@ -16,7 +16,7 @@ await exec(`create role anon;create role authenticated;create role service_role 
 create schema auth;create schema storage;create table auth.users(id uuid primary key);
 create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
 grant usage on schema auth,storage to authenticated,anon;
-create table public.profiles(id uuid primary key,role text not null);
+create table public.profiles(id uuid primary key,role text);
 create table public.team_members(profile_id uuid not null,active boolean not null);
 create table public.neighborhoods(id uuid primary key,name text not null);
 create table public.actions(id uuid primary key,neighborhood_id uuid,action_date date,status text);
@@ -32,6 +32,8 @@ create policy preexisting_permissive_fixture on storage.objects for all to authe
 grant select on public.neighborhoods,public.actions to authenticated;
 insert into auth.users values ${[author,reviewerB,reviewerC,inactive,noLink,external].map(x=>`('${x}')`).join(",")};
 insert into profiles values ('${author}','admin'),('${reviewerB}','equipe'),('${reviewerC}','coordenacao'),('${inactive}','admin'),('${noLink}','equipe'),('${external}','externo');
+insert into auth.users values ('${id(96)}'),('${id(97)}');
+insert into profiles values ('${id(96)}',null);
 insert into team_members values ('${author}',true),('${reviewerB}',true),('${reviewerC}',true),('${inactive}',false),('${external}',true);
 insert into public.aps_private_fixture values('${apsId}','APS sintético');
 insert into neighborhoods values('${neighborhood}','Território sintético');`);
@@ -45,6 +47,7 @@ const migrations=[
  "20261117012218_fec_supporting_documents.sql",
  "20261117012344_fec_vinculo_ativo_referencia_pendente.sql",
  "20261117140527_fec_active_team_review_access.sql",
+ "20261118133500_fec_any_enabled_profile_access.sql",
 ];
 for(const migration of migrations)await exec(readFileSync(`supabase/migrations/${migration}`,"utf8"));
 await exec(`insert into fec_engagements(id,contract_reference,title,status) values('${scope}',null,'Frente sintética','active');
@@ -57,12 +60,12 @@ insert into fec_activities(id,cycle_id,owner_id,activity_date,activity_type,obje
  values('${activityB}','${cycle}','${author}','2026-10-02','technical_visit','Objetivo sintético','Método sintético'),
  ('${activityC}','${cycle}','${author}','2026-10-03','training','Objetivo sintético','Método sintético'),
  ('${activityRevoked}','${cycle}','${author}','2026-10-04','other','Objetivo sintético','Método sintético');`);
-await pass("ambiente descartável com as sete migrations-base e a nova migration");
+await pass("ambiente descartável com migrations-base, acesso da equipe e acesso por perfil habilitado");
 
 await as(author);
 assert.equal((await db.query(`select public.fec_can_submit('${scope}') as allowed`)).rows[0].allowed,true);
 assert.equal((await db.query(`select public.fec_can_review('${scope}','${author}') as allowed`)).rows[0].allowed,false);
-await pass("permissões refletem vínculo ativo e bloqueiam revisão própria");
+await pass("permissões refletem perfil habilitado e bloqueiam revisão própria");
 await visible("autor ativo lê o ciclo FEC",`select id from fec_cycles where id='${cycle}'`,1);
 await exec(`update fec_activities set status='submitted' where id in ('${activityB}','${activityC}','${activityRevoked}')`);
 await assert.rejects(exec(`select public.fec_review_record('activity','${activityB}','approved','Autoaprovação')`));
@@ -102,15 +105,20 @@ await exec(`update fec_activities set objective='Resposta sintética aos ajustes
 await pass("autor atualiza o próprio registro após solicitação de ajustes");
 
 await as(noLink);
-await visible("usuário sem vínculo ativo não lê FEC",`select id from fec_cycles where id='${cycle}'`,0);
-await denied("usuário sem vínculo não cria ciclo",`insert into fec_cycles(engagement_id,owner_id,neighborhood_id,title,guiding_question) values('${scope}','${noLink}','${neighborhood}','Ciclo inválido','Pergunta')`);
+await visible("perfil habilitado sem vínculo team_members lê FEC",`select id from fec_cycles where id='${cycle}'`,1);
+await exec(`insert into fec_cycles(engagement_id,owner_id,neighborhood_id,title,guiding_question) values('${scope}','${noLink}','${neighborhood}','Novo ciclo sintético','Pergunta sintética')`);
+await pass("perfil habilitado sem vínculo team_members cria ciclo");
 await as(inactive);
-await visible("usuário inativo não lê FEC mesmo com grant legado ativo",`select id from fec_cycles where id='${cycle}'`,0);
-assert.equal((await db.query(`select public.fec_import_acquire_capacity() as lease`)).rows[0].lease,null);
-await pass("grant legado não permite adquirir capacidade FEC");
+await visible("perfil habilitado com team_members inativo lê FEC",`select id from fec_cycles where id='${cycle}'`,1);
+assert.ok((await db.query('select public.fec_import_acquire_capacity() as lease')).rows[0].lease);
+await pass("perfil habilitado independente de team_members adquire capacidade FEC");
 await as(external);
-await visible("perfil institucional não permitido não lê FEC apesar de vínculo ativo",`select id from fec_cycles where id='${cycle}'`,0);
-
+await visible("qualquer papel institucional habilitado pode consultar FEC",`select id from fec_cycles where id='${cycle}'`,1);
+await as(id(96));
+await visible("perfil com role NULL aguardando habilitação não lê FEC",`select id from fec_cycles where id='${cycle}'`,0);
+await denied("perfil com role NULL não cria ciclo",`insert into fec_cycles(engagement_id,owner_id,neighborhood_id,title,guiding_question) values('${scope}','${id(96)}','${neighborhood}','Ciclo pendente','Pergunta')`);
+await as(id(97));
+await visible("login autenticado sem perfil institucional não lê FEC",`select id from fec_cycles where id='${cycle}'`,0);
 await as(null,"anon");
 await denied("anônimo não lê registros FEC",`select id from fec_cycles`);
 await visible("anônimo não lê objetos privados do Storage",`select name from storage.objects where bucket_id like 'fec-%-private'`,0);
@@ -118,13 +126,12 @@ await visible("anônimo não lê objetos privados do Storage",`select name from 
 await as(null,"postgres");
 await exec(`update public.team_members set active=false where profile_id='${author}'`);
 await as(author);
-await visible("autor inativado perde leitura após envio",`select id from fec_cycles where id='${cycle}'`,0);
-await visible("autor inativado não altera atividade enviada",`update fec_activities set objective='alteração' where id='${activityRevoked}' returning id`,0);
-await denied("autor inativado não revisa depois da submissão",`select public.fec_review_record('activity','${activityRevoked}','approved','Tentativa autorrevogada')`);
-await as(reviewerC);
-await exec(`select public.fec_review_record('activity','${activityRevoked}','approved','Revisão após inativação do autor')`);
-await pass("revisor ativo ainda revisa após inativação do autor");
-
+await visible("autor habilitado continua vendo FEC após inativação do vínculo team_members",`select id from fec_cycles where id='${cycle}'`,1);
+await visible("autor não altera atividade já submetida",`update fec_activities set objective='alteração' where id='${activityRevoked}' returning id`,0);
+await denied("autor não pode revisar o próprio registro",`select public.fec_review_record('activity','${activityRevoked}','approved','Tentativa de autoaprovação')`);
+await as(noLink);
+await exec(`select public.fec_review_record('activity','${activityRevoked}','approved','Revisão por perfil sem vínculo de equipe')`);
+await pass("revisor habilitado sem vínculo de equipe revisa outro autor");
 await as(reviewerB);
 await denied("membro não pode inserir evento de acesso por conta própria",`insert into fec_file_access_events(resource_kind,resource_id,actor_id,byte_size) values('import_document','${document}','${reviewerB}',20)`);
 await as(reviewerC,"service_role");
@@ -154,7 +161,7 @@ for(const file of routeFiles){
  assert.doesNotMatch(source,/createSignedUrl\(/,`${file} ainda emite URL assinada`);
 }
 const server=readFileSync("lib/fec-server.ts","utf8");
-assert.match(server,/team_members/);assert.match(server,/active/);assert.doesNotMatch(server,/fec_access_grants/);
+assert.doesNotMatch(server,/team_members/);assert.match(server,/role/);assert.doesNotMatch(server,/fec_access_grants/);
 const workspace=readFileSync("components/fec/technical-workspace.tsx","utf8");
 assert.doesNotMatch(workspace,/catalog\.grants/);
 const privateFiles=readFileSync("lib/fec-integrity-server.ts","utf8");
@@ -164,5 +171,5 @@ assert.match(privateFiles,/fec_file_access_events/);
 assert.match(privateFiles,/expectedSha256/);
 await pass("APIs e interfaces não dependem de grants nem emitem URLs assinadas");
 
-console.log(`Matriz de acesso por equipe ativa: ${checks} verificações passaram.`);
+console.log(`Matriz de acesso por perfil SEMEAR habilitado: ${checks} verificações passaram.`);
 await db.close();

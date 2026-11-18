@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
   }
   const parsed = parseFecActivityCreate(payload, session.userId);
   if (!parsed.ok) return respond({ error: parsed.reason }, 400);
-  // RLS exige autor do ciclo, vínculo institucional ativo e status draft.
+  // RLS exige autor do ciclo, perfil SEMEAR habilitado e status draft.
   const { data, error } = await supabase
     .from("fec_activities")
     .insert(parsed.value)
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
   if (error)
     return respond(
       {
-        error: "Atividade não criada. Confira o ciclo, seu vínculo ativo e a frente FEC.",
+        error: "Atividade não criada. Confira o ciclo, seu perfil SEMEAR e a frente FEC.",
       },
       403,
     );
