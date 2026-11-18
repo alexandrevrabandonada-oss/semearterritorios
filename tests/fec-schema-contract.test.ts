@@ -6,6 +6,8 @@ const sql = readFileSync(join(process.cwd(),
   "supabase/migrations/20261117011729_fec_technical_cycles_staged.sql"), "utf8");
 const accessSql = readFileSync(join(process.cwd(),
   "supabase/migrations/20261117140527_fec_active_team_review_access.sql"), "utf8");
+const profileSql = readFileSync(join(process.cwd(),
+  "supabase/migrations/20261118133500_fec_any_enabled_profile_access.sql"), "utf8");
 
 describe("contrato estatico da migração FEC — NAO substitui RLS em banco", () => {
   it("mantem tabelas exclusivas e transacao explicita", () => {
@@ -57,5 +59,23 @@ describe("migração aditiva de acesso da equipe FEC", () => {
     expect(accessSql).toContain("public.fec_file_access_events");
     expect(accessSql).toContain("fec_file_access_event_append_only");
     expect(accessSql).not.toMatch(/alter\s+table\s+public\.(?:actions|weekly_team_reports|workshop_records|listening_records)\b/i);
+  });
+});
+
+describe("migração posterior: acesso FEC por qualquer perfil habilitado", () => {
+  it("remove vínculo de equipe e enumeração de papéis da autorização efetiva", () => {
+    expect(profileSql).toContain("create or replace function private.fec_is_active_member()");
+    expect(profileSql).toContain("from public.profiles p");
+    expect(profileSql).toContain("p.id = auth.uid()");
+    expect(profileSql).toContain("nullif(btrim(p.role), '') is not null");
+    expect(profileSql).not.toContain("team_members");
+    expect(profileSql).not.toMatch(/p\.role\s+in\s*\(/i);
+  });
+  it("preserva RLS existente, revisor independente e ausência de acesso anônimo", () => {
+    expect(profileSql).toContain("revoke all on function private.fec_is_active_member() from public, anon");
+    expect(profileSql).toContain("grant execute on function private.fec_is_active_member() to authenticated");
+    expect(profileSql).not.toMatch(/alter\s+table\s+public\.(?:actions|listening_records|profiles|team_members)/i);
+    expect(accessSql).toContain("auth.uid() <> p_owner_id");
+    expect(accessSql).toContain("fec_private_download_requires_server_anon");
   });
 });
