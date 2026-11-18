@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
   }
   const parsed = parseFecCycleCreate(payload, session.userId);
   if (!parsed.ok) return respond({ error: parsed.reason }, 400);
-  // RLS exige perfil institucional permitido, vínculo ativo, autoria JWT e status draft.
+  // RLS exige perfil SEMEAR habilitado, autoria JWT e status draft.
   const { data, error } = await supabase
     .from("fec_cycles")
     .insert(parsed.value)
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     return respond(
       {
         error:
-          "Ciclo não criado. Verifique o vínculo ativo da equipe e a frente FEC.",
+          "Ciclo não criado. Verifique seu perfil SEMEAR e a frente FEC.",
       },
       403,
     );
