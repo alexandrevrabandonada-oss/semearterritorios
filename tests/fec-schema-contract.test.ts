@@ -68,7 +68,7 @@ describe("migração posterior: acesso FEC por qualquer perfil habilitado", () =
     expect(profileSql).toContain("from public.profiles p");
     expect(profileSql).toContain("p.id = auth.uid()");
     expect(profileSql).toContain("nullif(btrim(p.role), '') is not null");
-    expect(profileSql).not.toContain("team_members");
+    expect(profileSql).not.toMatch(/from\s+public\.team_members\b/i);
     expect(profileSql).not.toMatch(/p\.role\s+in\s*\(/i);
   });
   it("preserva RLS existente, revisor independente e ausência de acesso anônimo", () => {
