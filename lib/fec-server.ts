@@ -23,15 +23,26 @@ export async function fecSession() {
     return {
       response: fecResponse({ error: "Autenticação necessária." }, 401),
     } as const;
-  // O servidor repete a verificação institucional; o banco aplica a regra em cada operação.
-  const [{ data: profile, error: profileError }, { data: members, error: membersError }] = await Promise.all([
-    db.from("profiles").select("role").eq("id", data.user.id).maybeSingle(),
-    db.from("team_members").select("id").eq("profile_id", data.user.id).eq("active", true).limit(1),
-  ]);
-  if (profileError || membersError || !profile ||
-      !["equipe", "coordenacao", "admin"].includes(profile.role ?? "") ||
-      !members?.length)
-    return { response: fecResponse({ error: "A FEC exige perfil institucional permitido e vínculo ativo na equipe." }, 403) } as const;
+  // Qualquer perfil institucionalmente habilitado pode acessar a FEC.
+  // O cadastro automático cria role NULL: inscrição sem habilitação não libera documentos.
+  // O banco repete a autorização e impede aprovação pelo próprio autor.
+  const { data: profile, error: profileError } = await db
+    .from("profiles")
+    .select("role")
+    .eq("id", data.user.id)
+    .maybeSingle();
+  if (
+    profileError ||
+    !profile ||
+    typeof profile.role !== "string" ||
+    !profile.role.trim()
+  )
+    return {
+      response: fecResponse(
+        { error: "A FEC exige uma conta SEMEAR com perfil habilitado." },
+        403,
+      ),
+    } as const;
   return { db, userId: data.user.id } as const;
 }
 export async function fecBody(request: Request): Promise<unknown> {
