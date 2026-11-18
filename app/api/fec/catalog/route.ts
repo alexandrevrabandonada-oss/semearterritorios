@@ -17,10 +17,10 @@ export async function GET() {
       .order("action_date", { ascending: false })
       .limit(501),
   ]);
-  // O vínculo ativo da equipe autoriza a FEC; a API não amplia acesso aos registros APS.
+  // O perfil SEMEAR habilitado autoriza a FEC; a API não amplia acesso aos registros APS.
   if (scopes.error || neighborhoods.error || cycles.error)
     return fecResponse(
-      { error: "Catálogo FEC indisponível; confira a migração e o vínculo ativo." },
+      { error: "Catálogo FEC indisponível; confira a migração e seu perfil SEMEAR." },
       503,
     );
   if (
